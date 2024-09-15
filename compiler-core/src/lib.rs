@@ -70,6 +70,7 @@ pub mod erlang;
 pub mod error;
 pub mod fix;
 pub mod format;
+pub mod fsharp;
 pub mod hex;
 pub mod io;
 pub mod javascript;

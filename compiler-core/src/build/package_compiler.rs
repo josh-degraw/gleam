@@ -345,6 +345,10 @@ where
             TargetCodegenConfiguration::Erlang { app_file } => {
                 self.perform_erlang_codegen(modules, app_file.as_ref())
             }
+            TargetCodegenConfiguration::Dotnet {} => {
+                // TODO: implement dotnet codegen
+                Ok(())
+            }
         }
     }
 
