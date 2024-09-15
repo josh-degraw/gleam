@@ -64,7 +64,7 @@ pub enum Target {
     JavaScript,
     #[strum(serialize = "dotnet", serialize = "fs")]
     #[serde(rename = "dotnet", alias = "fs")]
-    Dotnet,
+    FSharp,
 }
 
 impl Target {
@@ -151,7 +151,7 @@ pub enum TargetCodegenConfiguration {
         app_file: Option<ErlangAppCodegenConfiguration>,
     },
 
-    Dotnet {},
+    FSharp {},
 }
 
 impl TargetCodegenConfiguration {
@@ -159,7 +159,7 @@ impl TargetCodegenConfiguration {
         match self {
             Self::JavaScript { .. } => Target::JavaScript,
             Self::Erlang { .. } => Target::Erlang,
-            Self::Dotnet { .. } => Target::Dotnet,
+            Self::FSharp { .. } => Target::FSharp,
         }
     }
 }

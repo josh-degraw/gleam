@@ -345,10 +345,7 @@ where
             TargetCodegenConfiguration::Erlang { app_file } => {
                 self.perform_erlang_codegen(modules, app_file.as_ref())
             }
-            TargetCodegenConfiguration::Dotnet {} => {
-                // TODO: implement dotnet codegen
-                Ok(())
-            }
+            TargetCodegenConfiguration::FSharp {} => self.perform_fsharp_codegen(modules),
         }
     }
 
@@ -420,6 +417,30 @@ where
         } else {
             tracing::debug!("skipping_native_file_copying");
         }
+
+        Ok(())
+    }
+
+    fn perform_fsharp_codegen(&mut self, modules: &[Module]) -> Result<(), Error> {
+        let build_dir = self.out.join(paths::ARTEFACT_DIRECTORY_NAME);
+        let io = self.io.clone();
+
+        io.mkdir(&build_dir)?;
+
+        if self.copy_native_files {
+            self.copy_project_native_files(&build_dir, &mut HashSet::new())?;
+        } else {
+            tracing::debug!("skipping_native_file_copying");
+        }
+
+        tracing::info!("Generating F# code");
+
+        // Use the F# generator to render the modules
+        let fsharp = crate::fsharp::FSharp::new(&build_dir);
+        fsharp.render(io, modules)?;
+
+        // TODO: Implement F# compilation (if needed)
+        // This step might involve calling the F# compiler (fsc) to compile the generated F# code
 
         Ok(())
     }

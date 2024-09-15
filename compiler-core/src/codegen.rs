@@ -149,6 +149,75 @@ impl<'a> ErlangApp<'a> {
     }
 }
 
+struct FSharpApp<'a> {
+    build_dir: &'a Utf8Path,
+}
+
+impl<'a> FSharpApp<'a> {
+    pub fn render<Writer: FileSystemWriter>(
+        &self,
+        writer: Writer,
+        config: &PackageConfig,
+        modules: &[Module],
+    ) -> Result<()> {
+        let project_file_path = self.build_dir.join(format!("{}.fsproj", &config.name));
+
+        // Create project file content
+        let project_file_content = format!(
+            r#"<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>{}</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+{}
+  </ItemGroup>
+
+  <ItemGroup>
+{}
+  </ItemGroup>
+</Project>"#,
+            config.name,
+            modules
+                .iter()
+                .map(|m| format!(
+                    "    <Compile Include=\"{}.fs\" />",
+                    m.name.replace("/", "\\")
+                ))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            "<!-- TODO: Add package references -->" // config
+                                                    //     .dependencies
+                                                    //     .iter()
+                                                    //     .map(|(name, version)| format!(
+                                                    //         "    <PackageReference Include=\"{}\" Version=\"{}\" />",
+                                                    //         name, version.to_toml(root_path)
+                                                    //     ))
+                                                    //     .collect::<Vec<_>>()
+                                                    // .join("\n")
+        );
+
+        // Write project file
+        writer.write(&project_file_path, &project_file_content)?;
+
+        // Write individual module files
+        for module in modules {
+            let module_file_path = self
+                .build_dir
+                .join(format!("{}.fs", module.name.replace("/", "\\")));
+            let module_content = self.module(module).to_string();
+            writer.write(&module_file_path, &module_content)?;
+        }
+
+        Ok(())
+    }
+
+    fn module(&self, module: &Module) -> String {
+        format!("module {}\n", module.name.replace("/", "\\"))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TypeScriptDeclarations {
     None,
