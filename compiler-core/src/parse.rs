@@ -1854,6 +1854,7 @@ where
             deprecation: std::mem::take(&mut attributes.deprecated),
             external_erlang: attributes.external_erlang.take(),
             external_javascript: attributes.external_javascript.take(),
+            external_fsharp: attributes.external_fsharp.take(),
             implementations: Implementations {
                 gleam: true,
                 can_run_on_erlang: true,

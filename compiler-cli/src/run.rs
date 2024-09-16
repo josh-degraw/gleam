@@ -129,6 +129,7 @@ pub fn command(
             }
             Runtime::Bun => run_javascript_bun(&paths, &main_function.package, &module, arguments),
         },
+        Target::FSharp => run_fsharp(&paths, &main_function.package, &module, arguments),
     }?;
 
     std::process::exit(status);
@@ -166,6 +167,49 @@ fn run_erlang(
     }
 
     ProjectIO::new().exec("erl", &args, &[], None, Stdio::Inherit)
+}
+
+fn run_fsharp(
+    paths: &ProjectPaths,
+    package: &str,
+    module: &str,
+    arguments: Vec<String>,
+) -> Result<i32, Error> {
+    // Run the generated F# project via dotnet run
+    let mut args = vec![];
+    let entry = write_fsharp_entrypoint(paths, package, module)?;
+
+    args.push(entry.to_string());
+
+    for arg in arguments.into_iter() {
+        args.push(arg);
+    }
+
+    ProjectIO::new().exec("dotnet", &args, &[], None, Stdio::Inherit)
+}
+
+fn write_fsharp_entrypoint(
+    paths: &ProjectPaths,
+    package: &str,
+    _module: &str,
+) -> Result<Utf8PathBuf, Error> {
+    let path = paths
+        .build_directory_for_package(Mode::Dev, Target::FSharp, package)
+        .to_path_buf()
+        .join("gleam.main.fsx");
+
+    //TODO: actually stitch things together for F#
+    let module = format!(
+        r#"open System
+
+let main argv =
+    printfn "Hello World from F#!"
+    argv |> Array.iter (fun arg -> printfn "%s" arg)
+"#,
+    );
+
+    crate::fs::write(&path, &module)?;
+    Ok(path)
 }
 
 fn run_javascript_bun(

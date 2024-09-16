@@ -87,6 +87,14 @@ impl Target {
     pub fn is_erlang(&self) -> bool {
         matches!(self, Self::Erlang)
     }
+
+    /// Returns `true` if the target is [`FSharp`].
+    ///
+    /// [`FSharp`]: Target::FSharp
+    #[must_use]
+    pub fn is_fsharp(&self) -> bool {
+        matches!(self, Self::FSharp)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -151,7 +159,11 @@ pub enum TargetCodegenConfiguration {
         app_file: Option<ErlangAppCodegenConfiguration>,
     },
 
-    FSharp {},
+    FSharp,
+}
+
+pub struct FSharpCodegenConfiguration {
+    target_framework: String,
 }
 
 impl TargetCodegenConfiguration {

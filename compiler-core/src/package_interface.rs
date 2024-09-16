@@ -258,9 +258,11 @@ impl ImplementationsInterface {
             gleam,
             uses_erlang_externals,
             uses_javascript_externals,
+            uses_fsharp_externals,
 
             can_run_on_erlang,
             can_run_on_javascript,
+            can_run_on_fsharp,
         } = implementations;
 
         ImplementationsInterface {
@@ -509,6 +511,7 @@ impl ModuleInterface {
                     return_annotation: _,
                     external_erlang: _,
                     external_javascript: _,
+                    external_fsharp: _,
                 }) => {
                     let mut id_map = IdMap::new();
                     let (_, name) = name

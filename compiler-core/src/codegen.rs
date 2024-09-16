@@ -11,7 +11,7 @@ use crate::{
 use itertools::Itertools;
 use std::fmt::Debug;
 
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 
 /// A code generator that creates a .erl Erlang module and record header files
 /// for each Gleam module in the package.
@@ -149,11 +149,15 @@ impl<'a> ErlangApp<'a> {
     }
 }
 
-struct FSharpApp<'a> {
-    build_dir: &'a Utf8Path,
+pub struct FSharpApp<'a> {
+    build_dir: &'a Utf8PathBuf,
 }
 
 impl<'a> FSharpApp<'a> {
+    pub fn new(build_dir: &'a Utf8PathBuf) -> Self {
+        Self { build_dir }
+    }
+
     pub fn render<Writer: FileSystemWriter>(
         &self,
         writer: Writer,
@@ -166,7 +170,7 @@ impl<'a> FSharpApp<'a> {
         let project_file_content = format!(
             r#"<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>{}</TargetFramework>
     <RootNamespace>{}</RootNamespace>
   </PropertyGroup>
 
@@ -178,6 +182,7 @@ impl<'a> FSharpApp<'a> {
 {}
   </ItemGroup>
 </Project>"#,
+            config.fsharp.target_framework,
             config.name,
             modules
                 .iter()

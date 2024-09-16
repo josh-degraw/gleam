@@ -98,6 +98,8 @@ pub struct PackageConfig {
     pub erlang: ErlangConfig,
     #[serde(default)]
     pub javascript: JavaScriptConfig,
+    #[serde(default)]
+    pub fsharp: FSharpConfig,
     #[serde(default = "erlang_target")]
     pub target: Target,
     #[serde(default)]
@@ -639,6 +641,7 @@ impl Default for PackageConfig {
             documentation: Default::default(),
             dependencies: Default::default(),
             erlang: Default::default(),
+            fsharp: Default::default(),
             javascript: Default::default(),
             repository: Default::default(),
             dev_dependencies: Default::default(),
@@ -666,6 +669,16 @@ pub struct JavaScriptConfig {
     pub runtime: Runtime,
     #[serde(default, rename = "deno")]
     pub deno: DenoConfig,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Default, Clone)]
+pub struct FSharpConfig {
+    #[serde(default = "default_fsharp_target_framework")]
+    pub target_framework: String,
+}
+
+fn default_fsharp_target_framework() -> String {
+    "net8.0".to_string()
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq, Clone)]

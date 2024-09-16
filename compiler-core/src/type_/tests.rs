@@ -302,6 +302,7 @@ fn compile_statement_sequence(
             has_body: true,
             has_erlang_external: false,
             has_javascript_external: false,
+            has_fsharp_external: false,
         },
         &mut problems,
     )
@@ -2239,8 +2240,10 @@ fn assert_suitable_main_function_not_module_function() {
                 gleam: true,
                 uses_erlang_externals: false,
                 uses_javascript_externals: false,
+                uses_fsharp_externals: false,
                 can_run_on_erlang: true,
                 can_run_on_javascript: true,
+                can_run_on_fsharp: true,
             },
         },
     };
@@ -2262,12 +2265,15 @@ fn assert_suitable_main_function_wrong_arity() {
             module: "module".into(),
             external_erlang: None,
             external_javascript: None,
+            external_fsharp: None,
             implementations: Implementations {
                 gleam: true,
                 uses_erlang_externals: false,
                 uses_javascript_externals: false,
+                uses_fsharp_externals: false,
                 can_run_on_erlang: true,
                 can_run_on_javascript: true,
+                can_run_on_fsharp: true,
             },
         },
     };
@@ -2289,12 +2295,15 @@ fn assert_suitable_main_function_ok() {
             module: "module".into(),
             external_erlang: None,
             external_javascript: None,
+            external_fsharp: None,
             implementations: Implementations {
                 gleam: true,
                 uses_erlang_externals: false,
                 uses_javascript_externals: false,
+                uses_fsharp_externals: false,
                 can_run_on_erlang: true,
                 can_run_on_javascript: true,
+                can_run_on_fsharp: true,
             },
         },
     };
@@ -2316,12 +2325,15 @@ fn assert_suitable_main_function_erlang_not_supported() {
             module: "module".into(),
             external_erlang: Some(("wibble".into(), "wobble".into())),
             external_javascript: Some(("wobble".into(), "wibble".into())),
+            external_fsharp: Some(("wobble".into(), "wibble".into())),
             implementations: Implementations {
                 gleam: false,
                 uses_erlang_externals: true,
                 uses_javascript_externals: true,
+                uses_fsharp_externals: false,
                 can_run_on_erlang: false,
                 can_run_on_javascript: true,
+                can_run_on_fsharp: false,
             },
         },
     };
@@ -2343,12 +2355,15 @@ fn assert_suitable_main_function_javascript_not_supported() {
             module: "module".into(),
             external_erlang: Some(("wibble".into(), "wobble".into())),
             external_javascript: Some(("wobble".into(), "wibble".into())),
+            external_fsharp: Some(("wobble".into(), "wibble".into())),
             implementations: Implementations {
                 gleam: false,
                 uses_erlang_externals: true,
                 uses_javascript_externals: true,
+                uses_fsharp_externals: false,
                 can_run_on_erlang: true,
                 can_run_on_javascript: false,
+                can_run_on_fsharp: true,
             },
         },
     };
