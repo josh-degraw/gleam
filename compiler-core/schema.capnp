@@ -119,8 +119,10 @@ struct Implementations {
   gleam @0 :Bool;
   usesErlangExternals @1 :Bool;
   usesJavascriptExternals @2 :Bool;
-  canRunOnErlang @3 :Bool;
-  canRunOnJavascript @4 :Bool;
+  usesFsharpExternals @3 :Bool;
+  canRunOnFsharp @4 :Bool;
+  canRunOnErlang @5 :Bool;
+  canRunOnJavascript @6 :Bool;
 }
 
 struct ValueConstructorVariant {

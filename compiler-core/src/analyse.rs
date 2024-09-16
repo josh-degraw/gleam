@@ -368,6 +368,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             has_body: true,
             has_erlang_external: false,
             has_javascript_external: false,
+            has_fsharp_external: false,
         };
         let mut expr_typer = ExprTyper::new(environment, definition, &mut self.problems);
         let typed_expr = expr_typer.infer_const(&annotation, *value);
@@ -456,6 +457,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             deprecation,
             external_erlang,
             external_javascript,
+            external_fsharp,
             return_type: (),
             implementations: _,
         } = f;
@@ -484,6 +486,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             &body,
             &external_erlang,
             &external_javascript,
+            &external_fsharp,
             location,
         );
 
@@ -500,6 +503,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             has_body,
             has_erlang_external: external_erlang.is_some(),
             has_javascript_external: external_javascript.is_some(),
+            has_fsharp_external: external_fsharp.is_some(),
         };
 
         let typed_args = arguments
@@ -611,6 +615,9 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             external_javascript: external_javascript
                 .as_ref()
                 .map(|(m, f, _)| (m.clone(), f.clone())),
+            external_fsharp: external_fsharp
+                .as_ref()
+                .map(|(m, f, _)| (m.clone(), f.clone())),
             field_map,
             module: environment.current_module.clone(),
             arity: typed_args.len(),
@@ -641,6 +648,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             body,
             external_erlang,
             external_javascript,
+            external_fsharp,
             implementations,
         })
     }
@@ -710,10 +718,11 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
         body: &Vec1<UntypedStatement>,
         external_erlang: &Option<(EcoString, EcoString, SrcSpan)>,
         external_javascript: &Option<(EcoString, EcoString, SrcSpan)>,
+        external_fsharp: &Option<(EcoString, EcoString, SrcSpan)>,
         location: SrcSpan,
     ) -> bool {
-        match (external_erlang, external_javascript) {
-            (None, None) if body.first().is_placeholder() => {
+        match (external_erlang, external_javascript, external_fsharp) {
+            (None, None, None) if body.first().is_placeholder() => {
                 self.problems.error(Error::NoImplementation { location });
                 false
             }
@@ -1253,6 +1262,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             documentation,
             external_erlang,
             external_javascript,
+            external_fsharp,
             deprecation,
             end_position: _,
             body: _,
@@ -1298,6 +1308,9 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
                 .as_ref()
                 .map(|(m, f, _)| (m.clone(), f.clone())),
             external_javascript: external_javascript
+                .as_ref()
+                .map(|(m, f, _)| (m.clone(), f.clone())),
+            external_fsharp: external_fsharp
                 .as_ref()
                 .map(|(m, f, _)| (m.clone(), f.clone())),
             module: environment.current_module.clone(),
@@ -1580,6 +1593,7 @@ fn generalise_function(
         return_type,
         external_erlang,
         external_javascript,
+        external_fsharp,
         implementations,
     } = function;
 
@@ -1603,6 +1617,9 @@ fn generalise_function(
             .as_ref()
             .map(|(m, f, _)| (m.clone(), f.clone())),
         external_javascript: external_javascript
+            .as_ref()
+            .map(|(m, f, _)| (m.clone(), f.clone())),
+        external_fsharp: external_fsharp
             .as_ref()
             .map(|(m, f, _)| (m.clone(), f.clone())),
         module: module_name.clone(),
@@ -1640,6 +1657,7 @@ fn generalise_function(
         body,
         external_erlang,
         external_javascript,
+        external_fsharp,
         implementations,
     })
 }

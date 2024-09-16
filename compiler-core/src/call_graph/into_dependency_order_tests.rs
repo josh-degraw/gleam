@@ -38,12 +38,15 @@ fn parse_and_order(
             documentation: None,
             external_erlang: None,
             external_javascript: None,
+            external_fsharp: None,
             implementations: Implementations {
                 gleam: true,
                 uses_erlang_externals: true,
                 uses_javascript_externals: false,
                 can_run_on_erlang: true,
                 can_run_on_javascript: true,
+                can_run_on_fsharp: true,
+                uses_fsharp_externals: true, // TODO: Verify F#
             },
         })
         .collect_vec();
@@ -65,6 +68,8 @@ fn parse_and_order(
                     uses_javascript_externals: false,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
+                    can_run_on_fsharp: true,
+                    uses_fsharp_externals: true, // TODO: Verify F#
                 },
                 type_: (),
                 deprecation: Deprecation::NotDeprecated,

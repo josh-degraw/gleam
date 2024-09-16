@@ -119,6 +119,7 @@ struct Attributes {
     deprecated: Deprecation,
     external_erlang: Option<(EcoString, EcoString, SrcSpan)>,
     external_javascript: Option<(EcoString, EcoString, SrcSpan)>,
+    external_fsharp: Option<(EcoString, EcoString, SrcSpan)>,
     internal: InternalAttribute,
 }
 
@@ -131,6 +132,7 @@ impl Attributes {
         match target {
             Target::Erlang => self.external_erlang.is_some(),
             Target::JavaScript => self.external_javascript.is_some(),
+            Target::FSharp => self.external_fsharp.is_some(),
         }
     }
 
@@ -138,6 +140,7 @@ impl Attributes {
         match target {
             Target::Erlang => self.external_erlang = ext,
             Target::JavaScript => self.external_javascript = ext,
+            Target::FSharp => self.external_fsharp = ext,
         }
     }
 }
@@ -1855,8 +1858,10 @@ where
                 gleam: true,
                 can_run_on_erlang: true,
                 can_run_on_javascript: true,
+                can_run_on_fsharp: true,
                 uses_erlang_externals: false,
                 uses_javascript_externals: false,
+                uses_fsharp_externals: false,
             },
         })))
     }
@@ -2615,8 +2620,10 @@ where
                     gleam: true,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
+                    can_run_on_fsharp: true,
                     uses_erlang_externals: false,
                     uses_javascript_externals: false,
+                    uses_fsharp_externals: false,
                 },
             })))
         } else {

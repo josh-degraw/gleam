@@ -20,7 +20,7 @@ impl<'a> FSharp<'a> {
         Self { build_dir }
     }
 
-    pub fn module(&self, module: &TypedModule) -> Document<'_> {
+    pub fn module(&self, module: &TypedModule) -> Document<'a> {
         let mut docs = Vec::new();
 
         // Add module declaration
@@ -35,14 +35,14 @@ impl<'a> FSharp<'a> {
         // Add function definitions
         docs.extend(self.function_definitions(module));
 
-        docvec![docs.iter().map(|d| d.to_doc()).intersperse(line())]
+        docvec![Itertools::intersperse(docs.into_iter(), line()).collect::<Vec<Document<'a>>>()]
     }
 
-    fn module_declaration(&self, module: &TypedModule) -> Document<'_> {
+    fn module_declaration(&self, module: &TypedModule) -> Document<'a> {
         docvec!["module ", module.name.replace("/", ".")]
     }
 
-    // fn imports(&self, module: &TypedModule) -> Vec<Document<'_>> {
+    // fn imports(&self, module: &TypedModule) -> Vec<Document<'a>> {
     //     module
     //         .
     //         .iter()
@@ -53,7 +53,7 @@ impl<'a> FSharp<'a> {
     //         .collect()
     // }
 
-    fn type_definitions(&self, module: &TypedModule) -> Vec<Document<'_>> {
+    fn type_definitions(&self, module: &TypedModule) -> Vec<Document<'a>> {
         module
             .definitions
             .iter()
@@ -65,7 +65,7 @@ impl<'a> FSharp<'a> {
             .collect()
     }
 
-    fn custom_type(&self, t: &CustomType<Arc<Type>>) -> Document<'_> {
+    fn custom_type(&self, t: &CustomType<Arc<Type>>) -> Document<'a> {
         let name = &t.name;
         let constructors = t
             .constructors
@@ -75,41 +75,45 @@ impl<'a> FSharp<'a> {
                     .arguments
                     .iter()
                     .map(|f| self.type_to_fsharp(&f.type_))
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<Document<'a>>>();
+
+                let c_name = c.name.clone().to_doc();
                 if fields.is_empty() {
-                    docvec![c.name.as_str()]
+                    c_name
                 } else {
                     docvec![
-                        c.name.as_str(),
+                        c_name,
                         " of ",
-                        fields.iter().intersperse(&" * ".to_doc())
+                        Itertools::intersperse(fields.into_iter(), " * ".to_doc())
+                            .collect::<Vec<Document<'a>>>()
                     ]
                 }
             })
-            .collect::<Vec<_>>();
+            .collect::<Vec<Document<'a>>>();
 
         docvec![
             "type ",
             name,
             " =",
             line(),
-            docvec![constructors
-                .iter()
-                .map(|c| docvec!["| ", c])
-                .intersperse(line())]
+            Itertools::intersperse(
+                constructors.into_iter().map(|c| docvec!["| ".to_doc(), c]),
+                line()
+            )
+            .collect::<Vec<Document<'a>>>()
         ]
     }
 
-    fn type_alias(&self, t: &TypeAlias<Arc<Type>>) -> Document<'_> {
+    fn type_alias(&self, t: &TypeAlias<Arc<Type>>) -> Document<'a> {
         docvec![
             "type ",
-            t.alias.as_str(),
+            t.alias.clone(),
             " = ",
             self.type_to_fsharp(&t.type_)
         ]
     }
 
-    fn function_definitions(&self, module: &TypedModule) -> Vec<Document<'_>> {
+    fn function_definitions(&self, module: &TypedModule) -> Vec<Document<'a>> {
         module
             .definitions
             .iter()
@@ -120,29 +124,37 @@ impl<'a> FSharp<'a> {
             .collect()
     }
 
-    fn function(&self, f: &Function<Arc<Type>, TypedExpr>) -> Document<'_> {
+    fn function(&self, f: &Function<Arc<Type>, TypedExpr>) -> Document<'a> {
         let name = &f.name;
+        let name = name
+            .as_ref()
+            .map(|n| n.1.as_ref().to_doc())
+            .unwrap_or_else(|| "_".to_doc());
         let args = f
             .arguments
-            .iter()
+            .into_iter()
             .map(|arg| {
                 docvec![
                     arg.names
                         .get_variable_name()
-                        .unwrap_or_else(|| &EcoString::from("_")),
+                        .map(|n| n.to_doc())
+                        .unwrap_or_else(|| "_".to_doc()),
                     ": ",
                     self.type_to_fsharp(&arg.type_)
                 ]
             })
-            .collect::<Vec<_>>();
-        let return_type = self.type_to_fsharp(&f.return_type);
-        let body = f.body.into_iter().map(|b| self.statement(&b)).collect();
+            .collect::<Vec<Document<'a>>>();
+        let return_type: Document<'a> = self.type_to_fsharp(&f.return_type);
+        let body: Vec<Document<'a>> = f.body.iter().map(|b| self.statement(&b)).collect();
+
+        let args_doc =
+            Document::Vec(Itertools::intersperse(args.into_iter(), " ".to_doc()).collect());
 
         docvec![
             "let ",
             name,
             " ",
-            args.iter().intersperse(&" ".to_doc()),
+            args_doc,
             ": ",
             return_type,
             " =",
@@ -151,15 +163,15 @@ impl<'a> FSharp<'a> {
         ]
     }
 
-    fn statements(&self, statements: &Vec1<Statement<Arc<Type>, TypedExpr>>) -> Document<'_> {
+    fn statements(&self, statements: &Vec1<Statement<Arc<Type>, TypedExpr>>) -> Document<'a> {
         statements
             .iter()
             .map(|s| self.statement(s))
-            .collect::<Vec<_>>()
+            .collect::<Vec<Document<'a>>>()
             .to_doc()
     }
 
-    fn statement(&self, statement: &Statement<Arc<Type>, TypedExpr>) -> Document<'_> {
+    fn statement(&self, statement: &Statement<Arc<Type>, TypedExpr>) -> Document<'a> {
         match statement {
             Statement::Expression(expr) => self.expression(expr),
             Statement::Assignment(assignment) => self.assignment(assignment),
@@ -167,10 +179,10 @@ impl<'a> FSharp<'a> {
         }
     }
 
-    fn expression(&self, expr: &TypedExpr) -> Document<'_> {
+    fn expression(&self, expr: &TypedExpr) -> Document<'a> {
         match expr {
-            TypedExpr::Int { value, .. } => docvec![value.to_string()],
-            TypedExpr::Float { value, .. } => docvec![value.to_string()],
+            TypedExpr::Int { value, .. } => value.to_doc(),
+            TypedExpr::Float { value, .. } => value.to_doc(),
             TypedExpr::String { value, .. } => docvec!["\"", value, "\""],
             TypedExpr::Var { name, .. } => docvec![name],
             // Implement other expression types as needed
@@ -178,43 +190,27 @@ impl<'a> FSharp<'a> {
         }
     }
 
-    fn assignment(&self, assignment: &TypedAssignment) -> Document<'_> {
+    fn assignment(&self, assignment: &TypedAssignment) -> Document<'a> {
         let name = self.pattern(&assignment.pattern);
         let value = self.expression(&assignment.value);
         docvec!["let ", name, " = ", value]
     }
 
-    fn pattern(&self, pattern: &Pattern<Arc<Type>>) -> Document<'_> {
+    fn pattern(&self, pattern: &Pattern<Arc<Type>>) -> Document<'a> {
         match pattern {
-            Pattern::Variable {
-                location,
-                name,
-                type_,
-            } => {
+            Pattern::Variable { name, .. } => {
                 docvec![name]
             }
 
-            Pattern::Discard {
-                name,
-                location,
-                type_,
-            } => {
+            Pattern::Discard { name, .. } => {
                 docvec![name]
             }
 
-            Pattern::List {
-                location,
-                elements,
-                tail,
-                type_,
-            } => {
+            Pattern::List { elements, .. } => {
                 docvec![
                     "[",
-                    elements
-                        .iter()
-                        .map(|e| self.pattern(e))
-                        .intersperse("; ".to_doc())
-                        .collect::<Vec<_>>()
+                    Itertools::intersperse(elements.iter().map(|e| self.pattern(e)), "; ".to_doc())
+                        .collect::<Vec<Document<'a>>>()
                         .to_doc(),
                     "]"
                 ]
@@ -222,11 +218,8 @@ impl<'a> FSharp<'a> {
             Pattern::Tuple { elems, .. } => {
                 docvec![
                     "(",
-                    elems
-                        .iter()
-                        .map(|e| self.pattern(e))
-                        .intersperse("; ".to_doc())
-                        .collect::<Vec<_>>()
+                    Itertools::intersperse(elems.iter().map(|e| self.pattern(e)), "; ".to_doc())
+                        .collect::<Vec<Document<'a>>>()
                         .to_doc(),
                     ")"
                 ]
@@ -235,20 +228,18 @@ impl<'a> FSharp<'a> {
         }
     }
 
-    fn type_to_fsharp(&self, t: &Type) -> Document<'_> {
+    fn type_to_fsharp(&self, t: &Type) -> Document<'a> {
         match t {
             Type::Named { name, .. } => docvec![name],
             Type::Fn { args, retrn, .. } => {
                 let arg_types = args
                     .iter()
                     .map(|arg| self.type_to_fsharp(arg))
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<Document<'a>>>();
                 let return_type = self.type_to_fsharp(retrn);
                 docvec![
-                    arg_types
-                        .iter()
-                        .intersperse(&" -> ".to_doc())
-                        .collect::<Vec<_>>(),
+                    Itertools::intersperse(arg_types.into_iter(), " -> ".to_doc())
+                        .collect::<Vec<Document<'a>>>(),
                     " -> ",
                     return_type
                 ]
@@ -256,64 +247,5 @@ impl<'a> FSharp<'a> {
             // Implement other type conversions as needed
             _ => docvec!["// TODO: Implement other type conversions"],
         }
-    }
-
-    pub fn render<Writer: FileSystemWriter>(
-        &self,
-        writer: Writer,
-        config: &PackageConfig,
-        modules: &[Module],
-    ) -> Result<()> {
-        let project_file_path = self.build_dir.join(format!("{}.fsproj", &config.name));
-
-        // Create project file content
-        let project_file_content = format!(
-            r#"<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>{}</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-{}
-  </ItemGroup>
-
-  <ItemGroup>
-{}
-  </ItemGroup>
-</Project>"#,
-            config.name,
-            modules
-                .iter()
-                .map(|m| format!(
-                    "    <Compile Include=\"{}.fs\" />",
-                    m.name.replace("/", "\\")
-                ))
-                .collect::<Vec<_>>()
-                .join("\n"),
-            config
-                .dependencies
-                .iter()
-                .map(|(name, version)| format!(
-                    "    <PackageReference Include=\"{}\" Version=\"{}\" />",
-                    name, version
-                ))
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
-
-        // Write project file
-        writer.write(&project_file_path, &project_file_content)?;
-
-        // Write individual module files
-        for module in modules {
-            let module_file_path = self
-                .build_dir
-                .join(format!("{}.fs", module.name.replace("/", "\\")));
-            let module_content = self.module(module).to_string();
-            writer.write(&module_file_path, &module_content)?;
-        }
-
-        Ok(())
     }
 }

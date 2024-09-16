@@ -491,6 +491,7 @@ impl ModuleDecoder {
             implementations: self.implementations(reader.get_implementations()?),
             external_erlang: self.optional_external(reader.get_external_erlang()?)?,
             external_javascript: self.optional_external(reader.get_external_javascript()?)?,
+            external_fsharp: self.optional_external(reader.get_external_fsharp()?)?,
         })
     }
 
@@ -499,8 +500,10 @@ impl ModuleDecoder {
             gleam: reader.get_gleam(),
             uses_erlang_externals: reader.get_uses_erlang_externals(),
             uses_javascript_externals: reader.get_uses_javascript_externals(),
+            uses_fsharp_externals: reader.get_uses_fsharp_externals(),
             can_run_on_erlang: reader.get_can_run_on_erlang(),
             can_run_on_javascript: reader.get_can_run_on_javascript(),
+            can_run_on_fsharp: reader.get_can_run_on_fsharp(),
         }
     }
 

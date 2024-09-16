@@ -437,7 +437,7 @@ where
 
         // Use the F# generator to render the modules
         let fsharp = crate::fsharp::FSharp::new(&build_dir);
-        fsharp.render(io, modules)?;
+        fsharp.render(io, &self.config, modules)?;
 
         // TODO: Implement F# compilation (if needed)
         // This step might involve calling the F# compiler (fsc) to compile the generated F# code
