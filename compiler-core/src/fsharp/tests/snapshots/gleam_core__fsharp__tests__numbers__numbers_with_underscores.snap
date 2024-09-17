@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/numbers.rs
+assertion_line: 16
+expression: "\npub fn main() {\n  100_000\n  100_000.00101\n}\n"
+---
+module my.mod
+let main (): float64 = begin
+    100_000
+    100_000.00101
+end

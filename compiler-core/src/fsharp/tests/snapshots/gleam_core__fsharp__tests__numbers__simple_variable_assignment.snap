@@ -5,5 +5,6 @@ expression: "\npub fn main() {\n  let a = 3\n}\n"
 ---
 module my.mod
 let main (): int = begin
-    let a = 3 in a
+    let a = 3
+    a
 end

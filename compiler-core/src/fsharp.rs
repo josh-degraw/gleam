@@ -5,9 +5,10 @@ use crate::{
     ast::*,
     docvec,
     pretty::*,
-    type_::{Type, TypeVar},
+    type_::{ModuleValueConstructor, Type, TypeVar},
 };
 use camino::Utf8Path;
+use ecow::EcoString;
 use itertools::Itertools;
 use std::{ops::Deref, sync::Arc};
 use vec1::Vec1;
@@ -36,6 +37,8 @@ impl<'module> FSharp<'module> {
 
         // Add function definitions
         docs.extend(self.function_definitions(module));
+
+        docs.extend(self.module_constants(module));
 
         docvec![Itertools::intersperse(docs.into_iter(), line()).collect::<Vec<Document<'module>>>()]
     }
@@ -113,6 +116,17 @@ impl<'module> FSharp<'module> {
             " = ",
             self.type_to_fsharp(&t.type_)
         ]
+    }
+
+    fn module_constants(&self, module: &'module TypedModule) -> Vec<Document<'module>> {
+        module
+            .definitions
+            .iter()
+            .filter_map(|def| match def {
+                Definition::ModuleConstant(c) => Some(self.module_constant(c)),
+                _ => None,
+            })
+            .collect()
     }
 
     fn function_definitions(&self, module: &'module TypedModule) -> Vec<Document<'module>> {
@@ -197,16 +211,16 @@ impl<'module> FSharp<'module> {
                 }
                 Statement::Use(_) => docvec!["// TODO: Implement use statements"],
             })
-            .collect::<Vec<Document<'module>>>()
-            .to_doc();
+            .collect::<Vec<Document<'module>>>();
 
         // Can't end on an assignment in F# unless it returns Unit
         if let Some(last_var) = last_var {
             if !return_type.is_nil() {
-                res = res.append(" in ").append(last_var);
+                res.push(last_var);
             }
         }
-        res.group()
+
+        join(res, line()).nest(INDENT).group()
     }
 
     fn expression(&self, expr: &TypedExpr) -> Document<'module> {
@@ -215,6 +229,7 @@ impl<'module> FSharp<'module> {
             TypedExpr::Float { value, .. } => value.to_doc(),
             TypedExpr::String { value, .. } => docvec!["\"", value, "\""],
             TypedExpr::Var { name, .. } => docvec![name],
+
             // Implement other expression types as needed
             _ => docvec!["// TODO: Implement other expression types"],
         }
@@ -298,6 +313,35 @@ impl<'module> FSharp<'module> {
                     }
                 }
             }
+        }
+    }
+
+    fn module_constant(
+        &self,
+        constant: &'module ModuleConstant<Arc<Type>, EcoString>,
+    ) -> Document<'module> {
+        let name = constant.name.as_str();
+        let value = &constant.value;
+
+        match value.deref().clone() {
+            Constant::Int { value, .. }
+            | Constant::Float { value, .. }
+            | Constant::String { value, .. } => {
+                docvec![
+                    "[<Literal>]",
+                    line(),
+                    "let ",
+                    name.to_doc(),
+                    " = ",
+                    value.to_doc(),
+                ]
+            }
+            _ => docvec![
+                "let ",
+                name.to_doc(),
+                " = ",
+                "// TODO: Return Result instead here"
+            ],
         }
     }
 }
