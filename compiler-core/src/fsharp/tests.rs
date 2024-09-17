@@ -10,9 +10,10 @@ use crate::{
     warning::{TypeWarningEmitter, WarningEmitter},
 };
 
-use super::{module, TypedModule};
+use super::{render_module, TypedModule};
 
 mod numbers;
+mod variables;
 
 #[macro_export]
 macro_rules! assert_fsharp {
@@ -89,6 +90,6 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
         package_config: &config,
     }
     .infer_module(ast, line_numbers, path)
-    .expect("should successfully infer root Erlang");
-    module("/root/project/test/my/".into(), &ast).unwrap()
+    .expect("should successfully infer root FSharp");
+    render_module(&ast).unwrap()
 }

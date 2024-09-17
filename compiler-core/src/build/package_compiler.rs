@@ -436,15 +436,15 @@ where
         tracing::info!("Generating F# code");
 
         // Use the F# generator to render the modules
-        let fsharp = crate::fsharp::FSharp::new(&build_dir);
 
         let fsharp_app = crate::codegen::FSharpApp::new(&build_dir);
 
         for module in modules {
             let module_name = module.name.replace("/", ".");
             let path = build_dir.join(format!("{}.fs", module_name));
-            self.io
-                .write(&path, &fsharp.module(&module.ast).to_pretty_string(50000))?;
+            let fsharp = crate::fsharp::FSharp::new(&module_name);
+            let output = &crate::fsharp::render_module(&module.ast)?;
+            self.io.write(&path, output)?;
         }
 
         fsharp_app.render(io, &self.config, modules)?;

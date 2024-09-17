@@ -2,7 +2,7 @@ use crate::{
     analyse::TargetSupport,
     build::{ErlangAppCodegenConfiguration, Module},
     config::PackageConfig,
-    erlang,
+    erlang, fsharp,
     io::FileSystemWriter,
     javascript,
     line_numbers::LineNumbers,
@@ -174,11 +174,11 @@ impl<'a> FSharpApp<'a> {
     <RootNamespace>{}</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Label="Modules">
 {}
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Label="References">
 {}
   </ItemGroup>
 </Project>"#,
@@ -188,7 +188,7 @@ impl<'a> FSharpApp<'a> {
                 .iter()
                 .map(|m| format!(
                     "    <Compile Include=\"{}.fs\" />",
-                    m.name.replace("/", "\\")
+                    m.name //.replace("/", "\\")
                 ))
                 .collect::<Vec<_>>()
                 .join("\n"),
@@ -211,15 +211,11 @@ impl<'a> FSharpApp<'a> {
             let module_file_path = self
                 .build_dir
                 .join(format!("{}.fs", module.name.replace("/", "\\")));
-            let module_content = self.module(module).to_string();
+            let module_content = fsharp::render_module(&module.ast)?;
             writer.write(&module_file_path, &module_content)?;
         }
 
         Ok(())
-    }
-
-    fn module(&self, module: &Module) -> String {
-        format!("module {}\n", module.name.replace("/", "\\"))
     }
 }
 

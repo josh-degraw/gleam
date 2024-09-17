@@ -1,15 +1,5 @@
 use crate::assert_fsharp;
 
-#[test]
-fn simple_variable_assignment() {
-    assert_fsharp!(
-        r#"
-pub fn main() {
-  let a = 3
-}
-"#
-    );
-}
 
 #[test]
 fn numbers_with_underscores() {
@@ -23,14 +13,6 @@ pub fn main() {
     );
 }
 
-#[test]
-fn constant_variable_assignment() {
-    assert_fsharp!(
-        r#"
-const a = 3
-"#
-    );
-}
 
 // #[test]
 // fn numbers_with_underscores1() {
