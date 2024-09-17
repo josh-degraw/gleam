@@ -1,0 +1,14 @@
+---
+source: compiler-core/src/fsharp/tests/numbers.rs
+assertion_line: 17
+expression: "\nconst i = 100_000\nconst f = 100_000.00101\npub fn main() {\n  i\n  f\n}\n"
+---
+module rec my.``mod``
+[<Literal>]
+let i = 100_000
+[<Literal>]
+let f = 100_000.00101
+let main(): float = begin
+    i
+    f
+end

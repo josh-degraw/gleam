@@ -1,6 +1,5 @@
 use crate::assert_fsharp;
 
-
 #[test]
 fn numbers_with_underscores() {
     assert_fsharp!(
@@ -13,24 +12,23 @@ pub fn main() {
     );
 }
 
-
-// #[test]
-// fn numbers_with_underscores1() {
-//     assert_erl!(
-//         r#"
-// const i = 100_000
-// const f = 100_000.00101
-// pub fn main() {
-//   i
-//   f
-// }
-// "#
-//     );
-// }
+#[test]
+fn numbers_with_underscores1() {
+    assert_fsharp!(
+        r#"
+const i = 100_000
+const f = 100_000.00101
+pub fn main() {
+  i
+  f
+}
+"#
+    );
+}
 
 // #[test]
 // fn numbers_with_underscores2() {
-//     assert_erl!(
+//     assert_fsharp!(
 //         r#"
 // pub fn main() {
 //   let assert 100_000 = 1
@@ -43,7 +41,7 @@ pub fn main() {
 
 // #[test]
 // fn numbers_with_scientific_notation() {
-//     assert_erl!(
+//     assert_fsharp!(
 //         r#"
 // const i = 100.001e523
 // const j = -100.001e-523
@@ -68,7 +66,7 @@ pub fn main() {
 
 // #[test]
 // fn int_negation() {
-//     assert_erl!(
+//     assert_fsharp!(
 //         r#"
 // pub fn main() {
 //   let a = 3
@@ -80,7 +78,7 @@ pub fn main() {
 
 // #[test]
 // fn repeated_int_negation() {
-//     assert_erl!(
+//     assert_fsharp!(
 //         r#"
 // pub fn main() {
 //   let a = 3
@@ -93,7 +91,7 @@ pub fn main() {
 // // https://github.com/gleam-lang/gleam/issues/2356
 // #[test]
 // fn zero_b_in_hex() {
-//     assert_erl!(
+//     assert_fsharp!(
 //         r#"
 // pub fn main() {
 //   0xffe0bb

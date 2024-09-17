@@ -233,6 +233,12 @@ pub struct ImplementationsInterface {
     /// - `uses_javascript_externals: true` the function is using JavaScript
     ///   external code.
     uses_javascript_externals: bool,
+
+    /// Set to `true` if the const/function is defined using F# external
+    /// code. That means that the function will use native F# code when
+    /// compiled for the F# target.
+    uses_fsharp_externals: bool,
+
     /// Whether the function can be called on the Erlang target, either due to a
     /// pure Gleam implementation or an implementation that uses some Erlang
     /// externals.
@@ -241,6 +247,11 @@ pub struct ImplementationsInterface {
     /// to a pure Gleam implementation or an implementation that uses some
     /// JavaScript externals.
     can_run_on_javascript: bool,
+
+    /// Whether the function can be called on the F# target, either due to a
+    /// pure Gleam implementation or an implementation that uses some F#
+    /// externals.
+    can_run_on_fsharp: bool,
 }
 
 impl ImplementationsInterface {
@@ -269,8 +280,10 @@ impl ImplementationsInterface {
             gleam: *gleam,
             uses_erlang_externals: *uses_erlang_externals,
             uses_javascript_externals: *uses_javascript_externals,
+            uses_fsharp_externals: *uses_fsharp_externals,
             can_run_on_erlang: *can_run_on_erlang,
             can_run_on_javascript: *can_run_on_javascript,
+            can_run_on_fsharp: *can_run_on_fsharp,
         }
     }
 }

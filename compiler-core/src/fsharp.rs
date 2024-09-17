@@ -8,6 +8,7 @@ use crate::{
     type_::{Type, TypeVar},
 };
 use ecow::EcoString;
+use itertools::Itertools;
 use std::{ops::Deref, sync::Arc};
 use vec1::Vec1;
 
@@ -28,6 +29,7 @@ impl<'module> FSharp<'module> {
 
         // Add module declaration
         docs.push(self.module_declaration(module));
+        docs.extend(self.module_constants(module));
 
         // TODO: Add imports
         // docs.extend(self.imports(module));
@@ -38,14 +40,59 @@ impl<'module> FSharp<'module> {
         // Add function definitions
         docs.extend(self.function_definitions(module));
 
-        docs.extend(self.module_constants(module));
-
         join(docs, line())
     }
 
-    fn module_declaration(&self, module: &TypedModule) -> Document<'module> {
+    fn module_declaration(&self, module: &'module TypedModule) -> Document<'module> {
         // Use module rec so we don't hav to worry about order
-        docvec!["module rec ", module.name.replace("/", ".")]
+        "module rec "
+            .to_doc()
+            .append(self.santitize_name(&module.name))
+    }
+
+    fn santitize_name(&self, name: &'module EcoString) -> Document<'module> {
+        join(
+            name.split("/").map(|s| {
+                if self.is_reserved_word(s) {
+                    "``".to_doc().append(s.to_doc()).append("``")
+                } else {
+                    s.to_doc()
+                }
+            }),
+            ".".to_doc(),
+        )
+    }
+
+    fn is_reserved_word(&self, name: &str) -> bool {
+        matches!(
+            name,
+            "asr"
+                | "land"
+                | "lor"
+                | "lsl"
+                | "lsr"
+                | "lxor"
+                | "mod"
+                | "sig"
+                | "break"
+                | "checked"
+                | "component"
+                | "const"
+                | "constraint"
+                | "continue"
+                | "event"
+                | "external"
+                | "include"
+                | "mixin"
+                | "parallel"
+                | "process"
+                | "protected"
+                | "pure"
+                | "sealed"
+                | "tailcall"
+                | "trait"
+                | "virtual"
+        )
     }
 
     // fn imports(&self, module: &TypedModule) -> Vec<Document<'module>> {
@@ -267,12 +314,17 @@ impl<'module> FSharp<'module> {
                 subjects, clauses, ..
             } => "// Pattern matching not yet implemented".to_doc(),
 
+            TypedExpr::Tuple { elems, .. } => self.tuple(elems),
             _ => docvec!["// TODO: Implement other expression types"],
         }
     }
 
-    fn tuple(&self, elements: impl IntoIterator<Item = Document<'module>>) -> Document<'module> {
-        docvec!["(", join(elements, ", ".to_doc()), ")"]
+    fn tuple(&self, elements: &[TypedExpr]) -> Document<'module> {
+        docvec![
+            "(",
+            join(elements.iter().map(|e| self.expression(e)), ", ".to_doc()),
+            ")"
+        ]
     }
 
     // fn case(&self, subjects: &Vec<TypedExpr>, clauses: &Vec<TypedClause>) -> Document<'module> {
@@ -389,8 +441,8 @@ impl<'module> FSharp<'module> {
 
     fn pipeline(
         &self,
-        assignments: &Vec<TypedAssignment>,
-        finally: &TypedExpr,
+        _assignments: &Vec<TypedAssignment>,
+        _finally: &TypedExpr,
     ) -> Document<'module> {
         "//TODO: implement pipelines".to_doc()
     }
@@ -443,7 +495,7 @@ impl<'module> FSharp<'module> {
         match t {
             Type::Named { name, .. } => match name.as_str() {
                 "Int" | "int" => "int".to_doc(),
-                "Float" | "float" => "float64".to_doc(),
+                "Float" | "float" => "float".to_doc(),
                 "String" | "string" => "string".to_doc(),
                 "Bool" | "bool" => "bool".to_doc(),
                 _ => name.to_doc(),

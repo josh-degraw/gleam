@@ -149,6 +149,7 @@ impl<'a> ErlangApp<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct FSharpApp<'a> {
     build_dir: &'a Utf8PathBuf,
 }
