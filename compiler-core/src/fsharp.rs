@@ -294,29 +294,19 @@ impl<'module> FSharp<'module> {
 
     fn pattern(&self, pattern: &Pattern<Arc<Type>>) -> Document<'module> {
         match pattern {
-            Pattern::Variable { name, .. } => {
-                docvec![name]
-            }
-
-            Pattern::Discard { name, .. } => {
-                docvec![name]
-            }
-
+            Pattern::Variable { name, .. } => name.to_doc(),
+            Pattern::Discard { name, .. } => name.to_doc(),
             Pattern::List { elements, .. } => {
                 docvec![
                     "[",
-                    Itertools::intersperse(elements.iter().map(|e| self.pattern(e)), "; ".to_doc())
-                        .collect::<Vec<Document<'module>>>()
-                        .to_doc(),
+                    join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc()),
                     "]"
                 ]
             }
             Pattern::Tuple { elems, .. } => {
                 docvec![
                     "(",
-                    Itertools::intersperse(elems.iter().map(|e| self.pattern(e)), "; ".to_doc())
-                        .collect::<Vec<Document<'module>>>()
-                        .to_doc(),
+                    join(elems.iter().map(|e| self.pattern(e)), ", ".to_doc()),
                     ")"
                 ]
             }
