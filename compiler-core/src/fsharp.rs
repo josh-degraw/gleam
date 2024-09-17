@@ -1,22 +1,24 @@
+#[cfg(test)]
+mod tests;
+
 use crate::{
     ast::*,
-    config::PackageConfig,
     docvec,
-    io::FileSystemWriter,
     pretty::*,
-    type_::{ModuleValueConstructor, Type, ValueConstructor, ValueConstructorVariant},
+    type_::{Type, TypeVar},
 };
-use ecow::EcoString;
+use camino::Utf8Path;
 use itertools::Itertools;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 use vec1::Vec1;
 
 pub struct FSharp<'module> {
-    build_dir: &'module camino::Utf8Path,
+    build_dir: &'module Utf8Path,
 }
+const INDENT: isize = 4;
 
 impl<'module> FSharp<'module> {
-    pub fn new(build_dir: &'module camino::Utf8Path) -> Self {
+    pub fn new(build_dir: &'module Utf8Path) -> Self {
         Self { build_dir }
     }
 
@@ -130,53 +132,81 @@ impl<'module> FSharp<'module> {
             .as_ref()
             .map(|n| n.1.as_ref().to_doc())
             .unwrap_or_else(|| "_".to_doc());
-        let args = f
-            .arguments
-            .iter()
-            .map(|arg| {
-                docvec![
-                    arg.names
-                        .get_variable_name()
-                        .map(|n| n.to_doc())
-                        .unwrap_or_else(|| "_".to_doc()),
-                    ": ",
-                    self.type_to_fsharp(&arg.type_)
-                ]
-            })
-            .collect::<Vec<Document<'module>>>();
+
+        let args = if f.arguments.is_empty() {
+            "()".to_doc()
+        } else {
+            f.arguments
+                .iter()
+                .map(|arg| {
+                    docvec![
+                        arg.names
+                            .get_variable_name()
+                            .map(|n| n.to_doc())
+                            .unwrap_or_else(|| "_".to_doc()),
+                        ": ",
+                        self.type_to_fsharp(&arg.type_)
+                    ]
+                })
+                .collect::<Vec<Document<'module>>>()
+                .to_doc()
+        };
         let return_type: Document<'module> = self.type_to_fsharp(&f.return_type);
-        let body: Vec<Document<'module>> = f.body.iter().map(|b| self.statement(&b)).collect();
+        let body = self.statements(&f.body, &f.return_type);
 
-        let args_doc =
-            Document::Vec(Itertools::intersperse(args.into_iter(), " ".to_doc()).collect());
+        // if f.return_type.is_nil() {
+        //     body.push("()".to_doc());
+        // }
 
-        Document::Vec(vec![
-            "let ".to_doc(),
+        // If the last
+
+        let args_doc = docvec![args];
+
+        docvec![
+            "let ",
             name,
-            " ".to_doc(),
+            " ",
             args_doc,
-            ": ".to_doc(),
+            ": ",
             return_type,
-            " =".to_doc(),
+            " =",
+            " begin",
+            line().nest(INDENT).append(body.group()),
             line(),
-            Document::Vec(body),
-        ])
+            "end",
+        ]
     }
 
-    fn statements(&self, statements: &Vec1<Statement<Arc<Type>, TypedExpr>>) -> Document<'module> {
-        statements
+    fn statements(
+        &self,
+        statements: &Vec1<Statement<Arc<Type>, TypedExpr>>,
+        return_type: &Type,
+    ) -> Document<'module> {
+        let mut last_var = None;
+        let mut res = statements
             .iter()
-            .map(|s| self.statement(s))
+            .map(|s| match s {
+                Statement::Expression(expr) => {
+                    last_var = None;
+                    self.expression(expr)
+                }
+                Statement::Assignment(assignment) => {
+                    let (name, value) = self.get_assignment_info(assignment);
+                    last_var = Some(name.clone());
+                    docvec!["let ", name, " = ", value]
+                }
+                Statement::Use(_) => docvec!["// TODO: Implement use statements"],
+            })
             .collect::<Vec<Document<'module>>>()
-            .to_doc()
-    }
+            .to_doc();
 
-    fn statement(&self, statement: &Statement<Arc<Type>, TypedExpr>) -> Document<'module> {
-        match statement {
-            Statement::Expression(expr) => self.expression(expr),
-            Statement::Assignment(assignment) => self.assignment(assignment),
-            Statement::Use(_) => docvec!["// TODO: Implement use statements"],
+        // Can't end on an assignment in F# unless it returns Unit
+        if let Some(last_var) = last_var {
+            if !return_type.is_nil() {
+                res = res.append(" in ").append(last_var);
+            }
         }
+        res.group()
     }
 
     fn expression(&self, expr: &TypedExpr) -> Document<'module> {
@@ -190,10 +220,13 @@ impl<'module> FSharp<'module> {
         }
     }
 
-    fn assignment(&self, assignment: &TypedAssignment) -> Document<'module> {
+    fn get_assignment_info(
+        &self,
+        assignment: &TypedAssignment,
+    ) -> (Document<'module>, Document<'module>) {
         let name = self.pattern(&assignment.pattern);
         let value = self.expression(&assignment.value);
-        docvec!["let ", name, " = ", value]
+        (name, value)
     }
 
     fn pattern(&self, pattern: &Pattern<Arc<Type>>) -> Document<'module> {
@@ -230,7 +263,13 @@ impl<'module> FSharp<'module> {
 
     fn type_to_fsharp(&self, t: &Type) -> Document<'module> {
         match t {
-            Type::Named { name, .. } => docvec![name],
+            Type::Named { name, .. } => match name.as_str() {
+                "Int" | "int" => "int".to_doc(),
+                "Float" | "float" => "float64".to_doc(),
+                "String" | "string" => "string".to_doc(),
+                "Bool" | "bool" => "bool".to_doc(),
+                _ => name.to_doc(),
+            },
             Type::Fn { args, retrn, .. } => {
                 let arg_types = args
                     .iter()
@@ -238,14 +277,38 @@ impl<'module> FSharp<'module> {
                     .collect::<Vec<Document<'module>>>();
                 let return_type = self.type_to_fsharp(retrn);
                 docvec![
-                    Itertools::intersperse(arg_types.into_iter(), " -> ".to_doc())
-                        .collect::<Vec<Document<'module>>>(),
+                    join(arg_types.into_iter(), " -> ".to_doc()),
                     " -> ",
                     return_type
                 ]
             }
-            // Implement other type conversions as needed
-            _ => docvec!["// TODO: Implement other type conversions"],
+            Type::Tuple { elems } => {
+                docvec![
+                    "(",
+                    join(elems.iter().map(|e| self.type_to_fsharp(e)), "; ".to_doc()),
+                    ")"
+                ]
+            }
+            Type::Var { type_ } => {
+                let type_ = type_.borrow();
+                match type_.deref() {
+                    TypeVar::Link { type_ } => self.type_to_fsharp(type_),
+                    TypeVar::Unbound { id } | TypeVar::Generic { id } => {
+                        docvec!["var_", id]
+                    }
+                }
+            }
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    Unsupported { feature: String, location: SrcSpan },
+}
+
+pub fn module(build_dir: &Utf8Path, module: &TypedModule) -> super::Result<String> {
+    let document = FSharp::new(build_dir).module(module);
+
+    Ok(document.to_pretty_string(80))
 }
