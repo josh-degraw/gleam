@@ -1,0 +1,26 @@
+---
+source: compiler-core/src/fsharp/tests/numbers.rs
+assertion_line: 44
+expression: "\nconst i = 100.001e523\nconst j = -100.001e-523\n\nconst k = 100.001e1_230\nconst l = -100.001e-1_230\n\nconst m = 100.001e123_456_789\nconst n = -100.001e-123_456_789\n\npub fn main() {\n  i\n  j\n  k\n  l\n  m\n  n\n}\n"
+---
+module rec my.``mod``
+[<Literal>]
+let i = 100.001e523
+[<Literal>]
+let j = -100.001e-523
+[<Literal>]
+let k = 100.001e1_230
+[<Literal>]
+let l = -100.001e-1_230
+[<Literal>]
+let m = 100.001e123_456_789
+[<Literal>]
+let n = -100.001e-123_456_789
+let main(): float = begin
+    i
+    j
+    k
+    l
+    m
+    n
+end

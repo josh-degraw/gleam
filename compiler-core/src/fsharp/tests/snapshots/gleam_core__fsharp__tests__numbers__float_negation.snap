@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/numbers.rs
+assertion_line: 82
+expression: "\npub fn main() {\n  let a = -3.0\n  let b = a\n  0\n}\n"
+---
+module rec my.``mod``
+let main(): int = begin
+    let a = -3.0
+    let b = -a
+    0
+end

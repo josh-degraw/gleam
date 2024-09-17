@@ -8,7 +8,6 @@ use crate::{
     type_::{Type, TypeVar},
 };
 use ecow::EcoString;
-use itertools::Itertools;
 use std::{ops::Deref, sync::Arc};
 use vec1::Vec1;
 
@@ -25,22 +24,10 @@ impl<'module> FSharp<'module> {
     }
 
     pub fn module(&self, module: &'module TypedModule) -> Document<'module> {
-        let mut docs = Vec::new();
-
-        // Add module declaration
-        docs.push(self.module_declaration(module));
-        docs.extend(self.module_constants(module));
-
-        // TODO: Add imports
-        // docs.extend(self.imports(module));
-
-        // Add type definitions
-        docs.extend(self.type_definitions(module));
-
-        // Add function definitions
-        docs.extend(self.function_definitions(module));
-
-        join(docs, line())
+        join(
+            vec![self.module_declaration(module), self.contents(module)],
+            line(),
+        )
     }
 
     fn module_declaration(&self, module: &'module TypedModule) -> Document<'module> {
@@ -106,16 +93,24 @@ impl<'module> FSharp<'module> {
     //         .collect()
     // }
 
-    fn type_definitions(&self, module: &TypedModule) -> Vec<Document<'module>> {
-        module
-            .definitions
-            .iter()
-            .filter_map(|def| match def {
-                Definition::CustomType(t) => Some(self.custom_type(t)),
-                Definition::TypeAlias(t) => Some(self.type_alias(t)),
-                _ => None,
-            })
-            .collect()
+    fn contents(&self, module: &'module TypedModule) -> Document<'module> {
+        join(
+            module
+                .definitions
+                .iter()
+                .map(|def| match def {
+                    Definition::CustomType(t) => self.custom_type(t),
+                    Definition::TypeAlias(t) => self.type_alias(t),
+                    Definition::ModuleConstant(c) => self.module_constant(c),
+                    Definition::Function(f) => {
+                        let name = f.name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
+                        self.function(name, &f.arguments, &f.body, &f.return_type)
+                    }
+                    Definition::Import(_) => docvec!["// TODO: Implement imports"],
+                })
+                .collect::<Vec<Document<'module>>>(),
+            line(),
+        )
     }
 
     fn custom_type(&self, t: &CustomType<Arc<Type>>) -> Document<'module> {
@@ -158,31 +153,6 @@ impl<'module> FSharp<'module> {
             " = ",
             self.type_to_fsharp(&t.type_)
         ]
-    }
-
-    fn module_constants(&self, module: &'module TypedModule) -> Vec<Document<'module>> {
-        module
-            .definitions
-            .iter()
-            .filter_map(|def| match def {
-                Definition::ModuleConstant(c) => Some(self.module_constant(c)),
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn function_definitions(&self, module: &'module TypedModule) -> Vec<Document<'module>> {
-        module
-            .definitions
-            .iter()
-            .filter_map(|def| match def {
-                Definition::Function(f) => {
-                    let name = f.name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
-                    Some(self.function(name, &f.arguments, &f.body, &f.return_type))
-                }
-                _ => None,
-            })
-            .collect()
     }
 
     fn function(
@@ -315,6 +285,7 @@ impl<'module> FSharp<'module> {
             } => "// Pattern matching not yet implemented".to_doc(),
 
             TypedExpr::Tuple { elems, .. } => self.tuple(elems),
+            TypedExpr::NegateInt { value, .. } => "-".to_doc().append(self.expression(value)),
             _ => docvec!["// TODO: Implement other expression types"],
         }
     }
