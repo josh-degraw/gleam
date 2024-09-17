@@ -5,11 +5,9 @@ use crate::{
     ast::*,
     docvec,
     pretty::*,
-    type_::{ModuleValueConstructor, Type, TypeVar},
+    type_::{Type, TypeVar},
 };
-use camino::Utf8Path;
 use ecow::EcoString;
-use itertools::Itertools;
 use std::{ops::Deref, sync::Arc};
 use vec1::Vec1;
 
@@ -89,12 +87,7 @@ impl<'module> FSharp<'module> {
                 if fields.is_empty() {
                     c_name
                 } else {
-                    docvec![
-                        c_name,
-                        " of ",
-                        Itertools::intersperse(fields.into_iter(), " * ".to_doc())
-                            .collect::<Vec<Document<'module>>>()
-                    ]
+                    docvec![c_name, " of ", join(fields, " * ".to_doc())]
                 }
             })
             .collect::<Vec<Document<'module>>>();
@@ -104,11 +97,10 @@ impl<'module> FSharp<'module> {
             name,
             " =",
             line(),
-            Itertools::intersperse(
+            join(
                 constructors.into_iter().map(|c| docvec!["| ".to_doc(), c]),
                 line()
             )
-            .collect::<Vec<Document<'module>>>()
         ]
     }
 
@@ -174,6 +166,7 @@ impl<'module> FSharp<'module> {
         "let "
             .to_doc()
             .append(name)
+            .append("")
             .append(args_doc)
             .append(": ")
             .append(return_type)
@@ -183,20 +176,21 @@ impl<'module> FSharp<'module> {
     }
 
     fn fun_args(&self, arguments: &Vec<TypedArg>) -> Document<'module> {
-        arguments
-            .iter()
-            .map(|arg| {
-                docvec![
-                    arg.names
-                        .get_variable_name()
-                        .map(|n| n.to_doc())
-                        .unwrap_or_else(|| "_".to_doc()),
-                    ": ",
-                    self.type_to_fsharp(&arg.type_)
-                ]
-            })
-            .collect::<Vec<Document<'module>>>()
-            .to_doc()
+        join(
+            arguments.iter().map(|arg| {
+                "(".to_doc()
+                    .append(docvec![
+                        arg.names
+                            .get_variable_name()
+                            .map(|n| n.to_doc())
+                            .unwrap_or_else(|| "_".to_doc()),
+                        ": ",
+                        self.type_to_fsharp(&arg.type_)
+                    ])
+                    .append(")")
+            }),
+            " ".to_doc(),
+        )
     }
 
     // Anon
@@ -225,7 +219,7 @@ impl<'module> FSharp<'module> {
                 Statement::Assignment(assignment) => {
                     let (name, value) = self.get_assignment_info(assignment);
                     last_var = Some(name.clone());
-                    docvec!["let ", name, " = ", value]
+                    "let ".to_doc().append(name).append(" = ").append(value)
                 }
                 Statement::Use(_) => docvec!["// TODO: Implement use statements"],
             })
@@ -262,8 +256,57 @@ impl<'module> FSharp<'module> {
             } => self.pipeline(assignments, finally),
             TypedExpr::Var { name, .. } => docvec![name],
             TypedExpr::Fn { args, body, .. } => self.fun(args, body),
+            TypedExpr::List { elements, .. } => {
+                docvec![
+                    "[",
+                    join(elements.iter().map(|e| self.expression(e)), "; ".to_doc()),
+                    "]"
+                ]
+            }
+            TypedExpr::Call { fun, args, .. } => self
+                .expression(fun)
+                .append(" ")
+                .append(join(args.iter().map(|a| self.expression(&a.value)), " ".to_doc()).group()),
+
+            TypedExpr::BinOp {
+                left, right, name, ..
+            } => self.binop(name, left, right),
+
             _ => docvec!["// TODO: Implement other expression types"],
         }
+    }
+
+    fn binop(&self, name: &BinOp, left: &TypedExpr, right: &TypedExpr) -> Document<'module> {
+        let operand = match name {
+            // Boolean logic
+            BinOp::And => "&&",
+            BinOp::Or => "||",
+
+            // Equality
+            BinOp::Eq => "=",
+            BinOp::NotEq => "<>",
+
+            // Order comparison
+            BinOp::LtInt | BinOp::LtFloat => "<",
+            BinOp::LtEqInt | BinOp::LtEqFloat => "<=",
+            BinOp::GtInt | BinOp::GtFloat => ">",
+            BinOp::GtEqInt | BinOp::GtEqFloat => ">=",
+
+            // Maths
+            BinOp::AddInt | BinOp::AddFloat => "+",
+            BinOp::SubInt | BinOp::SubFloat => "-",
+            BinOp::MultInt | BinOp::MultFloat => "*",
+            BinOp::DivInt | BinOp::DivFloat => "/",
+            BinOp::RemainderInt => "%",
+
+            // Strings
+            BinOp::Concatenate => "+",
+        };
+        self.expression(left)
+            .append(" ")
+            .append(operand)
+            .append(" ")
+            .append(self.expression(right))
     }
 
     fn pipeline(

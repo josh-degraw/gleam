@@ -12,6 +12,7 @@ use crate::{
 
 use super::{render_module, TypedModule};
 
+mod functions;
 mod numbers;
 mod variables;
 
