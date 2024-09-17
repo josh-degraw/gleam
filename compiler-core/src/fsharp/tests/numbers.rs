@@ -89,26 +89,29 @@ pub fn main() {
     );
 }
 
-// #[test]
-// fn repeated_int_negation() {
-//     assert_fsharp!(
-//         r#"
-// pub fn main() {
-//   let a = 3
-//   let b = --a
-// }
-// "#
-//     );
-// }
+#[test]
+fn repeated_int_negation() {
+    // This currently compiles to invalid F# code
+    // We could emit the expression as `-(-a)`
+    // But that's dumb and I hate that right now
+    assert_fsharp!(
+        r#"
+pub fn main() {
+  let a = 3
+  let b = --a
+}
+"#
+    );
+}
 
-// // https://github.com/gleam-lang/gleam/issues/2356
-// #[test]
-// fn zero_b_in_hex() {
-//     assert_fsharp!(
-//         r#"
-// pub fn main() {
-//   0xffe0bb
-// }
-// "#
-//     );
-// }
+// https://github.com/gleam-lang/gleam/issues/2356
+#[test]
+fn zero_b_in_hex() {
+    assert_fsharp!(
+        r#"
+pub fn main() {
+  0xffe0bb
+}
+"#
+    );
+}
