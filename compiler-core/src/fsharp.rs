@@ -262,7 +262,10 @@ impl<'module> FSharp<'module> {
                 finally,
                 ..
             } => self.pipeline(assignments, finally),
-            TypedExpr::Var { name, .. } => docvec![name],
+            TypedExpr::Var { name, .. } => match name.as_str() {
+                "Nil" => "()".to_doc(),
+                _ => name.to_doc(),
+            },
             TypedExpr::Fn { args, body, .. } => self.fun(args, body),
             TypedExpr::List { elements, .. } => {
                 docvec![
