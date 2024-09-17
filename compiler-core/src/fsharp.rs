@@ -145,11 +145,6 @@ impl<'module> FSharp<'module> {
         body: &Vec1<TypedStatement>,
         return_type: &Type,
     ) -> Document<'module> {
-        // let name = name
-        //     .as_ref()
-        //     .map(|n| n.1.as_ref().to_doc())
-        //     .unwrap_or_else(|| "_".to_doc());
-
         let args = if arguments.is_empty() {
             "()".to_doc()
         } else {
@@ -159,15 +154,11 @@ impl<'module> FSharp<'module> {
         let body = self.statements(body, Some(return_type));
         let return_type: Document<'module> = self.type_to_fsharp(return_type);
 
-        // If the last
-
-        let args_doc = docvec![args];
-
         "let "
             .to_doc()
             .append(name)
             .append("")
-            .append(args_doc)
+            .append(args.group())
             .append(": ")
             .append(return_type)
             .append(" = begin")
