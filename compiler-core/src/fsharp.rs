@@ -141,7 +141,7 @@ impl<'module> FSharp<'module> {
     fn function(
         &self,
         name: &'module str,
-        arguments: &Vec<TypedArg>,
+        arguments: &[TypedArg],
         body: &Vec1<TypedStatement>,
         return_type: &Type,
     ) -> Document<'module> {
@@ -166,7 +166,7 @@ impl<'module> FSharp<'module> {
             .append(line().append("end"))
     }
 
-    fn fun_args(&self, arguments: &Vec<TypedArg>) -> Document<'module> {
+    fn fun_args(&self, arguments: &[TypedArg]) -> Document<'module> {
         join(
             arguments.iter().map(|arg| {
                 "(".to_doc()
@@ -185,7 +185,7 @@ impl<'module> FSharp<'module> {
     }
 
     // Anon
-    fn fun(&self, args: &Vec<TypedArg>, body: &Vec1<TypedStatement>) -> Document<'module> {
+    fn fun(&self, args: &[TypedArg], body: &Vec1<TypedStatement>) -> Document<'module> {
         "fun"
             .to_doc()
             .append(self.fun_args(args).append(" ->"))
@@ -263,10 +263,97 @@ impl<'module> FSharp<'module> {
                 left, right, name, ..
             } => self.binop(name, left, right),
 
+            TypedExpr::Case {
+                subjects, clauses, ..
+            } => "// Pattern matching not yet implemented".to_doc(),
+
             _ => docvec!["// TODO: Implement other expression types"],
         }
     }
 
+    fn tuple(&self, elements: impl IntoIterator<Item = Document<'module>>) -> Document<'module> {
+        docvec!["(", join(elements, ", ".to_doc()), ")"]
+    }
+
+    // fn case(&self, subjects: &Vec<TypedExpr>, clauses: &Vec<TypedClause>) -> Document<'module> {
+    //     let subjects_doc = if subjects.len() == 1 {
+    //         self.expression(
+    //             subjects
+    //                 .first()
+    //                 .expect("f# case printing of single subject"),
+    //         )
+    //     } else {
+    //         self.tuple(subjects.iter().map(|s| self.expression(s)))
+    //     };
+
+    //     let mut res = "match "
+    //         .to_doc()
+    //         .append(subjects_doc)
+    //         .append(" with")
+    //         .append(self.clauses(clauses))
+    //         .group();
+
+    //     res
+    // }
+
+    // fn clauses(&self, clauses: &Vec<TypedClause>) -> Document<'module> {
+    //     join(
+    //         clauses
+    //             .iter()
+    //             .map(|clause| "| ".to_doc().append(self.clause(clause))),
+    //         line(),
+    //     )
+    // }
+
+    // fn clause(&self, clause: &TypedClause) -> Document<'module> {
+    //     let Clause {
+    //         guard,
+    //         pattern: pat,
+    //         alternative_patterns,
+    //         then,
+    //         ..
+    //     } = clause;
+
+    //     join(
+    //         std::iter::once(pat)
+    //             .chain(alternative_patterns)
+    //             .map(|patterns| {
+    //                 let patterns_doc = if patterns.len() == 1 {
+    //                     let p = patterns.first().expect("Single pattern clause printing");
+    //                     self.pattern(p)
+    //                 } else {
+    //                     self.tuple(patterns.iter().map(|p| self.pattern(p)))
+    //                 };
+
+    //                 let guard = optional_clause_guard(guard.as_ref());
+    //                 patterns_doc.append(
+    //                     guard
+    //                         .append(" ->")
+    //                         .append(line().append(then_doc.clone()).nest(INDENT).group()),
+    //                 )
+    //             }),
+    //         "|".to_doc(),
+    //     )
+    // }
+
+    // fn optional_clause_guard<'a>(guard: Option<&'a TypedClauseGuard>) -> Document<'a> {
+    //     let guard_doc = guard.map(|guard| bare_clause_guard(guard, env));
+
+    //     let guards_count = guard_doc.iter().len() + additional_guards.len();
+    //     let guards_docs = additional_guards.into_iter().chain(guard_doc).map(|guard| {
+    //         if guards_count > 1 {
+    //             guard.surround("(", ")")
+    //         } else {
+    //             guard
+    //         }
+    //     });
+    //     let doc = join(guards_docs, " andalso ".to_doc());
+    //     if doc.is_empty() {
+    //         doc
+    //     } else {
+    //         " when ".to_doc().append(doc)
+    //     }
+    // }
     fn binop(&self, name: &BinOp, left: &TypedExpr, right: &TypedExpr) -> Document<'module> {
         let operand = match name {
             // Boolean logic

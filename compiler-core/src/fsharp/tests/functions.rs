@@ -9,6 +9,6 @@ fn add(a, b) {a + b}
 pub fn main() {
   add(1,2)
 }
-    "
+"
     );
 }

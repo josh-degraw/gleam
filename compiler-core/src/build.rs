@@ -62,8 +62,8 @@ pub enum Target {
     #[strum(serialize = "javascript", serialize = "js")]
     #[serde(rename = "javascript", alias = "js")]
     JavaScript,
-    #[strum(serialize = "dotnet", serialize = "fs")]
-    #[serde(rename = "dotnet", alias = "fs")]
+    #[strum(serialize = "fsharp", serialize = "fs")]
+    #[serde(rename = "fsharp", alias = "fs")]
     FSharp,
 }
 
