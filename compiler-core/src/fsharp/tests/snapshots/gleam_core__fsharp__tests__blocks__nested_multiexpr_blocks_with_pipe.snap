@@ -1,0 +1,21 @@
+---
+source: compiler-core/src/fsharp/tests/blocks.rs
+assertion_line: 70
+expression: "\nfn add1(a) {\n  a + 1\n}\nfn go() {\n  let x = {\n    1\n    {\n      2\n      3 |> add1\n    } |> add1\n  }\n  x\n}\n"
+---
+module rec my.``mod``
+let add1(a: int): int = begin
+    a + 1
+end
+let go(): int = begin
+    let x = begin
+        1
+        let _pipe = begin
+            2
+            let _pipe = 3
+            add1 _pipe
+        end
+        add1 _pipe
+    end
+    x
+end

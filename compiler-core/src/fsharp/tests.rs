@@ -12,6 +12,7 @@ use crate::{
 
 use super::render_module;
 
+mod blocks;
 mod consts;
 mod functions;
 mod numbers;

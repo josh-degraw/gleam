@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/blocks.rs
+assertion_line: 157
+expression: "\nfn go() {\n  {\n    1\n    2\n  } == 1\n}\n"
+---
+module rec my.``mod``
+let go(): bool = begin
+    begin
+        1
+        2
+    end = 1
+end

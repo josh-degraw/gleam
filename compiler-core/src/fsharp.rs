@@ -184,9 +184,9 @@ fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
         .group()
 }
 
-fn statements<'a>(statements: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
+fn statements<'a>(s: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
     let mut last_var = None;
-    let mut res = statements
+    let mut res = s
         .iter()
         .map(|s| match s {
             Statement::Expression(expr) => {
@@ -449,43 +449,54 @@ fn pipeline<'a>(assignments: &'a [TypedAssignment], finally: &'a TypedExpr) -> D
     documents.to_doc()
 }
 
-fn block(s: &[TypedStatement]) -> Document<'_> {
-    if s.len() == 1 {
-        let statement = s.first().expect("single-line block statement");
-        match statement {
-            TypedStatement::Expression(expr) => expression(expr),
-            Statement::Assignment(assignment) => {
-                let (name, value) = get_assignment_info(assignment);
-                "let "
-                    .to_doc()
-                    .append(name)
-                    .append(" = ")
-                    .append(value.clone().to_doc())
-                    .append(line())
-                    .append(value.to_doc())
-            }
-            _ => docvec!["// TODO: Implement other statement types"],
-        }
-    } else {
-        // To ensure scoping remains valid, if the return type is Nil, we need to
-        // wrap the statements in a do block so that the result is discarded
-        let final_statement = s.last().expect("final type");
-        if final_statement.type_().is_nil() {
-            "do ".to_doc().append(line()).nest(INDENT).append(
-                statements(s, None)
-                    .append(line().append("()"))
-                    .nest(INDENT)
-                    .group(),
-            )
-        } else {
-            // Otherwise we should treat it like a normal sequence of statments
-            // TODO: Make sure this works if the final statement is an assignment
+/// Given a block like this:
+/// If given a block that ends in an assignment, we need to return the value of the last assignment
+///
+fn block<'a>(s: &'a [TypedStatement]) -> Document<'a> {
+    "begin"
+        .to_doc()
+        .append(line())
+        .nest(INDENT)
+        .append(statements(s, None).nest(INDENT).group())
+        .append(line().append("end"))
+    // if s.len() == 1 {
+    //     let statement = s.first().expect("single-line block statement");
+    //     match statement {
+    //         TypedStatement::Expression(expr) => expression(expr),
+    //         Statement::Assignment(assignment) => {
+    //             let (name, value) = get_assignment_info(assignment);
+    //             "let "
+    //                 .to_doc()
+    //                 .append(name)
+    //                 .append(" = ")
+    //                 .append(value.clone().to_doc())
+    //                 .append(line())
+    //                 .append(value.to_doc())
+    //         }
+    //         _ => docvec!["// TODO: Implement other statement types"],
+    //     }
+    // } else {
+    //     // To ensure scoping remains valid, if the return type is Nil, we need to
+    //     // wrap the statements in a do block so that the result is discarded
+    //     let final_statement = s.last().expect("final type");
+    //     if final_statement.type_().is_nil() {
+    //         "do ".to_doc().append(line()).nest(INDENT).append(
+    //             statements(s, None)
+    //                 .append(line().append("()"))
+    //                 .nest(INDENT)
+    //                 .group(),
+    //         )
+    //     } else {
+    //         // Otherwise we should treat it like a normal sequence of statments
+    //         // TODO: Make sure this works if the final statement is an assignment
 
-            statements(s, Some(&final_statement.type_()))
-                .nest(INDENT)
-                .group()
-        }
-    }
+    //         "let _ = ".to_doc().append(line()).nest(INDENT).append(
+    //             statements(s, Some(&final_statement.type_()))
+    //                 .nest(INDENT)
+    //                 .group(),
+    //         )
+    //     }
+    //}
 }
 
 fn get_assignment_info(assignment: &TypedAssignment) -> (Document<'_>, Document<'_>) {
