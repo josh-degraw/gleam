@@ -479,12 +479,15 @@ impl<'module> FSharp<'module> {
                     .iter()
                     .map(|arg| self.type_to_fsharp(arg))
                     .collect::<Vec<Document<'module>>>();
+
+                let arg_types = if arg_types.len() == 0 {
+                    "unit".to_doc()
+                } else {
+                    join(arg_types, " -> ".to_doc())
+                };
+
                 let return_type = self.type_to_fsharp(retrn);
-                docvec![
-                    join(arg_types.into_iter(), " -> ".to_doc()),
-                    " -> ",
-                    return_type
-                ]
+                docvec![arg_types, " -> ", return_type]
             }
             Type::Tuple { elems } => {
                 docvec![
