@@ -4,12 +4,12 @@ assertion_line: 171
 expression: "\nfn main(f, a, b) {\n  {\n    a\n    |> f\n  } <> {\n    b\n    |> f\n  }\n}\n"
 ---
 module rec my.``mod``
-let main(f: 't10 -> string) (a: 't10) (b: 't10): string = begin
+let main(f: 'u10 -> string) (a: 'u10) (b: 'u10): string = begin
     begin
         let _pipe = a
-        f _pipe
+        f (_pipe)
     end + begin
         let _pipe = b
-        f _pipe
+        f (_pipe)
     end
 end

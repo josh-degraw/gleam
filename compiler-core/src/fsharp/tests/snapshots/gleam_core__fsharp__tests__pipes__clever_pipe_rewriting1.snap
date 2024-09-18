@@ -6,5 +6,5 @@ expression: "\npub fn apply(f: fn(a, Int) -> b, a: a) { a |> f(1) }\n"
 module rec my.``mod``
 let apply(f: 't8 -> int -> 't9) (a: 't8): 't9 = begin
     let _pipe = a
-    f _pipe 1
+    f (_pipe) (1)
 end

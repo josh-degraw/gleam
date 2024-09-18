@@ -4,6 +4,6 @@ assertion_line: 16
 expression: "\npub fn main() {\n  todo as \"wibble\"\n}\n"
 ---
 module rec my.``mod``
-let main(): 't9 = begin
-    failwith "wibble"
+let main(): 'u9 = begin
+    failwith ("wibble")
 end

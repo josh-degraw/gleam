@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/blocks.rs
+assertion_line: 205
+expression: "\nfn b() {\n  {\n    use a <- fn(cb) { cb(1) }\n    a\n  }\n  {\n    use b <- fn(cb) { cb(2) }\n    b\n  }\n  3\n}\n    "
+---
+module rec my.``mod``
+let b(): int = begin
+    begin
+        (fun(cb: int -> int) -> cb (1) ) (fun(a: int) -> a )
+    end
+    begin
+        (fun(cb: int -> int) -> cb (2) ) (fun(b: int) -> b )
+    end
+    3
+end

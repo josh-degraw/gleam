@@ -8,5 +8,5 @@ let x(): string = begin
     ""
 end
 let go(): string = begin
-    x  + x 
+    x() + x()
 end

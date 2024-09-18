@@ -9,6 +9,6 @@ let add(x: int) (y: int): int = begin
 end
 let main(): int = begin
     let _pipe = 1
-    let _pipe = add _pipe 2
-    add _pipe 3
+    let _pipe = add (_pipe) (2)
+    add (_pipe) (3)
 end

@@ -1,6 +1,6 @@
 ---
 source: compiler-core/src/fsharp/tests/functions.rs
-assertion_line: 5
+assertion_line: 20
 expression: "\nfn add(a, b) {a + b}\n\npub fn main() {\n  add(1,2)\n}\n"
 ---
 module rec my.``mod``
@@ -8,5 +8,5 @@ let add(a: int) (b: int): int = begin
     a + b
 end
 let main(): int = begin
-    add 1 2
+    add (1) (2)
 end

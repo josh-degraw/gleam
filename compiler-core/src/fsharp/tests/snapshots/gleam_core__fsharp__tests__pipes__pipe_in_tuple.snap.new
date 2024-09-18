@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/pipes.rs
+assertion_line: 75
+expression: "pub fn x(f) {\n  #(\n    1 |> f\n  )\n}"
+---
+module rec my.``mod``
+let x(f: int -> 'u10): ('u10) = begin
+    (let _pipe = 1
+    f (_pipe))
+end

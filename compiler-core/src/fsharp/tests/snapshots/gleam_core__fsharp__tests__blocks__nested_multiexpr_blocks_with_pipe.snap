@@ -13,9 +13,9 @@ let go(): int = begin
         let _pipe = begin
             2
             let _pipe = 3
-            add1 _pipe
+            add1 (_pipe)
         end
-        add1 _pipe
+        add1 (_pipe)
     end
     x
 end
