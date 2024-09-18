@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 5
+expression: "\npub fn main() {\n  \"Hello, World!\"\n}\n"
+---
+module rec my.``mod``
+let main(): string = begin
+    "Hello, World!"
+end

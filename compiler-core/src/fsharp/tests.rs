@@ -14,6 +14,7 @@ use super::{render_module, TypedModule};
 
 mod functions;
 mod numbers;
+mod strings;
 mod variables;
 
 #[macro_export]
