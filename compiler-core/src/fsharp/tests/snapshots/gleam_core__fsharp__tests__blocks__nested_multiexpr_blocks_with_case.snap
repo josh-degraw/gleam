@@ -9,7 +9,8 @@ let go(): int = begin
         1
         begin
             2
-            // Pattern matching not yet implemented
+            match true with| _ ->
+                3
         end
     end
     x

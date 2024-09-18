@@ -185,6 +185,19 @@ fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
         .group()
 }
 
+fn statement(s: &TypedStatement) -> Document<'_> {
+    match s {
+        TypedStatement::Expression(expr) => expression(expr),
+        TypedStatement::Assignment(a) => assignment(a),
+        TypedStatement::Use(_) => docvec!["// TODO: Implement use statements"],
+    }
+}
+
+fn assignment(assignment: &TypedAssignment) -> Document<'_> {
+    let (name, value) = get_assignment_info(assignment);
+    "let ".to_doc().append(name).append(" = ").append(value)
+}
+
 fn statements<'a>(s: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
     let mut last_var = None;
     let mut res = s
@@ -267,6 +280,8 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         } => pipeline(assignments, finally),
         TypedExpr::Var { name, .. } => match name.as_str() {
             "Nil" => "()".to_doc(),
+            "True" => "true".to_doc(),
+            "False" => "false".to_doc(),
             _ => name.to_doc(),
         },
         TypedExpr::Fn { args, body, .. } => fun(args, body),
@@ -300,9 +315,9 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
 
         TypedExpr::Case {
             subjects, clauses, ..
-        } => "// Pattern matching not yet implemented".to_doc(),
+        } => case(subjects, clauses),
 
-        TypedExpr::Tuple { elems, .. } => tuple(elems),
+        TypedExpr::Tuple { elems, .. } => tuple(elems.iter().map(expression)),
         TypedExpr::NegateInt { value, .. } => "-".to_doc().append(expression(value)),
 
         TypedExpr::Todo { message, .. } => todo(message),
@@ -330,88 +345,264 @@ fn panic_(message: &Option<Box<TypedExpr>>) -> Document<'_> {
     }
 }
 
-fn tuple(elements: &[TypedExpr]) -> Document<'_> {
-    join(elements.iter().map(expression), ", ".to_doc()).surround("(", ")")
+fn tuple<'a>(elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
+    join(elements, ", ".to_doc()).surround("(", ")")
 }
-// fn case(&self, subjects: &Vec<TypedExpr>, clauses: &Vec<TypedClause>) -> Document<'a> {
-//     let subjects_doc = if subjects.len() == 1 {
-//         self.expression(
-//             subjects
-//                 .first()
-//                 .expect("f# case printing of single subject"),
-//         )
-//     } else {
-//         self.tuple(subjects.iter().map(|s| self.expression(s)))
-//     };
+fn case<'a>(subjects: &'a [TypedExpr], clauses_: &'a [TypedClause]) -> Document<'a> {
+    let subjects_doc = if subjects.len() == 1 {
+        expression(
+            subjects
+                .first()
+                .expect("f# case printing of single subject"),
+        )
+    } else {
+        tuple(subjects.iter().map(expression))
+    };
 
-//     let mut res = "match "
-//         .to_doc()
-//         .append(subjects_doc)
-//         .append(" with")
-//         .append(self.clauses(clauses))
-//         .group();
+    let mut res = "match "
+        .to_doc()
+        .append(subjects_doc)
+        .append(" with")
+        .append(clauses(clauses_))
+        .group();
 
-//     res
-// }
+    res
+}
 
-// fn clauses(&self, clauses: &Vec<TypedClause>) -> Document<'a> {
-//     join(
-//         clauses
-//             .iter()
-//             .map(|clause| "| ".to_doc().append(self.clause(clause))),
-//         line(),
-//     )
-// }
+fn clauses(clauses: &[TypedClause]) -> Document<'_> {
+    join(
+        clauses.iter().map(|c| "| ".to_doc().append(clause(c))),
+        line(),
+    )
+}
 
-// fn clause(&self, clause: &TypedClause) -> Document<'a> {
-//     let Clause {
-//         guard,
-//         pattern: pat,
-//         alternative_patterns,
-//         then,
-//         ..
-//     } = clause;
+fn clause(clause: &TypedClause) -> Document<'_> {
+    let Clause {
+        guard,
+        pattern: pat,
+        alternative_patterns,
+        then,
+        ..
+    } = clause;
+    let mut then_doc = None;
 
-//     join(
-//         std::iter::once(pat)
-//             .chain(alternative_patterns)
-//             .map(|patterns| {
-//                 let patterns_doc = if patterns.len() == 1 {
-//                     let p = patterns.first().expect("Single pattern clause printing");
-//                     self.pattern(p)
-//                 } else {
-//                     self.tuple(patterns.iter().map(|p| self.pattern(p)))
-//                 };
+    join(
+        std::iter::once(pat)
+            .chain(alternative_patterns)
+            .map(|patterns| {
+                let mut additional_guards = vec![];
+                let patterns_doc = if patterns.len() == 1 {
+                    let p = patterns.first().expect("Single pattern clause printing");
+                    pattern(p)
+                } else {
+                    tuple(patterns.iter().map(pattern))
+                };
 
-//                 let guard = optional_clause_guard(guard.as_ref());
-//                 patterns_doc.append(
-//                     guard
-//                         .append(" ->")
-//                         .append(line().append(then_doc.clone()).nest(INDENT).group()),
-//                 )
-//             }),
-//         "|".to_doc(),
-//     )
-// }
+                let guard = optional_clause_guard(guard.as_ref(), additional_guards);
+                if then_doc.is_none() {
+                    then_doc = Some(clause_consequence(then));
+                }
 
-// fn optional_clause_guard<'a>(guard: Option<&'a TypedClauseGuard>) -> Document<'a> {
-//     let guard_doc = guard.map(|guard| bare_clause_guard(guard, env));
+                patterns_doc.append(
+                    guard.append(" ->").append(
+                        line()
+                            .append(then_doc.clone().to_doc())
+                            .nest(INDENT)
+                            .group(),
+                    ),
+                )
+            }),
+        "|".to_doc(),
+    )
+}
 
-//     let guards_count = guard_doc.iter().len() + additional_guards.len();
-//     let guards_docs = additional_guards.into_iter().chain(guard_doc).map(|guard| {
-//         if guards_count > 1 {
-//             guard.surround("(", ")")
-//         } else {
-//             guard
-//         }
-//     });
-//     let doc = join(guards_docs, " andalso ".to_doc());
-//     if doc.is_empty() {
-//         doc
-//     } else {
-//         " when ".to_doc().append(doc)
-//     }
-// }
+fn clause_consequence(consequence: &TypedExpr) -> Document<'_> {
+    match consequence {
+        TypedExpr::Block { statements, .. } => statement_sequence(statements),
+        _ => expression(consequence),
+    }
+}
+
+fn statement_sequence(statements: &[TypedStatement]) -> Document<'_> {
+    let count = statements.len();
+    let mut documents = Vec::with_capacity(count * 3);
+    for (i, expression) in statements.iter().enumerate() {
+        documents.push(statement(expression).group());
+
+        if i + 1 < count {
+            // This isn't the final expression so add the delimeters
+            documents.push(",".to_doc());
+            documents.push(line());
+        }
+    }
+    if count == 1 {
+        documents.to_doc()
+    } else {
+        documents.to_doc().force_break()
+    }
+}
+fn optional_clause_guard<'a>(
+    guard: Option<&'a TypedClauseGuard>,
+    additional_guards: Vec<Document<'a>>,
+) -> Document<'a> {
+    let guard_doc = guard.map(|guard| bare_clause_guard(guard));
+
+    let guards_count = guard_doc.iter().len() + additional_guards.len();
+    let guards_docs = additional_guards.into_iter().chain(guard_doc).map(|guard| {
+        if guards_count > 1 {
+            guard.surround("(", ")")
+        } else {
+            guard
+        }
+    });
+    let doc = join(guards_docs, " andalso ".to_doc());
+    if doc.is_empty() {
+        doc
+    } else {
+        " when ".to_doc().append(doc)
+    }
+}
+fn clause_guard(guard: &TypedClauseGuard) -> Document<'_> {
+    match guard {
+        // Binary operators are wrapped in parens
+        ClauseGuard::Or { .. }
+        | ClauseGuard::And { .. }
+        | ClauseGuard::Equals { .. }
+        | ClauseGuard::NotEquals { .. }
+        | ClauseGuard::GtInt { .. }
+        | ClauseGuard::GtEqInt { .. }
+        | ClauseGuard::LtInt { .. }
+        | ClauseGuard::LtEqInt { .. }
+        | ClauseGuard::GtFloat { .. }
+        | ClauseGuard::GtEqFloat { .. }
+        | ClauseGuard::LtFloat { .. }
+        | ClauseGuard::LtEqFloat { .. }
+        | ClauseGuard::AddInt { .. }
+        | ClauseGuard::AddFloat { .. }
+        | ClauseGuard::SubInt { .. }
+        | ClauseGuard::SubFloat { .. }
+        | ClauseGuard::MultInt { .. }
+        | ClauseGuard::MultFloat { .. }
+        | ClauseGuard::DivInt { .. }
+        | ClauseGuard::DivFloat { .. }
+        | ClauseGuard::RemainderInt { .. } => {
+            "(".to_doc().append(bare_clause_guard(guard)).append(")")
+        }
+
+        // Other expressions are not
+        ClauseGuard::Constant(_)
+        | ClauseGuard::Not { .. }
+        | ClauseGuard::Var { .. }
+        | ClauseGuard::TupleIndex { .. }
+        | ClauseGuard::FieldAccess { .. }
+        | ClauseGuard::ModuleSelect { .. } => bare_clause_guard(guard),
+    }
+}
+fn bare_clause_guard(guard: &TypedClauseGuard) -> Document<'_> {
+    match guard {
+        ClauseGuard::Not { expression, .. } => docvec!["not ", bare_clause_guard(expression)],
+
+        ClauseGuard::Or { left, right, .. } => clause_guard(left)
+            .append(" orelse ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::And { left, right, .. } => clause_guard(left)
+            .append(" andalso ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::Equals { left, right, .. } => clause_guard(left)
+            .append(" =:= ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::NotEquals { left, right, .. } => clause_guard(left)
+            .append(" =/= ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::GtInt { left, right, .. } => {
+            clause_guard(left).append(" > ").append(clause_guard(right))
+        }
+
+        ClauseGuard::GtEqInt { left, right, .. } => clause_guard(left)
+            .append(" >= ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::LtInt { left, right, .. } => {
+            clause_guard(left).append(" < ").append(clause_guard(right))
+        }
+
+        ClauseGuard::LtEqInt { left, right, .. } => clause_guard(left)
+            .append(" =< ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::GtFloat { left, right, .. } => {
+            clause_guard(left).append(" > ").append(clause_guard(right))
+        }
+
+        ClauseGuard::GtEqFloat { left, right, .. } => clause_guard(left)
+            .append(" >= ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::LtFloat { left, right, .. } => {
+            clause_guard(left).append(" < ").append(clause_guard(right))
+        }
+
+        ClauseGuard::LtEqFloat { left, right, .. } => clause_guard(left)
+            .append(" =< ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::AddInt { left, right, .. } => {
+            clause_guard(left).append(" + ").append(clause_guard(right))
+        }
+
+        ClauseGuard::AddFloat { left, right, .. } => {
+            clause_guard(left).append(" + ").append(clause_guard(right))
+        }
+
+        ClauseGuard::SubInt { left, right, .. } => {
+            clause_guard(left).append(" - ").append(clause_guard(right))
+        }
+
+        ClauseGuard::SubFloat { left, right, .. } => {
+            clause_guard(left).append(" - ").append(clause_guard(right))
+        }
+
+        ClauseGuard::MultInt { left, right, .. } => {
+            clause_guard(left).append(" * ").append(clause_guard(right))
+        }
+
+        ClauseGuard::MultFloat { left, right, .. } => {
+            clause_guard(left).append(" * ").append(clause_guard(right))
+        }
+
+        ClauseGuard::DivInt { left, right, .. } => clause_guard(left)
+            .append(" div ")
+            .append(clause_guard(right)),
+
+        ClauseGuard::DivFloat { left, right, .. } => {
+            clause_guard(left).append(" / ").append(clause_guard(right))
+        }
+
+        ClauseGuard::RemainderInt { left, right, .. } => clause_guard(left)
+            .append(" rem ")
+            .append(clause_guard(right)),
+
+        // TODO: Only local variables are supported and the typer ensures that all
+        // ClauseGuard::Vars are local variables
+        ClauseGuard::Var { name, .. } => name.to_doc(),
+
+        // ClauseGuard::TupleIndex { tuple, index, .. } => tuple_index_inline(tuple, *index),
+
+        // ClauseGuard::FieldAccess {
+        //     container, index, ..
+        // } => tuple_index_inline(container, index.expect("Unable to find index") + 1),
+
+        // ClauseGuard::ModuleSelect { literal, .. } => const_inline(literal),
+
+        // ClauseGuard::Constant(constant) => const_inline(constant),
+        _ => docvec!["// TODO: Implement other guard types"],
+    }
+}
+
 fn binop<'a>(name: &BinOp, left: &'a TypedExpr, right: &'a TypedExpr) -> Document<'a> {
     let operand = match name {
         // Boolean logic

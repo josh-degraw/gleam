@@ -1,9 +1,0 @@
----
-source: compiler-core/src/fsharp/tests/variables.rs
-assertion_line: 5
-expression: "\npub fn go(a) {\n  case a {\n    99 -> {\n      let a = a\n      1\n    }\n    _ -> a\n  }\n}"
----
-module rec my.``mod``
-let go(a: int): int = begin
-    // Pattern matching not yet implemented
-end
