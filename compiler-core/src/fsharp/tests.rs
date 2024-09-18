@@ -10,11 +10,13 @@ use crate::{
     warning::{TypeWarningEmitter, WarningEmitter},
 };
 
-use super::{render_module, TypedModule};
+use super::render_module;
 
+mod consts;
 mod functions;
 mod numbers;
 mod strings;
+mod todo;
 mod variables;
 
 #[macro_export]
@@ -93,5 +95,5 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
     }
     .infer_module(ast, line_numbers, path)
     .expect("should successfully infer root FSharp");
-    render_module(&ast).unwrap()
+    render_module(&ast).expect("should render FSharp")
 }

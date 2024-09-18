@@ -272,9 +272,15 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         TypedExpr::List { elements, .. } => {
             join(elements.iter().map(expression), "; ".to_doc()).surround("[", "]")
         }
-        TypedExpr::Call { fun, args, .. } => expression(fun)
-            .append(" ")
-            .append(join(args.iter().map(|a| expression(&a.value)), " ".to_doc()).group()),
+        TypedExpr::Call { fun, args, .. } => {
+            let args = if args.is_empty() {
+                "()".to_doc()
+            } else {
+                " ".to_doc()
+                    .append(join(args.iter().map(|a| expression(&a.value)), " ".to_doc()).group())
+            };
+            expression(fun).append(args).group()
+        }
 
         TypedExpr::BinOp {
             left, right, name, ..
@@ -286,7 +292,19 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
 
         TypedExpr::Tuple { elems, .. } => tuple(elems),
         TypedExpr::NegateInt { value, .. } => "-".to_doc().append(expression(value)),
+
+        TypedExpr::Todo { message, .. } => todo(message),
+
         _ => docvec!["// TODO: Implement other expression types"],
+    }
+}
+
+fn todo(message: &Option<Box<TypedExpr>>) -> Document<'_> {
+    match message {
+        Some(message) => "failwith "
+            .to_doc()
+            .append(expression(message.as_ref()).surround("(", ")")),
+        None => "failwith \"Not implemented\"".to_doc(),
     }
 }
 
@@ -410,12 +428,20 @@ fn pipeline<'a>(_assignments: &'a [TypedAssignment], _finally: &'a TypedExpr) ->
 }
 
 fn block(s: &[TypedStatement]) -> Document<'_> {
-    "do ".to_doc().append(line()).nest(INDENT).append(
-        statements(s, None)
-            .append(line().append("()"))
-            .nest(INDENT)
-            .group(),
-    )
+    if s.len() == 1 {
+        let statement = s.first().expect("single-line block statement");
+        match statement {
+            TypedStatement::Expression(expr) => expression(expr),
+            _ => docvec!["// TODO: Implement other statement types"],
+        }
+    } else {
+        "do ".to_doc().append(line()).nest(INDENT).append(
+            statements(s, None)
+                .append(line().append("()"))
+                .nest(INDENT)
+                .group(),
+        )
+    }
 }
 
 fn get_assignment_info(assignment: &TypedAssignment) -> (Document<'_>, Document<'_>) {
@@ -474,7 +500,7 @@ fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {
             match borrowed.deref() {
                 TypeVar::Link { type_ } => type_to_fsharp(type_),
                 TypeVar::Unbound { id } | TypeVar::Generic { id } => {
-                    Document::String(format!("'{}", id))
+                    Document::String(format!("'t{}", id))
                 }
             }
         }

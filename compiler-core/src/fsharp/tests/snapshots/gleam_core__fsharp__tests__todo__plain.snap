@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/todo.rs
+assertion_line: 5
+expression: "\npub fn main() {\n  todo\n}\n"
+---
+module rec my.``mod``
+let main(): 't9 = begin
+    failwith "Not implemented"
+end
