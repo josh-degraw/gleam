@@ -1,6 +1,6 @@
 name = "project"
 version = "0.1.0"
-target = "fsharp"
+target = "javascript"
 
 [dependencies]
 gleam_erlang = "~> 0.23"
