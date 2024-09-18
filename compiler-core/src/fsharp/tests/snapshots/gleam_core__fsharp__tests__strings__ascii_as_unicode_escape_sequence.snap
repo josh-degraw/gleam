@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 117
+expression: "\npub fn y() -> String {\n  \"\\u{79}\"\n}\n"
+---
+module rec my.``mod``
+let y(): string = begin
+    "\u79"
+end

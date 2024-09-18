@@ -1,0 +1,13 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 386
+expression: "\nconst a = \"Hello, \"\nconst b = \"Joe!\"\n\npub fn go() {\n  a <> b\n}\n"
+---
+module rec my.``mod``
+[<Literal>]
+let a = "Hello, "
+[<Literal>]
+let b = "Joe!"
+let go(): string = begin
+    a + b
+end

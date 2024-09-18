@@ -223,22 +223,26 @@ fn statements<'a>(statements: &'a [TypedStatement], return_type: Option<&Type>) 
 fn unicode_escape_sequence_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
-        Regex::new(r#"(\\+)(u)"#).expect("Unicode escape sequence regex cannot be constructed")
+        Regex::new(r#"(\\+)(u)\{(.+)\}"#)
+            .expect("Unicode escape sequence regex cannot be constructed")
     })
 }
 
 fn string_inner<'a>(value: &str) -> Document<'a> {
     let content = unicode_escape_sequence_pattern()
         // `\\u`-s should not be affected, so that "\\u..." is not converted to
-        // "\\x...". That's why capturing groups is used to exclude cases that
+        // "\\u...". That's why capturing groups is used to exclude cases that
         // shouldn't be replaced.
         .replace_all(value, |caps: &Captures<'_>| {
             let slashes = caps.get(1).map_or("", |m| m.as_str());
+            let unicode = caps.get(3).map_or("", |m| m.as_str());
 
+            println!("slashes: {}", slashes);
             if slashes.len() % 2 == 0 {
-                format!("{slashes}u")
+                // TODO: See if we can emit a warning here because it probably wasn't intentional
+                format!("{slashes}u{{{unicode}}}") // return the original string
             } else {
-                format!("{slashes}x")
+                format!("{slashes}u{unicode}")
             }
         })
         .to_string();
@@ -481,25 +485,19 @@ fn module_constant(constant: &ModuleConstant<Arc<Type>, EcoString>) -> Document<
     let name = constant.name.as_str();
     let value = &constant.value;
 
+    let binding = "[<Literal>]"
+        .to_doc()
+        .append(line())
+        .append("let ")
+        .append(name.to_doc())
+        .append(" = ");
     match value.deref().clone() {
-        Constant::Int { value, .. }
-        | Constant::Float { value, .. }
-        | Constant::String { value, .. } => {
-            docvec![
-                "[<Literal>]",
-                line(),
-                "let ",
-                name.to_doc(),
-                " = ",
-                value.to_doc(),
-            ]
+        Constant::Int { value, .. } | Constant::Float { value, .. } => {
+            binding.append(value.to_doc())
         }
-        _ => docvec![
-            "let ",
-            name.to_doc(),
-            " = ",
-            "// TODO: Return Result instead here"
-        ],
+        Constant::String { value, .. } => binding.append(string(value.as_str())),
+        _ => binding
+            .append("// TODO: haven't figured out how to handle this constant type yet".to_doc()),
     }
 }
 

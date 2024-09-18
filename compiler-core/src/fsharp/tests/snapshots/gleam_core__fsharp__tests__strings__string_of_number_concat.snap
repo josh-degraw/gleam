@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 360
+expression: "\npub fn go(x) {\n  x <> \"1\"\n}\n"
+---
+module rec my.``mod``
+let go(x: string): string = begin
+    x + "1"
+end
