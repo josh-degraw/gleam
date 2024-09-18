@@ -8,7 +8,11 @@ use crate::{
     type_::{Type, TypeVar},
 };
 use ecow::EcoString;
-use std::{ops::Deref, sync::Arc};
+use regex::{Captures, Regex};
+use std::{
+    ops::Deref,
+    sync::{Arc, OnceLock},
+};
 use vec1::Vec1;
 
 #[derive(Debug, Clone)]
@@ -159,7 +163,7 @@ impl<'module> FSharp<'module> {
         &self,
         name: &'module str,
         arguments: &[TypedArg],
-        body: &Vec1<TypedStatement>,
+        body: &'module [TypedStatement],
         return_type: &Type,
     ) -> Document<'module> {
         let args = if arguments.is_empty() {
@@ -202,7 +206,7 @@ impl<'module> FSharp<'module> {
     }
 
     // Anon
-    fn fun(&self, args: &[TypedArg], body: &Vec1<TypedStatement>) -> Document<'module> {
+    fn fun(&self, args: &[TypedArg], body: &'module [TypedStatement]) -> Document<'module> {
         "fun"
             .to_doc()
             .append(self.fun_args(args).append(" ->"))
@@ -213,7 +217,7 @@ impl<'module> FSharp<'module> {
 
     fn statements(
         &self,
-        statements: &Vec1<TypedStatement>,
+        statements: &'module [TypedStatement],
         return_type: Option<&Type>,
     ) -> Document<'module> {
         let mut last_var = None;
@@ -251,11 +255,39 @@ impl<'module> FSharp<'module> {
         join(res, line()).group()
     }
 
-    fn expression(&self, expr: &TypedExpr) -> Document<'module> {
+    fn unicode_escape_sequence_pattern() -> &'static Regex {
+        static PATTERN: OnceLock<Regex> = OnceLock::new();
+        PATTERN.get_or_init(|| {
+            Regex::new(r#"(\\+)(u)"#).expect("Unicode escape sequence regex cannot be constructed")
+        })
+    }
+
+    fn string_inner(&self, value: &'module str) -> Document<'module> {
+        let content = Self::unicode_escape_sequence_pattern()
+            // `\\u`-s should not be affected, so that "\\u..." is not converted to
+            // "\\x...". That's why capturing groups is used to exclude cases that
+            // shouldn't be replaced.
+            .replace_all(value, |caps: &Captures<'_>| {
+                let slashes = caps.get(1).map_or("", |m| m.as_str());
+
+                if slashes.len() % 2 == 0 {
+                    format!("{slashes}u")
+                } else {
+                    format!("{slashes}x")
+                }
+            })
+            .to_string();
+        Document::String(content)
+    }
+
+    fn string(&self, value: &'module str) -> Document<'module> {
+        self.string_inner(value).surround("\"", "\"")
+    }
+    fn expression(&self, expr: &'module TypedExpr) -> Document<'module> {
         match expr {
             TypedExpr::Int { value, .. } => value.to_doc(),
             TypedExpr::Float { value, .. } => value.to_doc(),
-            TypedExpr::String { value, .. } => docvec!["\"", value, "\""],
+            TypedExpr::String { value, .. } => self.string(&value.as_str()),
             TypedExpr::Block { statements, .. } => self.block(statements),
             TypedExpr::Pipeline {
                 assignments,
@@ -380,7 +412,12 @@ impl<'module> FSharp<'module> {
     //         " when ".to_doc().append(doc)
     //     }
     // }
-    fn binop(&self, name: &BinOp, left: &TypedExpr, right: &TypedExpr) -> Document<'module> {
+    fn binop(
+        &self,
+        name: &BinOp,
+        left: &'module TypedExpr,
+        right: &'module TypedExpr,
+    ) -> Document<'module> {
         let operand = match name {
             // Boolean logic
             BinOp::And => "&&",
@@ -421,7 +458,7 @@ impl<'module> FSharp<'module> {
         "//TODO: implement pipelines".to_doc()
     }
 
-    fn block(&self, statements: &Vec1<TypedStatement>) -> Document<'module> {
+    fn block(&self, statements: &'module [TypedStatement]) -> Document<'module> {
         "do ".to_doc().append(line()).nest(INDENT).append(
             self.statements(statements, None)
                 .append(line().append("()"))
@@ -432,7 +469,7 @@ impl<'module> FSharp<'module> {
 
     fn get_assignment_info(
         &self,
-        assignment: &TypedAssignment,
+        assignment: &'module TypedAssignment,
     ) -> (Document<'module>, Document<'module>) {
         let name = self.pattern(&assignment.pattern);
         let value = self.expression(&assignment.value);

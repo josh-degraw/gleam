@@ -11,16 +11,16 @@ pub fn main() {
     );
 }
 
-// #[test]
-// fn unicode1() {
-//     assert_fsharp!(
-//         r#"
-// pub fn emoji() -> String {
-//   "\u{1f600}"
-// }
-// "#,
-//     );
-// }
+#[test]
+fn unicode1() {
+    assert_fsharp!(
+        r#"
+pub fn emoji() -> String {
+  "\u{1f600}"
+}
+"#,
+    );
+}
 
 // #[test]
 // fn unicode2() {
