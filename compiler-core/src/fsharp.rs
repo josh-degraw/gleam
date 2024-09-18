@@ -13,575 +13,497 @@ use std::{
     ops::Deref,
     sync::{Arc, OnceLock},
 };
-use vec1::Vec1;
-
-#[derive(Debug, Clone)]
-pub struct FSharp<'module> {
-    module_name: &'module EcoString,
-}
 
 const INDENT: isize = 4;
 
-impl<'module> FSharp<'module> {
-    pub fn new(module_name: &'module EcoString) -> Self {
-        Self { module_name }
-    }
+pub fn render_module(module: &TypedModule) -> super::Result<String> {
+    let document = module_to_doc(module);
+    Ok(document.to_pretty_string(120))
+}
 
-    pub fn module(&self, module: &'module TypedModule) -> Document<'module> {
-        join(
-            vec![self.module_declaration(module), self.contents(module)],
-            line(),
-        )
-    }
+fn module_to_doc(module: &TypedModule) -> Document<'_> {
+    join(vec![module_declaration(module), contents(module)], line())
+}
 
-    fn module_declaration(&self, module: &'module TypedModule) -> Document<'module> {
-        // Use module rec so we don't hav to worry about order
-        "module rec "
-            .to_doc()
-            .append(self.santitize_name(&module.name))
-    }
+fn module_declaration(module: &TypedModule) -> Document<'_> {
+    "module rec ".to_doc().append(santitize_name(&module.name))
+}
 
-    fn santitize_name(&self, name: &'module EcoString) -> Document<'module> {
-        join(
-            name.split("/").map(|s| {
-                if self.is_reserved_word(s) {
-                    "``".to_doc().append(s.to_doc()).append("``")
-                } else {
-                    s.to_doc()
+fn santitize_name(name: &EcoString) -> Document<'_> {
+    join(
+        name.split("/").map(|s| {
+            if is_reserved_word(s) {
+                "``".to_doc().append(s.to_doc()).append("``")
+            } else {
+                s.to_doc()
+            }
+        }),
+        ".".to_doc(),
+    )
+}
+
+fn is_reserved_word(name: &str) -> bool {
+    matches!(
+        name,
+        "asr"
+            | "land"
+            | "lor"
+            | "lsl"
+            | "lsr"
+            | "lxor"
+            | "mod"
+            | "sig"
+            | "break"
+            | "checked"
+            | "component"
+            | "const"
+            | "constraint"
+            | "continue"
+            | "event"
+            | "external"
+            | "include"
+            | "mixin"
+            | "parallel"
+            | "process"
+            | "protected"
+            | "pure"
+            | "sealed"
+            | "tailcall"
+            | "trait"
+            | "virtual"
+    )
+}
+
+fn contents<'a>(module: &'a TypedModule) -> Document<'a> {
+    join(
+        module
+            .definitions
+            .iter()
+            .map(|def| match def {
+                Definition::CustomType(t) => custom_type(t),
+                Definition::TypeAlias(t) => type_alias(t),
+                Definition::ModuleConstant(c) => module_constant(c),
+                Definition::Function(f) => {
+                    let name = f.name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
+                    function(name, &f.arguments, &f.body, &f.return_type)
                 }
-            }),
-            ".".to_doc(),
-        )
-    }
+                Definition::Import(_) => docvec!["// TODO: Implement imports"],
+            })
+            .collect::<Vec<Document<'a>>>(),
+        line(),
+    )
+}
 
-    fn is_reserved_word(&self, name: &str) -> bool {
-        matches!(
-            name,
-            "asr"
-                | "land"
-                | "lor"
-                | "lsl"
-                | "lsr"
-                | "lxor"
-                | "mod"
-                | "sig"
-                | "break"
-                | "checked"
-                | "component"
-                | "const"
-                | "constraint"
-                | "continue"
-                | "event"
-                | "external"
-                | "include"
-                | "mixin"
-                | "parallel"
-                | "process"
-                | "protected"
-                | "pure"
-                | "sealed"
-                | "tailcall"
-                | "trait"
-                | "virtual"
-        )
-    }
-
-    // fn imports(&self, module: &TypedModule) -> Vec<Document<'module>> {
-    //     module
-    //         .
-    //         .iter()
-    //         .map(|import| {
-    //             let module_name = import.module.replace("/", ".");
-    //             docvec!["open ", module_name]
-    //         })
-    //         .collect()
-    // }
-
-    fn contents(&self, module: &'module TypedModule) -> Document<'module> {
-        join(
-            module
-                .definitions
+fn custom_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    let name = &t.name;
+    let constructors = t
+        .constructors
+        .iter()
+        .map(|c| {
+            let fields = c
+                .arguments
                 .iter()
-                .map(|def| match def {
-                    Definition::CustomType(t) => self.custom_type(t),
-                    Definition::TypeAlias(t) => self.type_alias(t),
-                    Definition::ModuleConstant(c) => self.module_constant(c),
-                    Definition::Function(f) => {
-                        let name = f.name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
-                        self.function(name, &f.arguments, &f.body, &f.return_type)
-                    }
-                    Definition::Import(_) => docvec!["// TODO: Implement imports"],
-                })
-                .collect::<Vec<Document<'module>>>(),
-            line(),
-        )
-    }
+                .map(|f| type_to_fsharp(&f.type_))
+                .collect::<Vec<Document<'a>>>();
 
-    fn custom_type(&self, t: &CustomType<Arc<Type>>) -> Document<'module> {
-        let name = &t.name;
-        let constructors = t
-            .constructors
-            .iter()
-            .map(|c| {
-                let fields = c
-                    .arguments
-                    .iter()
-                    .map(|f| self.type_to_fsharp(&f.type_))
-                    .collect::<Vec<Document<'module>>>();
+            let c_name = c.name.clone().to_doc();
+            if fields.is_empty() {
+                c_name
+            } else {
+                docvec![c_name, " of ", join(fields, " * ".to_doc())]
+            }
+        })
+        .collect::<Vec<Document<'a>>>();
 
-                let c_name = c.name.clone().to_doc();
-                if fields.is_empty() {
-                    c_name
-                } else {
-                    docvec![c_name, " of ", join(fields, " * ".to_doc())]
-                }
-            })
-            .collect::<Vec<Document<'module>>>();
-
-        docvec![
-            "type ",
-            name,
-            " =",
-            line(),
-            join(
-                constructors.into_iter().map(|c| docvec!["| ".to_doc(), c]),
-                line()
-            )
-        ]
-    }
-
-    fn type_alias(&self, t: &TypeAlias<Arc<Type>>) -> Document<'module> {
-        docvec![
-            "type ",
-            t.alias.clone(),
-            " = ",
-            self.type_to_fsharp(&t.type_)
-        ]
-    }
-
-    fn function(
-        &self,
-        name: &'module str,
-        arguments: &[TypedArg],
-        body: &'module [TypedStatement],
-        return_type: &Type,
-    ) -> Document<'module> {
-        let args = if arguments.is_empty() {
-            "()".to_doc()
-        } else {
-            self.fun_args(arguments)
-        };
-
-        let body = self.statements(body, Some(return_type));
-        let return_type: Document<'module> = self.type_to_fsharp(return_type);
-
-        "let "
-            .to_doc()
-            .append(name)
-            .append("")
-            .append(args.group())
-            .append(": ")
-            .append(return_type)
-            .append(" = begin")
-            .append(line().append(body).nest(INDENT).group())
-            .append(line().append("end"))
-    }
-
-    fn fun_args(&self, arguments: &[TypedArg]) -> Document<'module> {
+    docvec![
+        "type ",
+        name,
+        " =",
+        line(),
         join(
-            arguments.iter().map(|arg| {
-                "(".to_doc()
-                    .append(docvec![
-                        arg.names
-                            .get_variable_name()
-                            .map(|n| n.to_doc())
-                            .unwrap_or_else(|| "_".to_doc()),
-                        ": ",
-                        self.type_to_fsharp(&arg.type_)
-                    ])
-                    .append(")")
-            }),
-            " ".to_doc(),
+            constructors.into_iter().map(|c| docvec!["| ".to_doc(), c]),
+            line()
         )
-    }
+    ]
+}
 
-    // Anon
-    fn fun(&self, args: &[TypedArg], body: &'module [TypedStatement]) -> Document<'module> {
-        "fun"
-            .to_doc()
-            .append(self.fun_args(args).append(" ->"))
-            .append(self.statements(body, None).nest(INDENT))
-            .append(break_("", " "))
-            .group()
-    }
+fn type_alias(t: &TypeAlias<Arc<Type>>) -> Document<'_> {
+    docvec!["type ", t.alias.clone(), " = ", type_to_fsharp(&t.type_)]
+}
 
-    fn statements(
-        &self,
-        statements: &'module [TypedStatement],
-        return_type: Option<&Type>,
-    ) -> Document<'module> {
-        let mut last_var = None;
-        let mut res = statements
-            .iter()
-            .map(|s| match s {
-                Statement::Expression(expr) => {
-                    last_var = None;
-                    self.expression(expr)
-                }
-                Statement::Assignment(assignment) => {
-                    let (name, value) = self.get_assignment_info(assignment);
-                    last_var = Some(name.clone());
-                    "let ".to_doc().append(name).append(" = ").append(value)
-                }
-                Statement::Use(_) => docvec!["// TODO: Implement use statements"],
-            })
-            .collect::<Vec<Document<'module>>>();
+fn function<'a>(
+    name: &'a str,
+    arguments: &'a [TypedArg],
+    body: &'a [TypedStatement],
+    return_type: &'a Type,
+) -> Document<'a> {
+    let args = if arguments.is_empty() {
+        "()".to_doc()
+    } else {
+        fun_args(arguments)
+    };
 
-        // Can't end on an assignment in F# unless it returns Unit
+    let body = statements(body, Some(return_type));
+    let return_type = type_to_fsharp(return_type);
 
-        if let Some(last_var) = last_var {
-            match return_type {
-                Some(return_type) => {
-                    if !return_type.is_nil() {
-                        res.push(last_var);
-                    }
-                }
-                None => {
+    "let "
+        .to_doc()
+        .append(name)
+        .append("")
+        .append(args.group())
+        .append(": ")
+        .append(return_type)
+        .append(" = begin")
+        .append(line().append(body).nest(INDENT).group())
+        .append(line().append("end"))
+}
+fn fun_args(arguments: &[TypedArg]) -> Document<'_> {
+    join(
+        arguments.iter().map(|arg| {
+            "(".to_doc()
+                .append(docvec![
+                    arg.names
+                        .get_variable_name()
+                        .map(|n| n.to_doc())
+                        .unwrap_or_else(|| "_".to_doc()),
+                    ": ",
+                    type_to_fsharp(&arg.type_)
+                ])
+                .append(")")
+        }),
+        " ".to_doc(),
+    )
+}
+
+fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
+    "fun"
+        .to_doc()
+        .append(fun_args(args).append(" ->"))
+        .append(statements(body, None).nest(INDENT))
+        .append(break_("", " "))
+        .group()
+}
+
+fn statements<'a>(statements: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
+    let mut last_var = None;
+    let mut res = statements
+        .iter()
+        .map(|s| match s {
+            Statement::Expression(expr) => {
+                last_var = None;
+                expression(expr)
+            }
+            Statement::Assignment(assignment) => {
+                let (name, value) = get_assignment_info(assignment);
+                last_var = Some(name.clone());
+                "let ".to_doc().append(name).append(" = ").append(value)
+            }
+            Statement::Use(_) => docvec!["// TODO: Implement use statements"],
+        })
+        .collect::<Vec<Document<'a>>>();
+
+    // Can't end on an assignment in F# unless it returns Unit
+
+    if let Some(last_var) = last_var {
+        match return_type {
+            Some(return_type) => {
+                if !return_type.is_nil() {
                     res.push(last_var);
                 }
             }
+            None => {
+                res.push(last_var);
+            }
         }
-
-        join(res, line()).group()
     }
 
-    fn unicode_escape_sequence_pattern() -> &'static Regex {
-        static PATTERN: OnceLock<Regex> = OnceLock::new();
-        PATTERN.get_or_init(|| {
-            Regex::new(r#"(\\+)(u)"#).expect("Unicode escape sequence regex cannot be constructed")
+    join(res, line()).group()
+}
+
+fn unicode_escape_sequence_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r#"(\\+)(u)"#).expect("Unicode escape sequence regex cannot be constructed")
+    })
+}
+
+fn string_inner<'a>(value: &str) -> Document<'a> {
+    let content = unicode_escape_sequence_pattern()
+        // `\\u`-s should not be affected, so that "\\u..." is not converted to
+        // "\\x...". That's why capturing groups is used to exclude cases that
+        // shouldn't be replaced.
+        .replace_all(value, |caps: &Captures<'_>| {
+            let slashes = caps.get(1).map_or("", |m| m.as_str());
+
+            if slashes.len() % 2 == 0 {
+                format!("{slashes}u")
+            } else {
+                format!("{slashes}x")
+            }
         })
-    }
+        .to_string();
+    Document::String(content)
+}
 
-    fn string_inner(&self, value: &'module str) -> Document<'module> {
-        let content = Self::unicode_escape_sequence_pattern()
-            // `\\u`-s should not be affected, so that "\\u..." is not converted to
-            // "\\x...". That's why capturing groups is used to exclude cases that
-            // shouldn't be replaced.
-            .replace_all(value, |caps: &Captures<'_>| {
-                let slashes = caps.get(1).map_or("", |m| m.as_str());
+fn string<'a>(value: &str) -> Document<'a> {
+    string_inner(value).surround("\"", "\"")
+}
 
-                if slashes.len() % 2 == 0 {
-                    format!("{slashes}u")
-                } else {
-                    format!("{slashes}x")
-                }
-            })
-            .to_string();
-        Document::String(content)
-    }
-
-    fn string(&self, value: &'module str) -> Document<'module> {
-        self.string_inner(value).surround("\"", "\"")
-    }
-    fn expression(&self, expr: &'module TypedExpr) -> Document<'module> {
-        match expr {
-            TypedExpr::Int { value, .. } => value.to_doc(),
-            TypedExpr::Float { value, .. } => value.to_doc(),
-            TypedExpr::String { value, .. } => self.string(&value.as_str()),
-            TypedExpr::Block { statements, .. } => self.block(statements),
-            TypedExpr::Pipeline {
-                assignments,
-                finally,
-                ..
-            } => self.pipeline(assignments, finally),
-            TypedExpr::Var { name, .. } => match name.as_str() {
-                "Nil" => "()".to_doc(),
-                _ => name.to_doc(),
-            },
-            TypedExpr::Fn { args, body, .. } => self.fun(args, body),
-            TypedExpr::List { elements, .. } => {
-                docvec![
-                    "[",
-                    join(elements.iter().map(|e| self.expression(e)), "; ".to_doc()),
-                    "]"
-                ]
-            }
-            TypedExpr::Call { fun, args, .. } => self
-                .expression(fun)
-                .append(" ")
-                .append(join(args.iter().map(|a| self.expression(&a.value)), " ".to_doc()).group()),
-
-            TypedExpr::BinOp {
-                left, right, name, ..
-            } => self.binop(name, left, right),
-
-            TypedExpr::Case {
-                subjects, clauses, ..
-            } => "// Pattern matching not yet implemented".to_doc(),
-
-            TypedExpr::Tuple { elems, .. } => self.tuple(elems),
-            TypedExpr::NegateInt { value, .. } => "-".to_doc().append(self.expression(value)),
-            _ => docvec!["// TODO: Implement other expression types"],
+fn expression(expr: &TypedExpr) -> Document<'_> {
+    match expr {
+        TypedExpr::Int { value, .. } => value.to_doc(),
+        TypedExpr::Float { value, .. } => value.to_doc(),
+        TypedExpr::String { value, .. } => string(value.as_str()),
+        TypedExpr::Block { statements, .. } => block(statements),
+        TypedExpr::Pipeline {
+            assignments,
+            finally,
+            ..
+        } => pipeline(assignments, finally),
+        TypedExpr::Var { name, .. } => match name.as_str() {
+            "Nil" => "()".to_doc(),
+            _ => name.to_doc(),
+        },
+        TypedExpr::Fn { args, body, .. } => fun(args, body),
+        TypedExpr::List { elements, .. } => {
+            join(elements.iter().map(expression), "; ".to_doc()).surround("[", "]")
         }
-    }
-
-    fn tuple(&self, elements: &[TypedExpr]) -> Document<'module> {
-        docvec![
-            "(",
-            join(elements.iter().map(|e| self.expression(e)), ", ".to_doc()),
-            ")"
-        ]
-    }
-
-    // fn case(&self, subjects: &Vec<TypedExpr>, clauses: &Vec<TypedClause>) -> Document<'module> {
-    //     let subjects_doc = if subjects.len() == 1 {
-    //         self.expression(
-    //             subjects
-    //                 .first()
-    //                 .expect("f# case printing of single subject"),
-    //         )
-    //     } else {
-    //         self.tuple(subjects.iter().map(|s| self.expression(s)))
-    //     };
-
-    //     let mut res = "match "
-    //         .to_doc()
-    //         .append(subjects_doc)
-    //         .append(" with")
-    //         .append(self.clauses(clauses))
-    //         .group();
-
-    //     res
-    // }
-
-    // fn clauses(&self, clauses: &Vec<TypedClause>) -> Document<'module> {
-    //     join(
-    //         clauses
-    //             .iter()
-    //             .map(|clause| "| ".to_doc().append(self.clause(clause))),
-    //         line(),
-    //     )
-    // }
-
-    // fn clause(&self, clause: &TypedClause) -> Document<'module> {
-    //     let Clause {
-    //         guard,
-    //         pattern: pat,
-    //         alternative_patterns,
-    //         then,
-    //         ..
-    //     } = clause;
-
-    //     join(
-    //         std::iter::once(pat)
-    //             .chain(alternative_patterns)
-    //             .map(|patterns| {
-    //                 let patterns_doc = if patterns.len() == 1 {
-    //                     let p = patterns.first().expect("Single pattern clause printing");
-    //                     self.pattern(p)
-    //                 } else {
-    //                     self.tuple(patterns.iter().map(|p| self.pattern(p)))
-    //                 };
-
-    //                 let guard = optional_clause_guard(guard.as_ref());
-    //                 patterns_doc.append(
-    //                     guard
-    //                         .append(" ->")
-    //                         .append(line().append(then_doc.clone()).nest(INDENT).group()),
-    //                 )
-    //             }),
-    //         "|".to_doc(),
-    //     )
-    // }
-
-    // fn optional_clause_guard<'a>(guard: Option<&'a TypedClauseGuard>) -> Document<'a> {
-    //     let guard_doc = guard.map(|guard| bare_clause_guard(guard, env));
-
-    //     let guards_count = guard_doc.iter().len() + additional_guards.len();
-    //     let guards_docs = additional_guards.into_iter().chain(guard_doc).map(|guard| {
-    //         if guards_count > 1 {
-    //             guard.surround("(", ")")
-    //         } else {
-    //             guard
-    //         }
-    //     });
-    //     let doc = join(guards_docs, " andalso ".to_doc());
-    //     if doc.is_empty() {
-    //         doc
-    //     } else {
-    //         " when ".to_doc().append(doc)
-    //     }
-    // }
-    fn binop(
-        &self,
-        name: &BinOp,
-        left: &'module TypedExpr,
-        right: &'module TypedExpr,
-    ) -> Document<'module> {
-        let operand = match name {
-            // Boolean logic
-            BinOp::And => "&&",
-            BinOp::Or => "||",
-
-            // Equality
-            BinOp::Eq => "=",
-            BinOp::NotEq => "<>",
-
-            // Order comparison
-            BinOp::LtInt | BinOp::LtFloat => "<",
-            BinOp::LtEqInt | BinOp::LtEqFloat => "<=",
-            BinOp::GtInt | BinOp::GtFloat => ">",
-            BinOp::GtEqInt | BinOp::GtEqFloat => ">=",
-
-            // Maths
-            BinOp::AddInt | BinOp::AddFloat => "+",
-            BinOp::SubInt | BinOp::SubFloat => "-",
-            BinOp::MultInt | BinOp::MultFloat => "*",
-            BinOp::DivInt | BinOp::DivFloat => "/",
-            BinOp::RemainderInt => "%",
-
-            // Strings
-            BinOp::Concatenate => "+",
-        };
-        self.expression(left)
+        TypedExpr::Call { fun, args, .. } => expression(fun)
             .append(" ")
-            .append(operand)
-            .append(" ")
-            .append(self.expression(right))
-    }
+            .append(join(args.iter().map(|a| expression(&a.value)), " ".to_doc()).group()),
 
-    fn pipeline(
-        &self,
-        _assignments: &Vec<TypedAssignment>,
-        _finally: &TypedExpr,
-    ) -> Document<'module> {
-        "//TODO: implement pipelines".to_doc()
-    }
+        TypedExpr::BinOp {
+            left, right, name, ..
+        } => binop(name, left, right),
 
-    fn block(&self, statements: &'module [TypedStatement]) -> Document<'module> {
-        "do ".to_doc().append(line()).nest(INDENT).append(
-            self.statements(statements, None)
-                .append(line().append("()"))
-                .nest(INDENT)
-                .group(),
-        )
-    }
+        TypedExpr::Case {
+            subjects, clauses, ..
+        } => "// Pattern matching not yet implemented".to_doc(),
 
-    fn get_assignment_info(
-        &self,
-        assignment: &'module TypedAssignment,
-    ) -> (Document<'module>, Document<'module>) {
-        let name = self.pattern(&assignment.pattern);
-        let value = self.expression(&assignment.value);
-        (name, value)
+        TypedExpr::Tuple { elems, .. } => tuple(elems),
+        TypedExpr::NegateInt { value, .. } => "-".to_doc().append(expression(value)),
+        _ => docvec!["// TODO: Implement other expression types"],
     }
+}
 
-    fn pattern(&self, pattern: &Pattern<Arc<Type>>) -> Document<'module> {
-        match pattern {
-            Pattern::Variable { name, .. } => name.to_doc(),
-            Pattern::Discard { name, .. } => name.to_doc(),
-            Pattern::List { elements, .. } => {
-                docvec![
-                    "[",
-                    join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc()),
-                    "]"
-                ]
-            }
-            Pattern::Tuple { elems, .. } => {
-                docvec![
-                    "(",
-                    join(elems.iter().map(|e| self.pattern(e)), ", ".to_doc()),
-                    ")"
-                ]
-            }
-            _ => docvec!["// TODO: Implement other pattern types"],
+fn tuple(elements: &[TypedExpr]) -> Document<'_> {
+    join(elements.iter().map(expression), ", ".to_doc()).surround("(", ")")
+}
+// fn case(&self, subjects: &Vec<TypedExpr>, clauses: &Vec<TypedClause>) -> Document<'a> {
+//     let subjects_doc = if subjects.len() == 1 {
+//         self.expression(
+//             subjects
+//                 .first()
+//                 .expect("f# case printing of single subject"),
+//         )
+//     } else {
+//         self.tuple(subjects.iter().map(|s| self.expression(s)))
+//     };
+
+//     let mut res = "match "
+//         .to_doc()
+//         .append(subjects_doc)
+//         .append(" with")
+//         .append(self.clauses(clauses))
+//         .group();
+
+//     res
+// }
+
+// fn clauses(&self, clauses: &Vec<TypedClause>) -> Document<'a> {
+//     join(
+//         clauses
+//             .iter()
+//             .map(|clause| "| ".to_doc().append(self.clause(clause))),
+//         line(),
+//     )
+// }
+
+// fn clause(&self, clause: &TypedClause) -> Document<'a> {
+//     let Clause {
+//         guard,
+//         pattern: pat,
+//         alternative_patterns,
+//         then,
+//         ..
+//     } = clause;
+
+//     join(
+//         std::iter::once(pat)
+//             .chain(alternative_patterns)
+//             .map(|patterns| {
+//                 let patterns_doc = if patterns.len() == 1 {
+//                     let p = patterns.first().expect("Single pattern clause printing");
+//                     self.pattern(p)
+//                 } else {
+//                     self.tuple(patterns.iter().map(|p| self.pattern(p)))
+//                 };
+
+//                 let guard = optional_clause_guard(guard.as_ref());
+//                 patterns_doc.append(
+//                     guard
+//                         .append(" ->")
+//                         .append(line().append(then_doc.clone()).nest(INDENT).group()),
+//                 )
+//             }),
+//         "|".to_doc(),
+//     )
+// }
+
+// fn optional_clause_guard<'a>(guard: Option<&'a TypedClauseGuard>) -> Document<'a> {
+//     let guard_doc = guard.map(|guard| bare_clause_guard(guard, env));
+
+//     let guards_count = guard_doc.iter().len() + additional_guards.len();
+//     let guards_docs = additional_guards.into_iter().chain(guard_doc).map(|guard| {
+//         if guards_count > 1 {
+//             guard.surround("(", ")")
+//         } else {
+//             guard
+//         }
+//     });
+//     let doc = join(guards_docs, " andalso ".to_doc());
+//     if doc.is_empty() {
+//         doc
+//     } else {
+//         " when ".to_doc().append(doc)
+//     }
+// }
+fn binop<'a>(name: &BinOp, left: &'a TypedExpr, right: &'a TypedExpr) -> Document<'a> {
+    let operand = match name {
+        // Boolean logic
+        BinOp::And => "&&",
+        BinOp::Or => "||",
+
+        // Equality
+        BinOp::Eq => "=",
+        BinOp::NotEq => "<>",
+
+        // Order comparison
+        BinOp::LtInt | BinOp::LtFloat => "<",
+        BinOp::LtEqInt | BinOp::LtEqFloat => "<=",
+        BinOp::GtInt | BinOp::GtFloat => ">",
+        BinOp::GtEqInt | BinOp::GtEqFloat => ">=",
+
+        // Maths
+        BinOp::AddInt | BinOp::AddFloat => "+",
+        BinOp::SubInt | BinOp::SubFloat => "-",
+        BinOp::MultInt | BinOp::MultFloat => "*",
+        BinOp::DivInt | BinOp::DivFloat => "/",
+        BinOp::RemainderInt => "%",
+
+        // Strings
+        BinOp::Concatenate => "+",
+    };
+    expression(left)
+        .append(" ")
+        .append(operand)
+        .append(" ")
+        .append(expression(right))
+}
+
+fn pipeline<'a>(_assignments: &'a [TypedAssignment], _finally: &'a TypedExpr) -> Document<'a> {
+    "//TODO: implement pipelines".to_doc()
+}
+
+fn block(s: &[TypedStatement]) -> Document<'_> {
+    "do ".to_doc().append(line()).nest(INDENT).append(
+        statements(s, None)
+            .append(line().append("()"))
+            .nest(INDENT)
+            .group(),
+    )
+}
+
+fn get_assignment_info(assignment: &TypedAssignment) -> (Document<'_>, Document<'_>) {
+    let name = pattern(&assignment.pattern);
+    let value = expression(&assignment.value);
+    (name, value)
+}
+
+fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
+    match p {
+        Pattern::Variable { name, .. } => name.to_doc(),
+        Pattern::Discard { name, .. } => name.to_doc(),
+        Pattern::List { elements, .. } => {
+            join(elements.iter().map(pattern), "; ".to_doc()).surround("[", "]")
         }
+        Pattern::Tuple { elems, .. } => {
+            join(elems.iter().map(pattern), ", ".to_doc()).surround("(", ")")
+        }
+        _ => docvec!["// TODO: Implement other pattern types"],
+    }
+}
+
+fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {
+    if t.is_nil() {
+        return "unit".to_doc();
     }
 
-    fn type_to_fsharp(&self, t: &Type) -> Document<'module> {
-        if t.is_nil() {
-            return "unit".to_doc();
+    match t {
+        Type::Named { name, .. } => match name.as_str() {
+            "Int" | "int" => "int".to_doc(),
+            "Float" | "float" => "float".to_doc(),
+            "String" | "string" => "string".to_doc(),
+            "Bool" | "bool" => "bool".to_doc(),
+            _ => name.to_doc(),
+        },
+        Type::Fn { args, retrn, .. } => {
+            let arg_types = args
+                .iter()
+                .map(|arg| type_to_fsharp(arg))
+                .collect::<Vec<Document<'a>>>();
+
+            let arg_types = if arg_types.is_empty() {
+                "unit".to_doc()
+            } else {
+                join(arg_types, " -> ".to_doc())
+            };
+
+            let return_type = type_to_fsharp(retrn);
+            docvec![arg_types, " -> ", return_type]
         }
-
-        match t {
-            Type::Named { name, .. } => match name.as_str() {
-                "Int" | "int" => "int".to_doc(),
-                "Float" | "float" => "float".to_doc(),
-                "String" | "string" => "string".to_doc(),
-                "Bool" | "bool" => "bool".to_doc(),
-                _ => name.to_doc(),
-            },
-            Type::Fn { args, retrn, .. } => {
-                let arg_types = args
-                    .iter()
-                    .map(|arg| self.type_to_fsharp(arg))
-                    .collect::<Vec<Document<'module>>>();
-
-                let arg_types = if arg_types.len() == 0 {
-                    "unit".to_doc()
-                } else {
-                    join(arg_types, " -> ".to_doc())
-                };
-
-                let return_type = self.type_to_fsharp(retrn);
-                docvec![arg_types, " -> ", return_type]
-            }
-            Type::Tuple { elems } => {
-                docvec![
-                    "(",
-                    join(elems.iter().map(|e| self.type_to_fsharp(e)), "; ".to_doc()),
-                    ")"
-                ]
-            }
-            Type::Var { type_ } => {
-                let type_ = type_.borrow();
-                match type_.deref() {
-                    TypeVar::Link { type_ } => self.type_to_fsharp(type_),
-                    TypeVar::Unbound { id } | TypeVar::Generic { id } => {
-                        docvec!["var_", id]
-                    }
+        Type::Tuple { elems } => {
+            join(elems.iter().map(|t| type_to_fsharp(t)), "; ".to_doc()).surround("(", ")")
+        }
+        Type::Var { type_ } => {
+            let borrowed = type_.borrow();
+            match borrowed.deref() {
+                TypeVar::Link { type_ } => type_to_fsharp(type_),
+                TypeVar::Unbound { id } | TypeVar::Generic { id } => {
+                    Document::String(format!("'{}", id))
                 }
             }
         }
     }
+}
 
-    fn module_constant(
-        &self,
-        constant: &'module ModuleConstant<Arc<Type>, EcoString>,
-    ) -> Document<'module> {
-        let name = constant.name.as_str();
-        let value = &constant.value;
+fn module_constant(constant: &ModuleConstant<Arc<Type>, EcoString>) -> Document<'_> {
+    let name = constant.name.as_str();
+    let value = &constant.value;
 
-        match value.deref().clone() {
-            Constant::Int { value, .. }
-            | Constant::Float { value, .. }
-            | Constant::String { value, .. } => {
-                docvec![
-                    "[<Literal>]",
-                    line(),
-                    "let ",
-                    name.to_doc(),
-                    " = ",
-                    value.to_doc(),
-                ]
-            }
-            _ => docvec![
+    match value.deref().clone() {
+        Constant::Int { value, .. }
+        | Constant::Float { value, .. }
+        | Constant::String { value, .. } => {
+            docvec![
+                "[<Literal>]",
+                line(),
                 "let ",
                 name.to_doc(),
                 " = ",
-                "// TODO: Return Result instead here"
-            ],
+                value.to_doc(),
+            ]
         }
+        _ => docvec![
+            "let ",
+            name.to_doc(),
+            " = ",
+            "// TODO: Return Result instead here"
+        ],
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Unsupported { feature: String, location: SrcSpan },
-}
-
-pub fn render_module(module: &TypedModule) -> super::Result<String> {
-    let document = FSharp::new(&module.name).module(module);
-
-    Ok(document.to_pretty_string(120))
 }

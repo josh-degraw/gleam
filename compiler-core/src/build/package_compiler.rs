@@ -442,7 +442,7 @@ where
         for module in modules {
             let module_name = module.name.replace("/", ".");
             let path = build_dir.join(format!("{}.fs", module_name));
-            let fsharp = crate::fsharp::FSharp::new(&module_name);
+
             let output = &crate::fsharp::render_module(&module.ast)?;
             self.io.write(&path, output)?;
         }
