@@ -98,5 +98,7 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
     }
     .infer_module(ast, line_numbers, path)
     .expect("should successfully infer root FSharp");
+
+    println!("AST:{:#?}", &ast);
     render_module(&ast).expect("should render FSharp")
 }

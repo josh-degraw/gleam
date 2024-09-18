@@ -175,10 +175,11 @@ fn fun_args(arguments: &[TypedArg]) -> Document<'_> {
     )
 }
 
+/// Anonymous functions
 fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
     "fun"
         .to_doc()
-        .append(fun_args(args).append(" ->"))
+        .append(fun_args(args).append(" -> "))
         .append(statements(body, None).nest(INDENT))
         .append(break_("", " "))
         .group()
@@ -276,10 +277,21 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
             let args = if args.is_empty() {
                 "()".to_doc()
             } else {
-                " ".to_doc()
-                    .append(join(args.iter().map(|a| expression(&a.value)), " ".to_doc()).group())
+                " ".to_doc().append(
+                    join(
+                        args.iter().map(|a| expression(&a.value).surround("(", ")")),
+                        " ".to_doc(),
+                    )
+                    .group(),
+                )
             };
-            expression(fun).append(args).group()
+            let fun_expr = expression(fun);
+            // If for some reason we're doing an IIFE, we need to wrap it in parens
+            let fun_expr = match fun.as_ref() {
+                TypedExpr::Fn { .. } => fun_expr.surround("(", ")"),
+                _ => fun_expr,
+            };
+            fun_expr.append(args).group()
         }
 
         TypedExpr::BinOp {
@@ -554,9 +566,8 @@ fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {
             let borrowed = type_.borrow();
             match borrowed.deref() {
                 TypeVar::Link { type_ } => type_to_fsharp(type_),
-                TypeVar::Unbound { id } | TypeVar::Generic { id } => {
-                    Document::String(format!("'t{}", id))
-                }
+                TypeVar::Unbound { id } => Document::String(format!("'u{}", id)),
+                TypeVar::Generic { id } => Document::String(format!("'t{}", id)),
             }
         }
     }

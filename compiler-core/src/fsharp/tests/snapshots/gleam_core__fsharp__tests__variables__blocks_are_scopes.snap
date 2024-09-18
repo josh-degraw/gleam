@@ -6,9 +6,9 @@ expression: "\npub fn main() {\n  let x = 1\n  {\n    let x = 2\n  }\n  x\n}\n"
 module rec my.``mod``
 let main(): int = begin
     let x = 1
-    do 
+    begin
         let x = 2
         x
-        ()
+    end
     x
 end
