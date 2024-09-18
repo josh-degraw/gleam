@@ -16,6 +16,7 @@ mod consts;
 mod functions;
 mod numbers;
 mod panic;
+mod pipes;
 mod strings;
 mod todo;
 mod variables;

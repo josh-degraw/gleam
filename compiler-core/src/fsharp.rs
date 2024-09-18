@@ -433,8 +433,20 @@ fn binop<'a>(name: &BinOp, left: &'a TypedExpr, right: &'a TypedExpr) -> Documen
         .append(expression(right))
 }
 
-fn pipeline<'a>(_assignments: &'a [TypedAssignment], _finally: &'a TypedExpr) -> Document<'a> {
-    "//TODO: implement pipelines".to_doc()
+// Implement pipeline (|>) expressions
+
+fn pipeline<'a>(assignments: &'a [TypedAssignment], finally: &'a TypedExpr) -> Document<'a> {
+    let mut documents = Vec::with_capacity((assignments.len() + 1) * 3);
+
+    for a in assignments {
+        let (name, value) = get_assignment_info(a);
+
+        documents.push("let ".to_doc().append(name).append(" = ").append(value));
+        documents.push(line());
+    }
+
+    documents.push(expression(finally));
+    documents.to_doc()
 }
 
 fn block(s: &[TypedStatement]) -> Document<'_> {
@@ -442,15 +454,37 @@ fn block(s: &[TypedStatement]) -> Document<'_> {
         let statement = s.first().expect("single-line block statement");
         match statement {
             TypedStatement::Expression(expr) => expression(expr),
+            Statement::Assignment(assignment) => {
+                let (name, value) = get_assignment_info(assignment);
+                "let "
+                    .to_doc()
+                    .append(name)
+                    .append(" = ")
+                    .append(value.clone().to_doc())
+                    .append(line())
+                    .append(value.to_doc())
+            }
             _ => docvec!["// TODO: Implement other statement types"],
         }
     } else {
-        "do ".to_doc().append(line()).nest(INDENT).append(
-            statements(s, None)
-                .append(line().append("()"))
+        // To ensure scoping remains valid, if the return type is Nil, we need to
+        // wrap the statements in a do block so that the result is discarded
+        let final_statement = s.last().expect("final type");
+        if final_statement.type_().is_nil() {
+            "do ".to_doc().append(line()).nest(INDENT).append(
+                statements(s, None)
+                    .append(line().append("()"))
+                    .nest(INDENT)
+                    .group(),
+            )
+        } else {
+            // Otherwise we should treat it like a normal sequence of statments
+            // TODO: Make sure this works if the final statement is an assignment
+
+            statements(s, Some(&final_statement.type_()))
                 .nest(INDENT)
-                .group(),
-        )
+                .group()
+        }
     }
 }
 

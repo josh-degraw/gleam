@@ -1,0 +1,13 @@
+---
+source: compiler-core/src/fsharp/tests/pipes.rs
+assertion_line: 5
+expression: "\npub fn add(x, y) { x + y }\n\npub fn main() {\n  1 |> add(2)\n}"
+---
+module rec my.``mod``
+let add(x: int) (y: int): int = begin
+    x + y
+end
+let main(): int = begin
+    let _pipe = 1
+    add _pipe 2
+end
