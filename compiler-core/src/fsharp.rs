@@ -294,6 +294,7 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         TypedExpr::NegateInt { value, .. } => "-".to_doc().append(expression(value)),
 
         TypedExpr::Todo { message, .. } => todo(message),
+        TypedExpr::Panic { message, .. } => panic_(message),
 
         _ => docvec!["// TODO: Implement other expression types"],
     }
@@ -305,6 +306,15 @@ fn todo(message: &Option<Box<TypedExpr>>) -> Document<'_> {
             .to_doc()
             .append(expression(message.as_ref()).surround("(", ")")),
         None => "failwith \"Not implemented\"".to_doc(),
+    }
+}
+
+fn panic_(message: &Option<Box<TypedExpr>>) -> Document<'_> {
+    match message {
+        Some(message) => "failwith "
+            .to_doc()
+            .append(expression(message.as_ref()).surround("(", ")")),
+        None => "failwith \"Panic encountered\"".to_doc(),
     }
 }
 

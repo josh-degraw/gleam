@@ -15,6 +15,7 @@ use super::render_module;
 mod consts;
 mod functions;
 mod numbers;
+mod panic;
 mod strings;
 mod todo;
 mod variables;
