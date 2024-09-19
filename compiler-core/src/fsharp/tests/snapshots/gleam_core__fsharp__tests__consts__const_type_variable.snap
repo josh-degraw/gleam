@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/consts.rs
+assertion_line: 40
+expression: "\nfn identity(a: a) -> a {\n  a\n}\n\nconst id: fn(a) -> a = identity\n"
+---
+module rec my.``mod``
+let private identity (a: 't8): 't8 = begin
+    a
+end
+let private id = identity

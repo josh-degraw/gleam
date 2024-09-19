@@ -27,7 +27,10 @@ pub fn render_module(module: &TypedModule) -> super::Result<String> {
 }
 
 fn module_to_doc(module: &TypedModule) -> Document<'_> {
-    join(vec![module_declaration(module), contents(module)], line())
+    join(
+        vec![module_declaration(module), module_contents(module)],
+        line(),
+    )
 }
 
 fn module_declaration(module: &TypedModule) -> Document<'_> {
@@ -79,7 +82,7 @@ fn is_reserved_word(name: &str) -> bool {
     )
 }
 
-fn contents<'a>(module: &'a TypedModule) -> Document<'a> {
+fn module_contents<'a>(module: &'a TypedModule) -> Document<'a> {
     join(
         module
             .definitions
@@ -88,15 +91,20 @@ fn contents<'a>(module: &'a TypedModule) -> Document<'a> {
                 Definition::CustomType(t) => custom_type(t),
                 Definition::TypeAlias(t) => type_alias(t),
                 Definition::ModuleConstant(c) => module_constant(c),
-                Definition::Function(f) => {
-                    let name = f.name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
-                    function(name, &f.arguments, &f.body, &f.return_type)
-                }
+                Definition::Function(f) => function(f),
                 Definition::Import(_) => docvec!["// TODO: Implement imports"],
             })
             .collect::<Vec<Document<'a>>>(),
         line(),
     )
+}
+
+fn map_publicity<'a>(publicity: Publicity) -> Document<'a> {
+    match publicity {
+        Publicity::Public => "".to_doc(),
+        Publicity::Internal { .. } => "internal ".to_doc(),
+        Publicity::Private => "private ".to_doc(),
+    }
 }
 
 fn custom_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
@@ -108,7 +116,20 @@ fn custom_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
             let fields = c
                 .arguments
                 .iter()
-                .map(|f| type_to_fsharp(&f.type_))
+                .map(|r| {
+                    let mapped = type_to_fsharp(&r.type_);
+                    // Need to wrap in parens if it's a function type
+                    let type_ = if r.type_.is_fun() {
+                        mapped.surround("(", ")")
+                    } else {
+                        mapped
+                    };
+
+                    match &r.label {
+                        Some((_, ref label)) => docvec![label, ": ", type_],
+                        None => type_,
+                    }
+                })
                 .collect::<Vec<Document<'a>>>();
 
             let c_name = c.name.clone().to_doc();
@@ -120,9 +141,23 @@ fn custom_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
         })
         .collect::<Vec<Document<'a>>>();
 
+    let type_params = join(
+        t.typed_parameters.iter().map(|tp| type_to_fsharp(tp)),
+        ", ".to_doc(),
+    )
+    .surround("<", ">");
+
+    let type_params = if !t.typed_parameters.is_empty() {
+        type_params
+    } else {
+        "".to_doc()
+    };
+
     docvec![
         "type ",
+        map_publicity(t.publicity),
         name,
+        type_params,
         " =",
         line(),
         join(
@@ -133,15 +168,25 @@ fn custom_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
 }
 
 fn type_alias(t: &TypeAlias<Arc<Type>>) -> Document<'_> {
-    docvec!["type ", t.alias.clone(), " = ", type_to_fsharp(&t.type_)]
+    docvec![
+        "type ",
+        map_publicity(t.publicity),
+        t.alias.clone(),
+        " = ",
+        type_to_fsharp(&t.type_)
+    ]
 }
 
-fn function<'a>(
-    name: &'a str,
-    arguments: &'a [TypedArg],
-    body: &'a [TypedStatement],
-    return_type: &'a Type,
-) -> Document<'a> {
+fn function(f: &TypedFunction) -> Document<'_> {
+    let Function {
+        name,
+        arguments,
+        body,
+        return_type,
+        ..
+    } = f;
+
+    let name = name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
     let args = if arguments.is_empty() {
         "()".to_doc()
     } else {
@@ -151,33 +196,36 @@ fn function<'a>(
     let body = statements(body, Some(return_type));
     let return_type = type_to_fsharp(return_type);
 
-    "let "
-        .to_doc()
-        .append(name)
-        .append("")
-        .append(args.group())
-        .append(": ")
-        .append(return_type)
-        .append(" = begin")
-        .append(line().append(body).nest(INDENT).group())
-        .append(line().append("end"))
+    docvec![
+        "let ",
+        map_publicity(f.publicity),
+        name,
+        " ",
+        args,
+        ": ",
+        return_type,
+        " = begin",
+        line().append(body).nest(INDENT).group(),
+        line(),
+        "end"
+    ]
 }
 fn fun_args(arguments: &[TypedArg]) -> Document<'_> {
     join(
         arguments.iter().map(|arg| {
-            "(".to_doc()
-                .append(docvec![
-                    arg.names
-                        .get_variable_name()
-                        .map(|n| n.to_doc())
-                        .unwrap_or_else(|| "_".to_doc()),
-                    ": ",
-                    type_to_fsharp(&arg.type_)
-                ])
-                .append(")")
+            docvec![
+                arg.names
+                    .get_variable_name()
+                    .map(|n| n.to_doc())
+                    .unwrap_or_else(|| "_".to_doc()),
+                ": ",
+                type_to_fsharp(&arg.type_)
+            ]
+            .surround("(", ")")
         }),
         " ".to_doc(),
     )
+    .group()
 }
 
 /// Anonymous functions
@@ -880,22 +928,242 @@ fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {
 
 fn module_constant(constant: &ModuleConstant<Arc<Type>, EcoString>) -> Document<'_> {
     let name = constant.name.as_str();
-    let value = &constant.value;
 
-    let binding = "[<Literal>]"
-        .to_doc()
-        .append(line())
-        .append("let ")
-        .append(name.to_doc())
-        .append(" = ");
-    match value.deref().clone() {
-        Constant::Int { value, .. } | Constant::Float { value, .. } => {
-            binding.append(value.to_doc())
+    match constant.value.deref() {
+        Constant::Int { .. } | Constant::Float { .. } | Constant::String { .. } => {
+            docvec![
+                "[<Literal>]",
+                line(),
+                "let ",
+                map_publicity(constant.publicity),
+                name,
+                " = ",
+                constant_expression(&constant.value)
+            ]
         }
-        Constant::String { value, .. } => binding.append(string(value.as_str())),
-        _ => binding
-            .append("// TODO: haven't figured out how to handle this constant type yet".to_doc()),
+        _ => docvec![
+            "let ",
+            map_publicity(constant.publicity),
+            name,
+            " = ",
+            constant_expression(&constant.value)
+        ],
     }
+    // match value.deref().clone() {
+    //     Constant::Int { value, .. } | Constant::Float { value, .. } => {
+    //         annotation.append(binding.append(value.to_doc()))
+    //     }
+    //     Constant::String { value, .. } => annotation.append(binding.append(string(value.as_str()))),
+    //     Constant::Tuple { elements, .. } => {
+    //         binding.append(tuple(elements.iter().map(inline_constant)))
+    //     }
+    //     Constant::List { elements, .. } => {
+    //         binding.append(join(elements.iter().map(inline_constant), "; ".to_doc()))
+    //     }
+    //     Constant::Record {
+    //         location,
+    //         module,
+    //         name,
+    //         args,
+    //         tag,
+    //         type_,
+    //         field_map,
+    //     } => {
+    //         println!("module: {:#?}", module);
+    //         println!("name: {:#?}", name);
+    //         println!("args: {:#?}", args);
+    //         println!("tag: {:#?}", tag);
+    //         println!("type_: {:#?}", type_);
+    //         println!("field_map: {:#?}", field_map);
+    //         todo!()
+    //     }
+    //     Constant::BitArray { location, segments } => todo!(),
+    //     Constant::Var {
+    //         location,
+    //         module,
+    //         name,
+    //         constructor,
+    //         type_,
+    //     } => todo!(),
+    //     Constant::StringConcatenation {
+    //         location,
+    //         left,
+    //         right,
+    //     } => todo!(),
+    //     Constant::Invalid { location, type_ } => todo!(),
+    //}
+}
+
+pub(crate) fn constant_expression<'a>(expression: &'a TypedConstant) -> Document<'a> {
+    match expression {
+        Constant::Int { value, .. } => value.to_doc(),
+        Constant::Float { value, .. } => value.to_doc(),
+        Constant::String { value, .. } => string(value),
+        Constant::Tuple { elements, .. } => tuple(elements.iter().map(|e| constant_expression(e))),
+
+        Constant::List { elements, .. } => {
+            //tracker.list_used = true;
+            let list = list(elements.iter().map(|e| constant_expression(e)));
+
+            list
+            // match context {
+            //     Context::Constant => Ok(docvec!["/* @__PURE__ */ ", list]),
+            //     Context::Function => Ok(list),
+            // }
+        }
+
+        Constant::Record { type_, name, .. } if type_.is_bool() && name == "True" => {
+            "true".to_doc()
+        }
+        Constant::Record { type_, name, .. } if type_.is_bool() && name == "False" => {
+            "false".to_doc()
+        }
+        Constant::Record { type_, .. } if type_.is_nil() => "()".to_doc(),
+
+        Constant::Record {
+            args,
+            module,
+            name,
+            tag,
+            type_,
+            ..
+        } => {
+            // if type_.is_result() {
+            //     if tag == "Ok" {
+            //         tracker.ok_used = true;
+            //     } else {
+            //         tracker.error_used = true;
+            //     }
+            // }
+
+            // If there's no arguments and the type is a function that takes
+            // arguments then this is the constructor being referenced, not the
+            // function being called.
+            if let Some(arity) = type_.fn_arity() {
+                if args.is_empty() && arity != 0 {
+                    let arity = arity as u16;
+                    return record_constructor(type_.clone(), None, name, arity);
+                }
+            }
+
+            let field_values: Vec<_> = args
+                .iter()
+                .map(|arg| constant_expression(&arg.value))
+                .collect(); //.try_collect()
+                            //.expect("failed to collect field values");
+
+            construct_record(
+                module.as_ref().map(|(module, _)| module.as_str()),
+                name,
+                field_values,
+            )
+            // match context {
+            //     Context::Constant => Ok(docvec!["/* @__PURE__ */ ", constructor]),
+            //     Context::Function => Ok(constructor),
+            // }
+        }
+
+        Constant::BitArray { segments, .. } => {
+            todo!()
+            // let bit_array = bit_array(segments, |expr| constant_expression(expr))?;
+            // match context {
+            //     Context::Constant => Ok(docvec!["/* @__PURE__ */ ", bit_array]),
+            //     Context::Function => Ok(bit_array),
+            // }
+        }
+
+        Constant::Var { name, module, .. } => {
+            match module {
+                None => santitize_name(name),
+                Some((module, _)) => {
+                    // JS keywords can be accessed here, but we must escape anyway
+                    // as we escape when exporting such names in the first place,
+                    // and the imported name has to match the exported name.
+                    docvec![module, ".", santitize_name(name)]
+                }
+            }
+        }
+
+        Constant::StringConcatenation { left, right, .. } => {
+            let left = constant_expression(left);
+            let right = constant_expression(right);
+            docvec!(left, " + ", right)
+        }
+
+        Constant::Invalid { .. } => panic!("invalid constants should not reach code generation"),
+    }
+}
+
+fn record_constructor<'a>(
+    type_: Arc<Type>,
+    qualifier: Option<&'a str>,
+    name: &'a str,
+    arity: u16,
+) -> Document<'a> {
+    // if qualifier.is_none() && type_.is_result_constructor() {
+    //     if name == "Ok" {
+    //         tracker.ok_used = true;
+    //     } else if name == "Error" {
+    //         tracker.error_used = true;
+    //     }
+    // }
+    if type_.is_bool() && name == "True" {
+        "true".to_doc()
+    } else if type_.is_bool() {
+        "false".to_doc()
+    } else if type_.is_nil() {
+        "undefined".to_doc()
+    } else if arity == 0 {
+        match qualifier {
+            Some(module) => docvec![module, ".", name, "()"],
+            None => docvec![name, "()"],
+        }
+    } else {
+        let vars = (0..arity).map(|i| Document::String(format!("var{i}")));
+        let body = construct_record(qualifier, name, vars.clone());
+
+        docvec!("fun ", wrap_args(vars), " -> begin", break_("", " "), body)
+            .nest(INDENT)
+            .append(break_("", " "))
+            .group()
+            .append("end")
+    }
+}
+fn wrap_args<'a>(args: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
+    break_("", "")
+        .append(join(args, break_(",", ", ")))
+        .nest(INDENT)
+        .append(break_("", ""))
+        .surround("(", ")")
+        .group()
+}
+
+fn construct_record<'a>(
+    module: Option<&'a str>,
+    name: &'a str,
+    arguments: impl IntoIterator<Item = Document<'a>>,
+) -> Document<'a> {
+    let mut any_arguments = false;
+    let arguments = join(
+        arguments.into_iter().inspect(|_| {
+            any_arguments = true;
+        }),
+        break_(",", ", "),
+    );
+    let arguments = docvec![break_("", ""), arguments].nest(INDENT);
+    let name = if let Some(module) = module {
+        docvec![module, ".", name]
+    } else {
+        name.to_doc()
+    };
+    if any_arguments {
+        docvec![name, "(", arguments, break_(",", ""), ")"].group()
+    } else {
+        docvec![name, "()"]
+    }
+}
+fn list<'a>(elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
+    join(elements, "; ".to_doc()).group().surround("[", "]")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

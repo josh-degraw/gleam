@@ -155,7 +155,7 @@ impl Type {
     }
 
     #[must_use]
-    fn is_fun(&self) -> bool {
+    pub fn is_fun(&self) -> bool {
         match self {
             Self::Fn { .. } => true,
             Type::Var { type_ } => type_.borrow().is_fun(),
