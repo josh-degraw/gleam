@@ -176,6 +176,7 @@ impl<'a> FSharpApp<'a> {
   </PropertyGroup>
 
   <ItemGroup Label="Modules">
+      <Compile Include="gleam_prelude.fs" />
 {}
   </ItemGroup>
 
@@ -206,6 +207,10 @@ impl<'a> FSharpApp<'a> {
 
         // Write project file
         writer.write(&project_file_path, &project_file_content)?;
+
+        // Write prelude file
+        let prelude_file_path = self.build_dir.join("gleam_prelude.fs");
+        writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
 
         // Write individual module files
         for module in modules {

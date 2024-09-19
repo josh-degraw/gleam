@@ -15,6 +15,7 @@ use std::{
 };
 
 const INDENT: isize = 4;
+pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
 pub fn render_module(module: &TypedModule) -> super::Result<String> {
     let document = module_to_doc(module);
@@ -710,6 +711,9 @@ fn get_assignment_info(assignment: &TypedAssignment) -> (Document<'_>, Document<
 
 fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
     match p {
+        Pattern::Int { value, .. } => value.to_doc(),
+        Pattern::Float { value, .. } => value.to_doc(),
+        Pattern::String { value, .. } => string(value.as_str()),
         Pattern::Variable { name, .. } => name.to_doc(),
         Pattern::Discard { name, .. } => name.to_doc(),
         Pattern::List { elements, .. } => {
@@ -718,6 +722,62 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         Pattern::Tuple { elems, .. } => {
             join(elems.iter().map(pattern), ", ".to_doc()).surround("(", ")")
         }
+        Pattern::StringPrefix {
+            left_side_string,
+            right_side_assignment,
+            //left_side_assignment,
+            ..
+        } => {
+            let right = match right_side_assignment {
+                AssignName::Variable(right) => right.to_doc(),
+                AssignName::Discard(_) => "_".to_doc(),
+            };
+
+            "``gleam prelude``.Prefix "
+                .to_doc()
+                .append(string(left_side_string))
+                .append(" ")
+                .append(right)
+
+            // string(left_side_string).append(" + ").append(right)
+
+            // match left_side_assignment {
+            //     Some((left_name, _)) => {
+            //         // "wibble" as prefix <> rest
+            //         //             ^^^^^^^^^ In case the left prefix of the pattern matching is given an alias
+            //         //                       we bind it to a local variable so that it can be correctly
+            //         //                       referenced inside the case branch.
+            //         //
+            //         // <<Prefix:3/binary, Rest/binary>> when Prefix =:= <<"wibble">>
+            //         //   ^^^^^^^^                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            //         //   since F#'s binary pattern matching doesn't allow direct string assignment
+            //         //   to variables within the pattern, we first match the expected prefix length in
+            //         //   bytes, then use a guard clause to verify the content.
+            //         //
+            //         let name = left_name.to_doc();
+            //         //guards.push(docvec![name.clone(), " =:= ", string(left_side_string)]);
+            //         docvec![
+            //             "<<",
+            //             name.clone(),
+            //             ":",
+            //             string_length_utf8_bytes(left_side_string),
+            //             "/binary",
+            //             ", ",
+            //             right,
+            //             "/binary>>",
+            //         ]
+            //     }
+            //     None => docvec![
+            //         "<<\"",
+            //         string_inner(left_side_string),
+            //         "\"/utf8",
+            //         ", ",
+            //         right,
+            //         "/binary>>"
+            //     ],
+            // }
+        }
+
         _ => docvec!["// TODO: Implement other pattern types"],
     }
 }
