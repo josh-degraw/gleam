@@ -160,6 +160,20 @@ pub fn go(x) {
 }
 
 #[test]
+fn string_prefix_with_guard() {
+    assert_fsharp!(
+        r#"
+pub fn go(x) {
+  case x {
+    "Hello, " <> name if name == "Dude" -> name
+    _ -> "Unknown"
+  }
+}
+"#,
+    );
+}
+
+#[test]
 fn string_prefix_assignment() {
     assert_fsharp!(
         r#"

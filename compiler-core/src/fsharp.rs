@@ -17,6 +17,10 @@ use std::{
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
+mod prelude_functions {
+    pub const STRING_PATTERN_PREFIX: &str = "Gleam__codegen__prefix";
+}
+
 pub fn render_module(module: &TypedModule) -> super::Result<String> {
     let document = module_to_doc(module);
     Ok(document.to_pretty_string(120))
@@ -505,88 +509,60 @@ fn bare_clause_guard(guard: &TypedClauseGuard) -> Document<'_> {
         ClauseGuard::Not { expression, .. } => docvec!["not ", bare_clause_guard(expression)],
 
         ClauseGuard::Or { left, right, .. } => clause_guard(left)
-            .append(" orelse ")
+            .append(" || ")
             .append(clause_guard(right)),
 
         ClauseGuard::And { left, right, .. } => clause_guard(left)
-            .append(" andalso ")
+            .append(" && ")
             .append(clause_guard(right)),
 
-        ClauseGuard::Equals { left, right, .. } => clause_guard(left)
-            .append(" =:= ")
-            .append(clause_guard(right)),
+        ClauseGuard::Equals { left, right, .. } => {
+            clause_guard(left).append(" = ").append(clause_guard(right))
+        }
 
         ClauseGuard::NotEquals { left, right, .. } => clause_guard(left)
-            .append(" =/= ")
+            .append(" <> ")
             .append(clause_guard(right)),
 
-        ClauseGuard::GtInt { left, right, .. } => {
+        ClauseGuard::GtInt { left, right, .. } | ClauseGuard::GtFloat { left, right, .. } => {
             clause_guard(left).append(" > ").append(clause_guard(right))
         }
 
-        ClauseGuard::GtEqInt { left, right, .. } => clause_guard(left)
-            .append(" >= ")
-            .append(clause_guard(right)),
+        ClauseGuard::GtEqInt { left, right, .. } | ClauseGuard::GtEqFloat { left, right, .. } => {
+            clause_guard(left)
+                .append(" >= ")
+                .append(clause_guard(right))
+        }
 
-        ClauseGuard::LtInt { left, right, .. } => {
+        ClauseGuard::LtInt { left, right, .. } | ClauseGuard::LtFloat { left, right, .. } => {
             clause_guard(left).append(" < ").append(clause_guard(right))
         }
 
-        ClauseGuard::LtEqInt { left, right, .. } => clause_guard(left)
-            .append(" =< ")
-            .append(clause_guard(right)),
-
-        ClauseGuard::GtFloat { left, right, .. } => {
-            clause_guard(left).append(" > ").append(clause_guard(right))
+        ClauseGuard::LtEqInt { left, right, .. } | ClauseGuard::LtEqFloat { left, right, .. } => {
+            clause_guard(left)
+                .append(" =< ")
+                .append(clause_guard(right))
         }
 
-        ClauseGuard::GtEqFloat { left, right, .. } => clause_guard(left)
-            .append(" >= ")
-            .append(clause_guard(right)),
-
-        ClauseGuard::LtFloat { left, right, .. } => {
-            clause_guard(left).append(" < ").append(clause_guard(right))
-        }
-
-        ClauseGuard::LtEqFloat { left, right, .. } => clause_guard(left)
-            .append(" =< ")
-            .append(clause_guard(right)),
-
-        ClauseGuard::AddInt { left, right, .. } => {
+        ClauseGuard::AddInt { left, right, .. } | ClauseGuard::AddFloat { left, right, .. } => {
             clause_guard(left).append(" + ").append(clause_guard(right))
         }
 
-        ClauseGuard::AddFloat { left, right, .. } => {
-            clause_guard(left).append(" + ").append(clause_guard(right))
-        }
-
-        ClauseGuard::SubInt { left, right, .. } => {
+        ClauseGuard::SubInt { left, right, .. } | ClauseGuard::SubFloat { left, right, .. } => {
             clause_guard(left).append(" - ").append(clause_guard(right))
         }
 
-        ClauseGuard::SubFloat { left, right, .. } => {
-            clause_guard(left).append(" - ").append(clause_guard(right))
-        }
-
-        ClauseGuard::MultInt { left, right, .. } => {
+        ClauseGuard::MultInt { left, right, .. } | ClauseGuard::MultFloat { left, right, .. } => {
             clause_guard(left).append(" * ").append(clause_guard(right))
         }
 
-        ClauseGuard::MultFloat { left, right, .. } => {
-            clause_guard(left).append(" * ").append(clause_guard(right))
-        }
-
-        ClauseGuard::DivInt { left, right, .. } => clause_guard(left)
-            .append(" div ")
-            .append(clause_guard(right)),
-
-        ClauseGuard::DivFloat { left, right, .. } => {
+        ClauseGuard::DivInt { left, right, .. } | ClauseGuard::DivFloat { left, right, .. } => {
             clause_guard(left).append(" / ").append(clause_guard(right))
         }
 
-        ClauseGuard::RemainderInt { left, right, .. } => clause_guard(left)
-            .append(" rem ")
-            .append(clause_guard(right)),
+        ClauseGuard::RemainderInt { left, right, .. } => {
+            clause_guard(left).append(" % ").append(clause_guard(right))
+        }
 
         // TODO: Only local variables are supported and the typer ensures that all
         // ClauseGuard::Vars are local variables
@@ -599,9 +575,22 @@ fn bare_clause_guard(guard: &TypedClauseGuard) -> Document<'_> {
         // } => tuple_index_inline(container, index.expect("Unable to find index") + 1),
 
         // ClauseGuard::ModuleSelect { literal, .. } => const_inline(literal),
-
-        // ClauseGuard::Constant(constant) => const_inline(constant),
+        ClauseGuard::Constant(c) => inline_constant(c),
         _ => docvec!["// TODO: Implement other guard types"],
+    }
+}
+
+fn inline_constant<'a>(c: &Constant<Arc<Type>, EcoString>) -> Document<'a> {
+    match c {
+        Constant::Int { value, .. } => value.to_doc(),
+        Constant::Float { value, .. } => value.to_doc(),
+        Constant::String { value, .. } => string(value.as_str()),
+        Constant::Tuple { elements, .. } => tuple(elements.iter().map(inline_constant)),
+        Constant::List { elements, .. } => {
+            join(elements.iter().map(inline_constant), "; ".to_doc()).surround("[", "]")
+        }
+
+        _ => docvec!["// TODO: Implement other inline_constant types"],
     }
 }
 
@@ -726,7 +715,7 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         Pattern::StringPrefix {
             left_side_string,
             right_side_assignment,
-            //left_side_assignment,
+            left_side_assignment,
             ..
         } => {
             let right = match right_side_assignment {
@@ -735,8 +724,9 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             };
 
             // Use an active pattern helper function defined in prelude.fs
-            "``gleam Prefix`` "
+            prelude_functions::STRING_PATTERN_PREFIX
                 .to_doc()
+                .append(" ")
                 .append(string(left_side_string))
                 .append(" ")
                 .append(right)
