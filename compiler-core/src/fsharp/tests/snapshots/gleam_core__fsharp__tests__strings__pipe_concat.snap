@@ -1,13 +1,13 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 417
+assertion_line: 431
 expression: "\nfn id(x) {\n  x\n}\n\npub fn main() {\n  { \"\" |> id } <> { \"\" |> id }\n}\n"
 ---
 module rec my.``mod``
-let id(x: 'u8): 'u8 = begin
+let private id (x: 'u8): 'u8 = begin
     x
 end
-let main(): string = begin
+let main (): string = begin
     begin
         let _pipe = ""
         id (_pipe)

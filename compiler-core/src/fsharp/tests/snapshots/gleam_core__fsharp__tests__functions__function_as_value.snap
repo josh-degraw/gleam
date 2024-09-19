@@ -4,9 +4,9 @@ assertion_line: 5
 expression: "\nfn other() {\n  Nil\n}\n\npub fn main() {\n  other\n}\n"
 ---
 module rec my.``mod``
-let other(): unit = begin
+let private other (): unit = begin
     ()
 end
-let main(): unit -> unit = begin
+let main (): unit -> unit = begin
     other
 end

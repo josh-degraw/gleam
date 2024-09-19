@@ -4,7 +4,7 @@ assertion_line: 5
 expression: "\npub fn main() {\n  100_000\n  100_000.00101\n}\n"
 ---
 module rec my.``mod``
-let main(): float = begin
+let main (): float = begin
     100_000
     100_000.00101
 end

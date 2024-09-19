@@ -4,10 +4,10 @@ assertion_line: 50
 expression: "fn id(a) { a }\npub fn main() {\n  {\n    let x = 1\n    x\n  }\n  |> id\n}"
 ---
 module rec my.``mod``
-let id(a: 'u8): 'u8 = begin
+let private id (a: 'u8): 'u8 = begin
     a
 end
-let main(): int = begin
+let main (): int = begin
     let _pipe = begin
         let x = 1
         x

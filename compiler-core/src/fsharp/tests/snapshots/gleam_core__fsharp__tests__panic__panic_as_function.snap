@@ -4,10 +4,10 @@ assertion_line: 27
 expression: "\npub fn retstring() {\n  \"wibble\"\n}\npub fn main() {\n  panic as { retstring() <> \"wobble\" }\n}\n"
 ---
 module rec my.``mod``
-let retstring(): string = begin
+let retstring (): string = begin
     "wibble"
 end
-let main(): 'u10 = begin
+let main (): 'u10 = begin
     failwith (begin
         retstring() + "wobble"
     end)

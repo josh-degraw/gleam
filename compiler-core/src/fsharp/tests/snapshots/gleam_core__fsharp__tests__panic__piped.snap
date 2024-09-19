@@ -4,7 +4,7 @@ assertion_line: 42
 expression: "\npub fn main() {\n  \"lets\"\n  |> panic\n}\n    "
 ---
 module rec my.``mod``
-let main(): 'u10 = begin
+let main (): 'u10 = begin
     let _pipe = "lets"
     failwith "Panic encountered" (_pipe)
 end

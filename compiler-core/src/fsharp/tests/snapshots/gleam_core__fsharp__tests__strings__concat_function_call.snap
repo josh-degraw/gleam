@@ -1,12 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 371
+assertion_line: 385
 expression: "\nfn x() {\n  \"\"\n}\n\npub fn go() {\n  x() <> x()\n}\n"
 ---
 module rec my.``mod``
-let x(): string = begin
+let private x (): string = begin
     ""
 end
-let go(): string = begin
+let go (): string = begin
     x() + x()
 end

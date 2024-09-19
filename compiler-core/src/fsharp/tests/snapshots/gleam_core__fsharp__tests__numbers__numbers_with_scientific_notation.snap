@@ -5,18 +5,18 @@ expression: "\nconst i = 100.001e523\nconst j = -100.001e-523\n\nconst k = 100.0
 ---
 module rec my.``mod``
 [<Literal>]
-let i = 100.001e523
+let private i = 100.001e523
 [<Literal>]
-let j = -100.001e-523
+let private j = -100.001e-523
 [<Literal>]
-let k = 100.001e1_230
+let private k = 100.001e1_230
 [<Literal>]
-let l = -100.001e-1_230
+let private l = -100.001e-1_230
 [<Literal>]
-let m = 100.001e123_456_789
+let private m = 100.001e123_456_789
 [<Literal>]
-let n = -100.001e-123_456_789
-let main(): float = begin
+let private n = -100.001e-123_456_789
+let main (): float = begin
     i
     j
     k

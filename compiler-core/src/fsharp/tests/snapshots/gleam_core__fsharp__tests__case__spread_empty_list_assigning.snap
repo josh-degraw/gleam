@@ -4,7 +4,7 @@ assertion_line: 108
 expression: "\npub fn main() {\n  case [] {\n    [..rest] -> rest\n  }\n}\n"
 ---
 module rec my.``mod``
-let main(): list<'u10> = begin
+let main (): list<'u10> = begin
     match [] with
     | []::rest ->
         rest

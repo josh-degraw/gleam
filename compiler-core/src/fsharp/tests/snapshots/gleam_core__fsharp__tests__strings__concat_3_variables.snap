@@ -4,6 +4,6 @@ assertion_line: 139
 expression: "\npub fn go(x, y, z) {\n  x <> y <> z\n}\n"
 ---
 module rec my.``mod``
-let go(x: string) (y: string) (z: string): string = begin
+let go (x: string) (y: string) (z: string): string = begin
     x + y + z
 end

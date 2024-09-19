@@ -4,7 +4,7 @@ assertion_line: 36
 expression: "\nfn go() {\n  let x = {\n    {\n      3\n    }\n  }\n  x\n}\n"
 ---
 module rec my.``mod``
-let go(): int = begin
+let private go (): int = begin
     let x = begin
         begin
             3

@@ -4,6 +4,6 @@ assertion_line: 84
 expression: "\npub fn not_unicode_escape_sequence() -> String {\n  \"\\\\\\\\u{03a9}\"\n}\n"
 ---
 module rec my.``mod``
-let not_unicode_escape_sequence(): string = begin
+let not_unicode_escape_sequence (): string = begin
     "\\\\u{03a9}"
 end

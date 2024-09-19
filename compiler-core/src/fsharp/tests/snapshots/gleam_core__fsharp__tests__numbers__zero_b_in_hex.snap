@@ -4,6 +4,6 @@ assertion_line: 110
 expression: "\npub fn main() {\n  0xffe0bb\n}\n"
 ---
 module rec my.``mod``
-let main(): int = begin
+let main (): int = begin
     0xffe0bb
 end

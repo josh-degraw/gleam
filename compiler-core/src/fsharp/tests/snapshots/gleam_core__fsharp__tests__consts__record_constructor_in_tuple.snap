@@ -7,6 +7,6 @@ module rec my.``mod``
 type X =
 | X of int
 let z = (fun (var0) -> begin X(var0) end)
-let main(): (int -> X) = begin
+let main (): (int -> X) = begin
     z
 end

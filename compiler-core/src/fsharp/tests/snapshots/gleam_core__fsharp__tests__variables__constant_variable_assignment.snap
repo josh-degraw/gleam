@@ -5,4 +5,4 @@ expression: "\nconst a = 3\n"
 ---
 module rec my.``mod``
 [<Literal>]
-let a = 3
+let private a = 3

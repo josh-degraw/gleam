@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 509
+expression: "\nconst cute_bee = \"cute\" <> \"bee\"\nconst cute_cute_bee_buzz = cute_bee <> \"buzz\"\n\npub fn main() {\n  cute_cute_bee_buzz\n}\n"
+---
+module rec my.``mod``
+let private cute_bee = "cute" + "bee"
+let private cute_cute_bee_buzz = cute_bee + "buzz"
+let main (): string = begin
+    cute_cute_bee_buzz
+end

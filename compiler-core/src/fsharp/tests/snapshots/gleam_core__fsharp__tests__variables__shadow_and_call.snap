@@ -4,6 +4,6 @@ assertion_line: 33
 expression: "\npub fn main(x) {\n  fn(x) { x }(x)\n}\n"
 ---
 module rec my.``mod``
-let main(x: 'u10): 'u10 = begin
+let main (x: 'u10): 'u10 = begin
     (fun(x: 'u10) -> x ) (x)
 end

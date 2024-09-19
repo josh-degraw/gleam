@@ -4,7 +4,7 @@ assertion_line: 143
 expression: "\nfn go() {\n  1 == {\n    1\n    2\n  }\n}\n"
 ---
 module rec my.``mod``
-let go(): bool = begin
+let private go (): bool = begin
     1 = begin
         1
         2
