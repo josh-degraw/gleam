@@ -13,23 +13,24 @@ pub fn main(x) {
 "
     );
 }
-// // https://github.com/gleam-lang/gleam/issues/1675
-// #[test]
-// fn alternative_pattern_variable_rewriting() {
-//     assert_fsharp!(
-//         "
-// pub fn myfun(mt) {
-//   case mt {
-//     1 | _ ->
-//       1
-//       |> Ok
-//   }
-//   1
-//   |> Ok
-// }
-// "
-//     )
-// }
+
+// https://github.com/gleam-lang/gleam/issues/1675
+#[test]
+fn alternative_pattern_variable_rewriting() {
+    assert_fsharp!(
+        "
+pub fn myfun(mt) {
+  case mt {
+    1 | _ ->
+      1
+      |> Ok
+  }
+  1
+  |> Ok
+}
+"
+    )
+}
 
 // // https://github.com/gleam-lang/gleam/issues/2349
 // #[test]

@@ -5,7 +5,7 @@ use crate::{
     ast::*,
     docvec,
     pretty::*,
-    type_::{Type, TypeVar},
+    type_::{Type, TypeVar, ValueConstructorVariant},
 };
 use ecow::EcoString;
 use regex::{Captures, Regex};
@@ -377,7 +377,9 @@ fn case<'a>(subjects: &'a [TypedExpr], clauses_: &'a [TypedClause]) -> Document<
 
 fn clauses(clauses: &[TypedClause]) -> Document<'_> {
     join(
-        clauses.iter().map(|c| "| ".to_doc().append(clause(c))),
+        clauses
+            .iter()
+            .map(|c| "| ".to_doc().append(clause(c).group().append(line()))),
         line(),
     )
 }
@@ -392,11 +394,11 @@ fn clause(clause: &TypedClause) -> Document<'_> {
     } = clause;
     let mut then_doc = None;
 
-    join(
+    let mut additional_guards = vec![];
+    let patterns_doc = join(
         std::iter::once(pat)
             .chain(alternative_patterns)
             .map(|patterns| {
-                let mut additional_guards = vec![];
                 let patterns_doc = if patterns.len() == 1 {
                     let p = patterns.first().expect("Single pattern clause printing");
                     pattern(p)
@@ -404,21 +406,21 @@ fn clause(clause: &TypedClause) -> Document<'_> {
                     tuple(patterns.iter().map(pattern))
                 };
 
-                let guard = optional_clause_guard(guard.as_ref(), additional_guards);
-                if then_doc.is_none() {
-                    then_doc = Some(clause_consequence(then));
-                }
-
-                patterns_doc.append(
-                    guard.append(" ->").append(
-                        line()
-                            .append(then_doc.clone().to_doc())
-                            .nest(INDENT)
-                            .group(),
-                    ),
-                )
+                patterns_doc
             }),
-        "|".to_doc(),
+        " | ".to_doc(),
+    );
+    let guard = optional_clause_guard(guard.as_ref(), additional_guards);
+    if then_doc.is_none() {
+        then_doc = Some(clause_consequence(then));
+    }
+    patterns_doc.append(
+        guard.append(" ->").append(
+            line()
+                .append(then_doc.clone().to_doc())
+                .nest(INDENT)
+                .group(),
+        ),
     )
 }
 
@@ -712,12 +714,13 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         Pattern::Tuple { elems, .. } => {
             join(elems.iter().map(pattern), ", ".to_doc()).surround("(", ")")
         }
+
         Pattern::StringPrefix {
             left_side_string,
             right_side_assignment,
             left_side_assignment,
             ..
-        } => {
+        } if left_side_assignment.is_none() => {
             let right = match right_side_assignment {
                 AssignName::Variable(right) => right.to_doc(),
                 AssignName::Discard(_) => "_".to_doc(),
@@ -769,8 +772,47 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             //     ],
             // }
         }
-
-        _ => docvec!["// TODO: Implement other pattern types"],
+        Pattern::StringPrefix { .. } => "// Prefix assignment pattern not yet supported".to_doc(),
+        Pattern::BitArray { segments, .. } => {
+            let segments_docs = segments.iter().map(|s| pattern(&s.value));
+            join(segments_docs, "; ".to_doc()).surround("[|", "|]")
+        }
+        Pattern::VarUsage {
+            name, constructor, ..
+        } => {
+            let v = &constructor
+                .as_ref()
+                .expect("Constructor not found for variable usage")
+                .variant;
+            match v {
+                ValueConstructorVariant::ModuleConstant { literal, .. } => inline_constant(literal),
+                _ => name.to_doc(),
+            }
+        }
+        Pattern::Invalid { .. } => panic!("invalid patterns should not reach code generation"),
+        Pattern::Assign {
+            name,
+            location,
+            pattern: p,
+        } => pattern(p).append(" as ").append(name),
+        Pattern::Constructor {
+            location,
+            name,
+            arguments,
+            module,
+            constructor,
+            spread,
+            type_,
+        } => {
+            let name = name.to_doc();
+            let args = arguments.iter().map(|arg| pattern(&arg.value));
+            let args = if arguments.is_empty() {
+                "()".to_doc()
+            } else {
+                join(args, "; ".to_doc()).surround("(", ")")
+            };
+            docvec![name, args]
+        }
     }
 }
 
@@ -780,12 +822,25 @@ fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {
     }
 
     match t {
-        Type::Named { name, .. } => match name.as_str() {
+        Type::Named { name, args, .. } => match name.as_str() {
             "Int" | "int" => "int".to_doc(),
             "Float" | "float" => "float".to_doc(),
             "String" | "string" => "string".to_doc(),
             "Bool" | "bool" => "bool".to_doc(),
-            _ => name.to_doc(),
+            "Nil" => "unit".to_doc(),
+            _ => {
+                if args.is_empty() {
+                    name.to_doc()
+                } else {
+                    name.to_doc()
+                        .append("<")
+                        .append(join(
+                            args.iter().map(|arg| type_to_fsharp(arg)),
+                            ", ".to_doc(),
+                        ))
+                        .append(">")
+                }
+            }
         },
         Type::Fn { args, retrn, .. } => {
             let arg_types = args
