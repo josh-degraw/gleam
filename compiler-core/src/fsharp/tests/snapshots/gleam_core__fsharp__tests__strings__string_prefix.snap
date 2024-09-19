@@ -1,0 +1,13 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 150
+expression: "\npub fn go(x) {\n  case x {\n    \"Hello, \" <> name -> name\n    _ -> \"Unknown\"\n  }\n}\n"
+---
+module rec my.``mod``
+let go(x: string): string = begin
+    match x with
+    | ``gleam prelude``.Prefix "Hello, " name ->
+        name
+    | _ ->
+        "Unknown"
+end

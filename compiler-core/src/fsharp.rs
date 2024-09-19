@@ -364,6 +364,7 @@ fn case<'a>(subjects: &'a [TypedExpr], clauses_: &'a [TypedClause]) -> Document<
         .to_doc()
         .append(subjects_doc)
         .append(" with")
+        .append(line())
         .append(clauses(clauses_))
         .group();
 

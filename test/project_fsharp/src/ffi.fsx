@@ -1,8 +1,15 @@
 module rec my.``mod``
+(**
+```gleam
+fn get_name(x: String) -> String {
+  case x {
+    "Hello, " <> name -> name
+    _ -> "Unknown"
+  }
+}
+```
+*)
 
-let main () : int =
-  begin
-    let a = 3
-    let b = -(-a)
-    b
-  end
+let get_name(x:string) =
+  match x with
+  | "Hello, "
