@@ -379,7 +379,7 @@ fn clauses(clauses: &[TypedClause]) -> Document<'_> {
     join(
         clauses
             .iter()
-            .map(|c| "| ".to_doc().append(clause(c).group().append(line()))),
+            .map(|c| "| ".to_doc().append(clause(c).group())),
         line(),
     )
 }
@@ -708,8 +708,13 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         Pattern::String { value, .. } => string(value.as_str()),
         Pattern::Variable { name, .. } => name.to_doc(),
         Pattern::Discard { name, .. } => name.to_doc(),
-        Pattern::List { elements, .. } => {
-            join(elements.iter().map(pattern), "; ".to_doc()).surround("[", "]")
+        Pattern::List { elements, tail, .. } => {
+            let head = join(elements.iter().map(pattern), "; ".to_doc()).surround("[", "]");
+
+            match tail {
+                Some(tail) => head.append("::").append(pattern(tail)),
+                None => head,
+            }
         }
         Pattern::Tuple { elems, .. } => {
             join(elems.iter().map(pattern), ", ".to_doc()).surround("(", ")")
@@ -822,26 +827,28 @@ fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {
     }
 
     match t {
-        Type::Named { name, args, .. } => match name.as_str() {
-            "Int" | "int" => "int".to_doc(),
-            "Float" | "float" => "float".to_doc(),
-            "String" | "string" => "string".to_doc(),
-            "Bool" | "bool" => "bool".to_doc(),
-            "Nil" => "unit".to_doc(),
-            _ => {
-                if args.is_empty() {
-                    name.to_doc()
-                } else {
-                    name.to_doc()
-                        .append("<")
-                        .append(join(
-                            args.iter().map(|arg| type_to_fsharp(arg)),
-                            ", ".to_doc(),
-                        ))
-                        .append(">")
-                }
+        Type::Named { name, args, .. } => {
+            let name = match name.as_str() {
+                "Int" | "int" => "int".to_doc(),
+                "Float" | "float" => "float".to_doc(),
+                "String" | "string" => "string".to_doc(),
+                "Bool" | "bool" => "bool".to_doc(),
+                "Nil" => "unit".to_doc(),
+                "List" => "list".to_doc(),
+                _ => name.to_doc(),
+            };
+            if args.is_empty() {
+                name.to_doc()
+            } else {
+                name.to_doc()
+                    .append("<")
+                    .append(join(
+                        args.iter().map(|arg| type_to_fsharp(arg)),
+                        ", ".to_doc(),
+                    ))
+                    .append(">")
             }
-        },
+        }
         Type::Fn { args, retrn, .. } => {
             let arg_types = args
                 .iter()
