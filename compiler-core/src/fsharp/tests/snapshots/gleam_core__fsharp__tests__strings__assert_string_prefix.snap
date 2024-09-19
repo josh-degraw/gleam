@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 446
+expression: "\npub fn main(x) {\n  let assert \"m-\" <> rest = x\n  rest\n}\n"
+---
+module rec my.``mod``
+let main(x: string) : string =
+  begin
+    let (Some(rest)) = (|Gleam__codegen__prefix|_|) "m-" x
+    rest
+  end

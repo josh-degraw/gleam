@@ -6,6 +6,6 @@ expression: "\npub fn main() {\n  case [] {\n    [..] -> 1\n  }\n}\n"
 module rec my.``mod``
 let main(): int = begin
     match [] with
-    | [] ->
+    | []::_ ->
         1
 end

@@ -9,7 +9,8 @@ let go(): int = begin
         1
         begin
             2
-            match true with| _ ->
+            match true with
+            | _ ->
                 3
         end
     end

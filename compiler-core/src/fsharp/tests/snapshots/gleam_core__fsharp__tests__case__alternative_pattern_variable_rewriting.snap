@@ -9,7 +9,6 @@ let myfun(mt: int): Result<int, 'u15> = begin
     | 1 | _ ->
         let _pipe = 1
         Ok (_pipe)
-    
     let _pipe = 1
     Ok (_pipe)
 end

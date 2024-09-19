@@ -1,7 +1,10 @@
 module rec my.``mod``
 
-let main () : list<'a> =
+let go (a: int) : int =
   begin
-    match [] with
-    | [] :: rest -> rest
+    match a with
+    | 99 ->
+      let a = a
+      1
+    | _ -> a
   end
