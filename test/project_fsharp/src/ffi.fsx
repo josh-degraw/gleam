@@ -1,15 +1,14 @@
 module rec my.``mod``
-(**
-```gleam
-fn get_name(x: String) -> String {
-  case x {
-    "Hello, " <> name -> name
-    _ -> "Unknown"
-  }
-}
-```
-*)
 
-let get_name(x:string) =
-  match x with
-  | "Hello, "
+let go (x: string) : string =
+  begin
+    match x with
+    | Gleam__codegen__prefix "Hello, " name -> name
+    | _ -> "Unknown"
+  end
+
+let (|Gleam__codegen__prefix|_|) (p: string) (s: string) =
+  if s.StartsWith(p) then
+    Some(s.Substring(p.Length))
+  else
+    None

@@ -734,7 +734,8 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
                 AssignName::Discard(_) => "_".to_doc(),
             };
 
-            "``gleam prelude``.Prefix "
+            // Use an active pattern helper function defined in prelude.fs
+            "``gleam Prefix`` "
                 .to_doc()
                 .append(string(left_side_string))
                 .append(" ")
