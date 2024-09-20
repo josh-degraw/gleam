@@ -8,6 +8,6 @@ type Foo =
 | Bar of name: string * age: int
 | Quux of name: string
     member this.name = 
-        match this with 
+        match this with
         | Foo.Bar (name, _) -> name
         | Foo.Quux (name) -> name

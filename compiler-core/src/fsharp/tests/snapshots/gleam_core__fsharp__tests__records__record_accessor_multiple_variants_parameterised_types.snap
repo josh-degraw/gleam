@@ -1,0 +1,24 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 75
+expression: "\npub type Person {\n    Teacher(name: String, age: List(Int), title: String)\n    Student(name: String, age: List(Int))\n}\npub fn get_name(person: Person) { person.name }\npub fn get_age(person: Person) { person.age }"
+---
+module rec my.``mod``
+type Person =
+| Teacher of name: string * age: list<int> * title: string
+| Student of name: string * age: list<int>
+    member this.age = 
+        match this with
+        | Person.Teacher (_, age, _) -> age
+        | Person.Student (_, age) -> age
+    member this.name = 
+        match this with
+        | Person.Teacher (name, _, _) -> name
+        | Person.Student (name, _) -> name
+
+let get_name (person: Person): string = begin
+    person.name
+end
+let get_age (person: Person): list<int> = begin
+    person.age
+end

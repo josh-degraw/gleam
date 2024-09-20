@@ -265,28 +265,19 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
             }
 
             if true {
-                let cases = join(
-                    type_loc_list.iter().map(|(index, _, constructor)| {
-                        let max_index = constructor.arguments.len() - 1; // max_indices.get(*index).expect("Index out of bounds");
-
-                        println!(
-                            "index: {}, max_index: {}, max_indices: {:?}, constructor.arguments: {:#?}",
-                            index, max_index, max_indices, constructor.arguments
-                        );
+                let cases = type_loc_list
+                    .iter()
+                    .map(|(index, _, constructor)| {
+                        let max_index = constructor.arguments.len() - 1;
 
                         let mut discards = (0..=max_index)
                             .map(|_| "_".to_doc())
                             .collect::<Vec<Document<'a>>>();
 
-                        discards[*index] = label.to_doc();
+                        *discards.get_mut(*index).expect("Index out of bounds") = label.to_doc();
 
                         let discards_doc = join(discards, ", ".to_doc()).surround("(", ")").group();
 
-                        // let pattern = before_discards
-                        //     .append(label)
-                        //     .append(after_discards)
-                        //     .surround("(", ")")
-                        //     .group();
                         docvec![
                             "| ",
                             type_name.clone(),
@@ -297,26 +288,28 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
                             " -> ",
                             label,
                         ]
-                    }),
-                    line(),
-                );
+                    })
+                    .collect::<Vec<_>>();
 
-                return Some(docvec![
-                    "member this.",
-                    label,
-                    // ": ",
-                    // return_type,
-                    " = ",
-                    line().append(docvec!["match this with ", line(), cases, line()]),
-                ]);
+                return Some(
+                    docvec![
+                        "member this.",
+                        label,
+                        " = ",
+                        line(),
+                        "match this with",
+                        line(),
+                        join(cases, line()),
+                    ]
+                    .group()
+                    .nest(INDENT),
+                );
             }
         }
         None
     });
 
-    let member_declarations_doc = join(member_declarations, line()).nest(INDENT).nest(INDENT);
-
-    println!("member_declarations: {:#?}", &member_declarations_doc);
+    let member_declarations_doc = join(member_declarations, line()).nest(INDENT);
 
     docvec![
         "type ",
@@ -331,6 +324,7 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
         ),
         line().nest(INDENT),
         member_declarations_doc,
+        line()
     ]
 }
 
@@ -552,9 +546,47 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
 
         TypedExpr::Todo { message, .. } => todo(message),
         TypedExpr::Panic { message, .. } => panic_(message),
-
-        _ => docvec!["// TODO: Implement other expression types"],
+        TypedExpr::RecordAccess {
+            location,
+            type_,
+            label,
+            index,
+            record,
+        } => record_access(record, label),
+        TypedExpr::ModuleSelect {
+            location,
+            type_,
+            label,
+            module_name,
+            module_alias,
+            constructor,
+        } => todo!(),
+        TypedExpr::TupleIndex {
+            location,
+            type_,
+            index,
+            tuple,
+        } => todo!(),
+        TypedExpr::BitArray {
+            location,
+            type_,
+            segments,
+        } => todo!(),
+        TypedExpr::RecordUpdate {
+            location,
+            type_,
+            spread,
+            args,
+        } => todo!(),
+        TypedExpr::NegateBool { location, value } => todo!(),
+        TypedExpr::Invalid { location, type_ } => todo!(),
     }
+}
+
+fn record_access<'a>(record: &'a TypedExpr, label: &'a EcoString) -> Document<'a> {
+    let record_expr = expression(record);
+    let label_expr = label.to_doc();
+    docvec![record_expr, ".", label_expr]
 }
 
 fn todo(message: &Option<Box<TypedExpr>>) -> Document<'_> {
