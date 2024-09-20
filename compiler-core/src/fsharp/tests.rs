@@ -19,6 +19,7 @@ mod functions;
 mod numbers;
 mod panic;
 mod pipes;
+mod records;
 mod strings;
 mod todo;
 mod variables;

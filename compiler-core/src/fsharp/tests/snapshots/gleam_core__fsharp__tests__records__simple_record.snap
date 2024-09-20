@@ -1,0 +1,7 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 5
+expression: "pub type Person { Person(name: String, age: Int) }"
+---
+module rec my.``mod``
+type Person = { name: string; age: int }
