@@ -8,9 +8,11 @@ let private id (a: 'u8): 'u8 = begin
     a
 end
 let main (): int = begin
-    let _pipe = begin
-        let x = 1
-        x
+    begin
+        let _pipe = begin
+            let x = 1
+            x
+        end
+        (id (_pipe))
     end
-    id (_pipe)
 end

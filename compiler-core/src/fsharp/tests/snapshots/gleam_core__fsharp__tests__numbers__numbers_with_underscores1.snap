@@ -5,10 +5,10 @@ expression: "\nconst i = 100_000\nconst f = 100_000.00101\npub fn main() {\n  i\
 ---
 module rec my.``mod``
 [<Literal>]
-let i = 100_000
+let private i = 100_000
 [<Literal>]
-let f = 100_000.00101
-let main(): float = begin
+let private f = 100_000.00101
+let main (): float = begin
     i
     f
 end

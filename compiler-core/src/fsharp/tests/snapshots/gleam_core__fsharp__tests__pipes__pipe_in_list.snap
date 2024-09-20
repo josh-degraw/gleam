@@ -5,6 +5,8 @@ expression: "pub fn x(f) {\n  [\n    1 |> f\n  ]\n}"
 ---
 module rec my.``mod``
 let x (f: int -> 'u11): list<'u11> = begin
-    [let _pipe = 1
-    f (_pipe)]
+    [begin
+        let _pipe = 1
+        (f (_pipe))
+    end]
 end
