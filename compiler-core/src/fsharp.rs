@@ -247,24 +247,15 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
 
     let member_declarations = named_fields.iter().filter_map(|(label, type_loc_list)| {
         if type_loc_list.len() == t.constructors.len() {
-            let mut i = 0;
-            let mut current_value = None;
-            for (next_index, next_type, _) in type_loc_list {
-                match current_value {
-                    Some((index, type_)) => {
-                        if next_type != type_ {
-                            break;
-                        }
-                        if next_index != index {
-                            break;
-                        }
-                    }
-                    None => current_value = Some((next_index, next_type)),
-                }
-                i += 1;
-            }
+            let (first_index, first_type, _) = type_loc_list
+                .first()
+                .expect("Type loc list should have elements");
 
-            if true {
+            let meets_requirements = type_loc_list
+                .iter()
+                .all(|(index, type_, _)| index == first_index && type_ == first_type);
+
+            if meets_requirements {
                 let cases = type_loc_list
                     .iter()
                     .map(|(index, _, constructor)| {
