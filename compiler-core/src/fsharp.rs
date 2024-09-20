@@ -371,7 +371,16 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         } => case(subjects, clauses),
 
         TypedExpr::Tuple { elems, .. } => tuple(elems.iter().map(expression)),
-        TypedExpr::NegateInt { value, .. } => "-".to_doc().append(expression(value)),
+
+        // Special case for double negation
+        TypedExpr::NegateInt { value, .. } => {
+            // Special case for double negation
+            if let TypedExpr::NegateInt { .. } = value.as_ref() {
+                "-".to_doc().append(expression(value).surround("(", ")"))
+            } else {
+                "-".to_doc().append(expression(value))
+            }
+        }
 
         TypedExpr::Todo { message, .. } => todo(message),
         TypedExpr::Panic { message, .. } => panic_(message),

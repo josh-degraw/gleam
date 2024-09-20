@@ -91,9 +91,6 @@ pub fn main() {
 
 #[test]
 fn repeated_int_negation() {
-    // This currently compiles to invalid F# code
-    // We could emit the expression as `-(-a)`
-    // But that's dumb and I hate that right now
     assert_fsharp!(
         r#"
 pub fn main() {
