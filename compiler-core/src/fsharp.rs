@@ -10,6 +10,7 @@ use crate::{
 use ecow::EcoString;
 use regex::{Captures, Regex};
 use std::{
+    collections::HashMap,
     ops::Deref,
     sync::{Arc, OnceLock},
 };
@@ -88,7 +89,8 @@ fn module_contents<'a>(module: &'a TypedModule) -> Document<'a> {
             .definitions
             .iter()
             .map(|def| match def {
-                Definition::CustomType(t) => custom_type(t),
+                Definition::CustomType(t) if t.constructors.len() == 1 => record_type(t),
+                Definition::CustomType(t) => discriminated_union(t),
                 Definition::TypeAlias(t) => type_alias(t),
                 Definition::ModuleConstant(c) => module_constant(c),
                 Definition::Function(f) => function(f),
@@ -107,63 +109,228 @@ fn map_publicity<'a>(publicity: Publicity) -> Document<'a> {
     }
 }
 
-fn custom_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
-    let name = &t.name;
-    let constructors = t
+/// Should convert a single-constructor custom type to an F# record
+/// gleam type:
+///
+/// ```gleam
+/// pub type Person { Person(name: String, age: Int) }
+/// ```
+///
+/// f# type:
+///
+/// ```fsharp
+/// type Person = { name: string; age: int }
+fn record_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    println!("record_type: {}", t.name);
+    assert!(
+        t.constructors.len() == 1,
+        "Records must have a single constructor to count as a record"
+    );
+
+    let constructor = &t
         .constructors
+        .first()
+        .expect("Single constructor should exist");
+
+    let name = &t.name;
+    let fields = constructor
+        .arguments
         .iter()
-        .map(|c| {
-            let fields = c
-                .arguments
-                .iter()
-                .map(|r| {
-                    let mapped = type_to_fsharp(&r.type_);
-                    // Need to wrap in parens if it's a function type
-                    let type_ = if r.type_.is_fun() {
-                        mapped.surround("(", ")")
-                    } else {
-                        mapped
-                    };
-
-                    match &r.label {
-                        Some((_, ref label)) => docvec![label, ": ", type_],
-                        None => type_,
-                    }
-                })
-                .collect::<Vec<Document<'a>>>();
-
-            let c_name = c.name.clone().to_doc();
-            if fields.is_empty() {
-                c_name
-            } else {
-                docvec![c_name, " of ", join(fields, " * ".to_doc())]
+        .map(|r| {
+            let type_ = type_to_fsharp(&r.type_);
+            match &r.label {
+                Some((_, ref label)) => docvec![label, ": ", type_],
+                None => type_,
             }
         })
         .collect::<Vec<Document<'a>>>();
 
+    docvec![
+        "type ",
+        map_publicity(t.publicity),
+        name,
+        type_params(t),
+        " = ",
+        join(fields, "; ".to_doc()).group().surround("{ ", " }"),
+    ]
+}
+
+fn type_params(t: &CustomType<Arc<Type>>) -> Document<'_> {
     let type_params = join(
         t.typed_parameters.iter().map(|tp| type_to_fsharp(tp)),
         ", ".to_doc(),
     )
     .surround("<", ">");
 
-    let type_params = if !t.typed_parameters.is_empty() {
+    if !t.typed_parameters.is_empty() {
         type_params
     } else {
         "".to_doc()
-    };
+    }
+}
+
+fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    println!("discriminated_union: {}", t.name);
+    // need to track which named fields have the same name and position and generate method accessors for them
+
+    // For this type:
+    // Each constructor maps to a union case
+    // For each union case where all cases have a field of the same type in the same position,
+    // generate a method accessor for that field
+    // So for this type in gleam:
+    // ```gleam
+    //     pub type Foo {
+    //    Bar(name: String, age: Int)
+    //    Baz(quux: Int)
+    // }
+    // ```
+    // We generate this in F#
+    // ```fsharp
+    // type Foo =
+    //     | Bar of name: string * age: int
+    //     | Baz of name: string
+    //     member this.getname() =
+    //         match this with
+    //         | Bar(name, _) -> name
+    //         | Baz(name) -> name
+    // ```
+    let mut named_fields = HashMap::new();
+
+    let mut max_indices = vec![];
+
+    let type_name = &t.name;
+    let constructors = t
+        .constructors
+        .iter()
+        .map(|constructor| {
+            let constructor_name = constructor.name.clone();
+            let constructor_name_doc = constructor_name.to_doc();
+
+            let mut field_index = 0;
+            let fields = constructor
+                .arguments
+                .iter()
+                .map(|r| {
+                    let type_ = type_to_fsharp(&r.type_);
+                    // Need to wrap in parens if it's a function type
+                    let type_doc = if r.type_.is_fun() {
+                        type_.surround("(", ")")
+                    } else {
+                        type_
+                    };
+
+                    let res = match &r.label {
+                        Some((_, ref arg_name)) => {
+                            named_fields
+                                .entry(arg_name.clone())
+                                .or_insert(Vec::new())
+                                .push((field_index, r.type_.clone(), constructor));
+
+                            docvec![arg_name, ": ", type_doc]
+                        }
+                        None => type_doc,
+                    };
+
+                    field_index += 1;
+                    res
+                })
+                .collect::<Vec<Document<'a>>>();
+
+            max_indices.push(constructor.arguments.len() - 1);
+            if fields.is_empty() {
+                constructor_name_doc
+            } else {
+                docvec![constructor_name_doc, " of ", join(fields, " * ".to_doc())]
+            }
+        })
+        .collect::<Vec<Document<'a>>>();
+
+    let member_declarations = named_fields.iter().filter_map(|(label, type_loc_list)| {
+        if type_loc_list.len() == t.constructors.len() {
+            let mut i = 0;
+            let mut current_value = None;
+            for (next_index, next_type, _) in type_loc_list {
+                match current_value {
+                    Some((index, type_)) => {
+                        if next_type != type_ {
+                            break;
+                        }
+                        if next_index != index {
+                            break;
+                        }
+                    }
+                    None => current_value = Some((next_index, next_type)),
+                }
+                i += 1;
+            }
+
+            if true {
+                let cases = join(
+                    type_loc_list.iter().map(|(index, _, constructor)| {
+                        let max_index = constructor.arguments.len() - 1; // max_indices.get(*index).expect("Index out of bounds");
+
+                        println!(
+                            "index: {}, max_index: {}, max_indices: {:?}, constructor.arguments: {:#?}",
+                            index, max_index, max_indices, constructor.arguments
+                        );
+
+                        let mut discards = (0..=max_index)
+                            .map(|_| "_".to_doc())
+                            .collect::<Vec<Document<'a>>>();
+
+                        discards[*index] = label.to_doc();
+
+                        let discards_doc = join(discards, ", ".to_doc()).surround("(", ")").group();
+
+                        // let pattern = before_discards
+                        //     .append(label)
+                        //     .append(after_discards)
+                        //     .surround("(", ")")
+                        //     .group();
+                        docvec![
+                            "| ",
+                            type_name.clone(),
+                            ".",
+                            constructor.name.clone().to_doc(),
+                            " ",
+                            discards_doc,
+                            " -> ",
+                            label,
+                        ]
+                    }),
+                    line(),
+                );
+
+                return Some(docvec![
+                    "member this.",
+                    label,
+                    // ": ",
+                    // return_type,
+                    " = ",
+                    line().append(docvec!["match this with ", line(), cases, line()]),
+                ]);
+            }
+        }
+        None
+    });
+
+    let member_declarations_doc = join(member_declarations, line()).nest(INDENT).nest(INDENT);
+
+    println!("member_declarations: {:#?}", &member_declarations_doc);
 
     docvec![
         "type ",
         map_publicity(t.publicity),
-        name,
-        type_params,
+        type_name,
+        type_params(t),
         " =",
         line(),
         join(
             constructors.into_iter().map(|c| docvec!["| ".to_doc(), c]),
             line()
-        )
+        ),
+        line().nest(INDENT),
+        member_declarations_doc,
     ]
 }
 

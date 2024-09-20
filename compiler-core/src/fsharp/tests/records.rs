@@ -16,6 +16,17 @@ fn gleam_record_to_union_type() {
 "
     );
 }
+#[test]
+fn gleam_record_to_union_type_with_getters() {
+    assert_fsharp!(
+        "
+    pub type Foo {
+        Bar(name: String, age: Int)
+        Quux(name: String)
+    }
+"
+    );
+}
 
 // #[test]
 // fn record_accessors() {
