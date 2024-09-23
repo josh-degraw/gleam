@@ -5,7 +5,9 @@ expression: "\n     pub fn main() {\n      \"lets\"\n      |> panic as \"pipe\"\
 ---
 module rec my.``mod``
 let main (): 'u12 = begin
-    let _pipe = "lets"
-    let _pipe = failwith ("pipe") (_pipe)
-    failwith ("other panic") (_pipe)
+    begin
+        let _pipe = "lets"
+        let _pipe = failwith ("pipe") (_pipe)
+        (failwith ("other panic") (_pipe))
+    end
 end

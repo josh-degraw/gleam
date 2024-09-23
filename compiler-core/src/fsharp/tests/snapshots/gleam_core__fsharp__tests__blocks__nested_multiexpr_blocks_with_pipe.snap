@@ -10,12 +10,16 @@ end
 let private go (): int = begin
     let x = begin
         1
-        let _pipe = begin
-            2
-            let _pipe = 3
-            add1 (_pipe)
+        begin
+            let _pipe = begin
+                2
+                begin
+                    let _pipe = 3
+                    (add1 (_pipe))
+                end
+            end
+            (add1 (_pipe))
         end
-        add1 (_pipe)
     end
     x
 end

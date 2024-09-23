@@ -9,10 +9,14 @@ let private id (x: 'u8): 'u8 = begin
 end
 let main (): string = begin
     begin
-        let _pipe = ""
-        id (_pipe)
+        begin
+            let _pipe = ""
+            (id (_pipe))
+        end
     end + begin
-        let _pipe = ""
-        id (_pipe)
+        begin
+            let _pipe = ""
+            (id (_pipe))
+        end
     end
 end

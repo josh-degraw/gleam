@@ -6,8 +6,12 @@ expression: "\n          fn identity(a) {\n            a\n          }\n\n       
 module rec my.``mod``
 type Mapper<'t8> =
 | Mapper of ('t8 -> 't8)
+    
 type Funcs<'t9> =
 | Funcs of mapper: Mapper<'t9>
+    member this.mapper = 
+        match this with
+        | Funcs.Funcs (mapper) -> mapper
 let private identity (a: 'u10): 'u10 = begin
     a
 end

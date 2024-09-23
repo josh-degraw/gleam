@@ -7,8 +7,12 @@ module rec my.``mod``
 let myfun (mt: int): Result<int, 'u15> = begin
     match mt with
     | 1 | _ ->
+        begin
+            let _pipe = 1
+            (Ok (_pipe))
+        end
+    begin
         let _pipe = 1
-        Ok (_pipe)
-    let _pipe = 1
-    Ok (_pipe)
+        (Ok (_pipe))
+    end
 end

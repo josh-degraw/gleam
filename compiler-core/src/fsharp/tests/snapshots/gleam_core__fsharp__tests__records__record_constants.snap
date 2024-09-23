@@ -7,7 +7,6 @@ module rec my.``mod``
 type Test =
 | A
     
-
 let a (): Test = begin
     A
 end

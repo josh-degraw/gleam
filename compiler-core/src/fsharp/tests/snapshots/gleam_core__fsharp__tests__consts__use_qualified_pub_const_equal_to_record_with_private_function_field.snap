@@ -6,6 +6,7 @@ expression: "\n              fn identity(a) {\n                a\n              
 module rec my.``mod``
 type Mapper<'t8> =
 | Mapper of ('t8 -> 't8)
+    
 let private identity (a: 'u9): 'u9 = begin
     a
 end

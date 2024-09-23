@@ -15,7 +15,6 @@ type Person =
         match this with
         | Person.Teacher (_, age, _) -> age
         | Person.Student (_, age) -> age
-
 let get_name (person: Person): string = begin
     person.name
 end

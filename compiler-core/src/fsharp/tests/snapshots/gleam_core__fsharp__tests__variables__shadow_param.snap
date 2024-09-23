@@ -5,6 +5,6 @@ expression: "pub fn main(board) {\nfn(board) { board }\n  board\n}"
 ---
 module rec my.``mod``
 let main (board: 'u8): 'u8 = begin
-    fun(board: 'u10) -> board 
+    fun(board: 'u10) -> begin board end
     board
 end

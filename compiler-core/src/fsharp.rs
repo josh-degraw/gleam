@@ -94,8 +94,21 @@ fn module_contents<'a>(module: &'a TypedModule) -> Document<'a> {
             .definitions
             .iter()
             .map(|def| match def {
-                Definition::CustomType(t) if t.constructors.len() == 1 => record_type(t),
-                Definition::CustomType(t) => discriminated_union(t),
+                Definition::CustomType(t) => {
+                    if t.constructors.len() == 1 {
+                        // Might be an F# record type, but only if the constructor name
+                        // matches the type name and all constructor arguments have a label
+                        let c = t.constructors.first().expect("There must be a constructor");
+                        if c.name == t.name
+                            && !c.arguments.is_empty()
+                            && c.arguments.iter().all(|a| a.label.is_some())
+                            && c.arguments.len() > 1
+                        {
+                            return record_type(t);
+                        }
+                    }
+                    discriminated_union(t)
+                }
                 Definition::TypeAlias(t) => type_alias(t),
                 Definition::ModuleConstant(c) => module_constant(c),
                 Definition::Function(f) => function(f),
@@ -324,8 +337,7 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
             line()
         ),
         line().nest(INDENT),
-        member_declarations_doc,
-        line()
+        member_declarations_doc
     ]
 }
 
@@ -483,7 +495,6 @@ fn string<'a>(value: &str) -> Document<'a> {
 }
 
 fn expression(expr: &TypedExpr) -> Document<'_> {
-    println!("Expression: {:#?}", expr);
     match expr {
         TypedExpr::Int { value, .. } => value.to_doc(),
         TypedExpr::Float { value, .. } => value.to_doc(),
@@ -1008,7 +1019,6 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             arguments,
             ..
         } => {
-            println!("FieldMap: {:#?}", field_map);
             let field_map = invert_field_map(field_map);
 
             let args = arguments.iter().enumerate().filter_map(|(i, arg)| {
@@ -1020,7 +1030,6 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
                     Some(label) => label,
                     None => field_map.get(&(i as u32)).expect("Index out of bounds"),
                 };
-                println!("arg.label: {:?}, label: {:?}", arg.label, &label);
 
                 Some(docvec![label.to_doc(), " = ", pattern(&arg.value)])
             });
@@ -1033,7 +1042,6 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             constructor,
             ..
         } => {
-            println!("Constructor {:#?}", constructor);
             let args = arguments.iter().map(|arg| pattern(&arg.value));
             let args = if arguments.is_empty() {
                 "()".to_doc()
@@ -1218,7 +1226,6 @@ pub(crate) fn constant_expression<'a>(expression: &'a TypedConstant) -> Document
                 .map(|arg| constant_expression(&arg.value))
                 .collect();
 
-            println!("type: {:#?}", type_);
             construct_record(
                 module.as_ref().map(|(module, _)| module.as_str()),
                 name,
