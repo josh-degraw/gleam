@@ -7,14 +7,14 @@ module rec my.``mod``
 type Person =
 | Teacher of name: string * age: list<int> * title: string
 | Student of name: string * age: list<int>
-    member this.age = 
-        match this with
-        | Person.Teacher (_, age, _) -> age
-        | Person.Student (_, age) -> age
     member this.name = 
         match this with
         | Person.Teacher (name, _, _) -> name
         | Person.Student (name, _) -> name
+    member this.age = 
+        match this with
+        | Person.Teacher (_, age, _) -> age
+        | Person.Student (_, age) -> age
 
 let get_name (person: Person): string = begin
     person.name

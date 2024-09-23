@@ -115,42 +115,42 @@ fn main() {
     );
 }
 
-// #[test]
-// fn record_spread1() {
-//     // Test binding to a record field with the spread operator
-//     // Test binding to a record field with the spread operator and a labelled argument
-//     assert_fsharp!(
-//         r#"
-// type Triple {
-//   Triple(a: Int, b: Int, c: Int)
-// }
+#[test]
+fn record_spread1() {
+    // Test binding to a record field with the spread operator
+    // Test binding to a record field with the spread operator and a labelled argument
+    assert_fsharp!(
+        r#"
+type Triple {
+  Triple(a: Int, b: Int, c: Int)
+}
 
-// fn main() {
-//   let triple = Triple(1,2,3)
-//   let Triple(b: the_b, ..) = triple
-//   the_b
-// }
-// "#
-//     );
-// }
+fn main() {
+  let triple = Triple(1,2,3)
+  let Triple(b: the_b, ..) = triple
+  the_b
+}
+"#
+    );
+}
 
-// #[test]
-// fn record_spread2() {
-//     // Test binding to a record field with the spread operator with both a labelled argument and a positional argument
-//     assert_fsharp!(
-//         r#"
-// type Triple {
-//   Triple(a: Int, b: Int, c: Int)
-// }
+#[test]
+fn record_spread2() {
+    // Test binding to a record field with the spread operator with both a labelled argument and a positional argument
+    assert_fsharp!(
+        r#"
+type Triple {
+  Triple(a: Int, b: Int, c: Int)
+}
 
-// fn main() {
-//   let triple = Triple(1,2,3)
-//   let Triple(the_a, c: the_c, ..) = triple
-//   the_c
-// }
-// "#
-//     );
-// }
+fn main() {
+  let triple = Triple(1,2,3)
+  let Triple(the_a, c: the_c, ..) = triple
+  the_c
+}
+"#
+    );
+}
 
 // #[test]
 // fn record_spread3() {

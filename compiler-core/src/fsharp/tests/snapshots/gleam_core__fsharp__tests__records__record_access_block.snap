@@ -1,0 +1,13 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 287
+expression: "pub type Thing {\n  Thing(a: Int, b: Int)\n}\n\npub fn main() {\n  {\n    let thing = Thing(1, 2)\n    thing\n  }.a\n}"
+---
+module rec my.``mod``
+type Thing = { a: int; b: int }
+let main (): int = begin
+    begin
+        let thing = { a = 1; b = 2 }
+        thing
+    end.a
+end

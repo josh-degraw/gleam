@@ -2,10 +2,13 @@
 mod tests;
 
 use crate::{
+    analyse::Inferred,
     ast::*,
     docvec,
     pretty::*,
-    type_::{Type, TypeVar, ValueConstructorVariant},
+    type_::{
+        FieldMap, PatternConstructor, Type, TypeVar, ValueConstructor, ValueConstructorVariant,
+    },
 };
 use ecow::EcoString;
 use regex::{Captures, Regex};
@@ -35,6 +38,7 @@ fn module_to_doc(module: &TypedModule) -> Document<'_> {
 }
 
 fn module_declaration(module: &TypedModule) -> Document<'_> {
+    // Use module rec to not need to worry about initialization order
     "module rec ".to_doc().append(santitize_name(&module.name))
 }
 
@@ -121,7 +125,6 @@ fn map_publicity<'a>(publicity: Publicity) -> Document<'a> {
 /// ```fsharp
 /// type Person = { name: string; age: int }
 fn record_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
-    println!("record_type: {}", t.name);
     assert!(
         t.constructors.len() == 1,
         "Records must have a single constructor to count as a record"
@@ -170,7 +173,6 @@ fn type_params(t: &CustomType<Arc<Type>>) -> Document<'_> {
 }
 
 fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
-    println!("discriminated_union: {}", t.name);
     // need to track which named fields have the same name and position and generate method accessors for them
 
     // For this type:
@@ -413,10 +415,10 @@ fn statements<'a>(s: &'a [TypedStatement], return_type: Option<&Type>) -> Docume
                 last_var = None;
                 expression(expr)
             }
-            Statement::Assignment(assignment) => {
-                let (name, value) = get_assignment_info(assignment);
-                last_var = Some(name.clone());
-                "let ".to_doc().append(name).append(" = ").append(value)
+            Statement::Assignment(a) => {
+                let name = pattern(&a.pattern);
+                last_var = Some(name);
+                assignment(a)
             }
             Statement::Use(_) => docvec!["// TODO: Implement use statements"],
         })
@@ -457,7 +459,6 @@ fn string_inner<'a>(value: &str) -> Document<'a> {
             let slashes = caps.get(1).map_or("", |m| m.as_str());
             let unicode = caps.get(3).map_or("", |m| m.as_str());
 
-            println!("slashes: {}", slashes);
             if slashes.len() % 2 == 0 {
                 // TODO: See if we can emit a warning here because it probably wasn't intentional
                 format!("{slashes}u{{{unicode}}}") // return the original string
@@ -494,26 +495,24 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         TypedExpr::List { elements, .. } => {
             join(elements.iter().map(expression), "; ".to_doc()).surround("[", "]")
         }
-        TypedExpr::Call { fun, args, .. } => {
-            let args = if args.is_empty() {
-                "()".to_doc()
-            } else {
-                " ".to_doc().append(
-                    join(
-                        args.iter().map(|a| expression(&a.value).surround("(", ")")),
-                        " ".to_doc(),
-                    )
-                    .group(),
-                )
-            };
-            let fun_expr = expression(fun);
-            // If for some reason we're doing an IIFE, we need to wrap it in parens
-            let fun_expr = match fun.as_ref() {
-                TypedExpr::Fn { .. } => fun_expr.surround("(", ")"),
-                _ => fun_expr,
-            };
-            fun_expr.append(args).group()
-        }
+
+        TypedExpr::Call {
+            fun, args, type_, ..
+        } => match fun.as_ref() {
+            TypedExpr::Var {
+                constructor:
+                    ValueConstructor {
+                        variant:
+                            ValueConstructorVariant::Record {
+                                field_map: Some(ref field_map),
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            } => record_instantiation(field_map, args),
+            _ => function_call(fun, args),
+        },
 
         TypedExpr::BinOp {
             left, right, name, ..
@@ -537,13 +536,7 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
 
         TypedExpr::Todo { message, .. } => todo(message),
         TypedExpr::Panic { message, .. } => panic_(message),
-        TypedExpr::RecordAccess {
-            location,
-            type_,
-            label,
-            index,
-            record,
-        } => record_access(record, label),
+        TypedExpr::RecordAccess { label, record, .. } => record_access(record, label),
         TypedExpr::ModuleSelect {
             location,
             type_,
@@ -572,6 +565,49 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         TypedExpr::NegateBool { location, value } => todo!(),
         TypedExpr::Invalid { location, type_ } => todo!(),
     }
+}
+
+fn invert_field_map<'a>(field_map: &'a FieldMap) -> HashMap<&'a u32, &'a EcoString> {
+    field_map
+        .fields
+        .iter()
+        .map(|(k, v)| (v, k))
+        .collect::<HashMap<_, _>>()
+}
+
+fn record_instantiation<'a>(
+    field_map: &'a FieldMap,
+    args: &'a [CallArg<TypedExpr>],
+) -> Document<'a> {
+    let field_map = invert_field_map(field_map);
+
+    let args = args.iter().enumerate().map(|(i, arg)| {
+        let label = field_map.get(&(i as u32)).expect("Index out of bounds");
+        docvec![label.to_doc(), " = ", expression(&arg.value)]
+    });
+
+    join(args, "; ".to_doc()).group().surround("{ ", " }")
+}
+
+fn function_call<'a>(fun: &'a TypedExpr, args: &'a [CallArg<TypedExpr>]) -> Document<'a> {
+    let args = if args.is_empty() {
+        "()".to_doc()
+    } else {
+        " ".to_doc().append(
+            join(
+                args.iter().map(|a| expression(&a.value).surround("(", ")")),
+                " ".to_doc(),
+            )
+            .group(),
+        )
+    };
+    let fun_expr = expression(fun);
+    // If for some reason we're doing an IIFE, we need to wrap it in parens
+    let fun_expr = match fun {
+        TypedExpr::Fn { .. } => fun_expr.surround("(", ")"),
+        _ => fun_expr,
+    };
+    fun_expr.append(args).group()
 }
 
 fn record_access<'a>(record: &'a TypedExpr, label: &'a EcoString) -> Document<'a> {
@@ -954,44 +990,6 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
                 .append(string(left_side_string))
                 .append(" ")
                 .append(right)
-
-            // string(left_side_string).append(" + ").append(right)
-
-            // match left_side_assignment {
-            //     Some((left_name, _)) => {
-            //         // "wibble" as prefix <> rest
-            //         //             ^^^^^^^^^ In case the left prefix of the pattern matching is given an alias
-            //         //                       we bind it to a local variable so that it can be correctly
-            //         //                       referenced inside the case branch.
-            //         //
-            //         // <<Prefix:3/binary, Rest/binary>> when Prefix =:= <<"wibble">>
-            //         //   ^^^^^^^^                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            //         //   since F#'s binary pattern matching doesn't allow direct string assignment
-            //         //   to variables within the pattern, we first match the expected prefix length in
-            //         //   bytes, then use a guard clause to verify the content.
-            //         //
-            //         let name = left_name.to_doc();
-            //         //guards.push(docvec![name.clone(), " =:= ", string(left_side_string)]);
-            //         docvec![
-            //             "<<",
-            //             name.clone(),
-            //             ":",
-            //             string_length_utf8_bytes(left_side_string),
-            //             "/binary",
-            //             ", ",
-            //             right,
-            //             "/binary>>",
-            //         ]
-            //     }
-            //     None => docvec![
-            //         "<<\"",
-            //         string_inner(left_side_string),
-            //         "\"/utf8",
-            //         ", ",
-            //         right,
-            //         "/binary>>"
-            //     ],
-            // }
         }
         Pattern::StringPrefix { .. } => "// Prefix assignment pattern not yet supported".to_doc(),
         Pattern::BitArray { segments, .. } => {
@@ -1016,6 +1014,36 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             location,
             pattern: p,
         } => pattern(p).append(" as ").append(name),
+
+        Pattern::Constructor {
+            constructor:
+                Inferred::Known(PatternConstructor {
+                    field_map: Some(ref field_map),
+                    ..
+                }),
+            spread,
+            arguments,
+            ..
+        } => {
+            println!("FieldMap: {:#?}", field_map);
+            let field_map = invert_field_map(field_map);
+
+            let args = arguments.iter().enumerate().filter_map(|(i, arg)| {
+                if spread.is_some() && arg.value.is_discard() {
+                    return None;
+                }
+
+                let label = match &arg.label {
+                    Some(label) => label,
+                    None => field_map.get(&(i as u32)).expect("Index out of bounds"),
+                };
+                println!("arg.label: {:?}, label: {:?}", arg.label, &label);
+
+                Some(docvec![label.to_doc(), " = ", pattern(&arg.value)])
+            });
+            join(args, "; ".to_doc()).group().surround("{ ", " }")
+        }
+
         Pattern::Constructor {
             location,
             name,
@@ -1025,14 +1053,13 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             spread,
             type_,
         } => {
-            let name = name.to_doc();
             let args = arguments.iter().map(|arg| pattern(&arg.value));
             let args = if arguments.is_empty() {
                 "()".to_doc()
             } else {
                 join(args, "; ".to_doc()).surround("(", ")")
             };
-            docvec![name, args]
+            docvec![name.to_doc(), args]
         }
     }
 }
@@ -1137,12 +1164,6 @@ fn module_constant(constant: &ModuleConstant<Arc<Type>, EcoString>) -> Document<
     //         type_,
     //         field_map,
     //     } => {
-    //         println!("module: {:#?}", module);
-    //         println!("name: {:#?}", name);
-    //         println!("args: {:#?}", args);
-    //         println!("tag: {:#?}", tag);
-    //         println!("type_: {:#?}", type_);
-    //         println!("field_map: {:#?}", field_map);
     //         todo!()
     //     }
     //     Constant::BitArray { location, segments } => todo!(),
