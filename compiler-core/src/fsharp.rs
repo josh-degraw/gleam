@@ -38,6 +38,7 @@ fn module_to_doc(module: &TypedModule) -> Document<'_> {
 }
 
 fn module_declaration(module: &TypedModule) -> Document<'_> {
+    //println!("module: {:#?}", module);
     // Use module rec to not need to worry about initialization order
     "module rec ".to_doc().append(santitize_name(&module.name))
 }
@@ -127,13 +128,18 @@ fn map_publicity<'a>(publicity: Publicity) -> Document<'a> {
 fn record_type<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
     assert!(
         t.constructors.len() == 1,
-        "Records must have a single constructor to count as a record"
+        "Gleam records must have a single constructor to count as a record"
     );
 
-    let constructor = &t
+    let constructor = t
         .constructors
         .first()
         .expect("Single constructor should exist");
+
+    // If a gleam record has an argument with 0 arguments, we need to treat this type like a DU
+    if constructor.arguments.is_empty() {
+        return discriminated_union(t);
+    }
 
     let name = &t.name;
     let fields = constructor
@@ -238,7 +244,9 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
                 })
                 .collect::<Vec<Document<'a>>>();
 
-            max_indices.push(constructor.arguments.len() - 1);
+            if !constructor.arguments.is_empty() {
+                max_indices.push(constructor.arguments.len() - 1);
+            }
             if fields.is_empty() {
                 constructor_name_doc
             } else {
@@ -475,6 +483,7 @@ fn string<'a>(value: &str) -> Document<'a> {
 }
 
 fn expression(expr: &TypedExpr) -> Document<'_> {
+    println!("Expression: {:#?}", expr);
     match expr {
         TypedExpr::Int { value, .. } => value.to_doc(),
         TypedExpr::Float { value, .. } => value.to_doc(),
@@ -485,6 +494,7 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
             finally,
             ..
         } => pipeline(assignments, finally),
+
         TypedExpr::Var { name, .. } => match name.as_str() {
             "Nil" => "()".to_doc(),
             "True" => "true".to_doc(),
@@ -496,9 +506,7 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
             join(elements.iter().map(expression), "; ".to_doc()).surround("[", "]")
         }
 
-        TypedExpr::Call {
-            fun, args, type_, ..
-        } => match fun.as_ref() {
+        TypedExpr::Call { fun, args, .. } => match fun.as_ref() {
             TypedExpr::Var {
                 constructor:
                     ValueConstructor {
@@ -537,33 +545,12 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         TypedExpr::Todo { message, .. } => todo(message),
         TypedExpr::Panic { message, .. } => panic_(message),
         TypedExpr::RecordAccess { label, record, .. } => record_access(record, label),
-        TypedExpr::ModuleSelect {
-            location,
-            type_,
-            label,
-            module_name,
-            module_alias,
-            constructor,
-        } => todo!(),
-        TypedExpr::TupleIndex {
-            location,
-            type_,
-            index,
-            tuple,
-        } => todo!(),
-        TypedExpr::BitArray {
-            location,
-            type_,
-            segments,
-        } => todo!(),
-        TypedExpr::RecordUpdate {
-            location,
-            type_,
-            spread,
-            args,
-        } => todo!(),
-        TypedExpr::NegateBool { location, value } => todo!(),
-        TypedExpr::Invalid { location, type_ } => todo!(),
+        TypedExpr::ModuleSelect { .. } => todo!(),
+        TypedExpr::TupleIndex { .. } => todo!(),
+        TypedExpr::BitArray { .. } => todo!(),
+        TypedExpr::RecordUpdate { .. } => todo!(),
+        TypedExpr::NegateBool { .. } => todo!(),
+        TypedExpr::Invalid { .. } => todo!(),
     }
 }
 
@@ -648,15 +635,13 @@ fn case<'a>(subjects: &'a [TypedExpr], clauses_: &'a [TypedClause]) -> Document<
         tuple(subjects.iter().map(expression))
     };
 
-    let mut res = "match "
+    "match "
         .to_doc()
         .append(subjects_doc)
         .append(" with")
         .append(line())
         .append(clauses(clauses_))
-        .group();
-
-    res
+        .group()
 }
 
 fn clauses(clauses: &[TypedClause]) -> Document<'_> {
@@ -1010,9 +995,7 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         }
         Pattern::Invalid { .. } => panic!("invalid patterns should not reach code generation"),
         Pattern::Assign {
-            name,
-            location,
-            pattern: p,
+            name, pattern: p, ..
         } => pattern(p).append(" as ").append(name),
 
         Pattern::Constructor {
@@ -1045,14 +1028,12 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         }
 
         Pattern::Constructor {
-            location,
             name,
             arguments,
-            module,
             constructor,
-            spread,
-            type_,
+            ..
         } => {
+            println!("Constructor {:#?}", constructor);
             let args = arguments.iter().map(|arg| pattern(&arg.value));
             let args = if arguments.is_empty() {
                 "()".to_doc()
@@ -1215,16 +1196,9 @@ pub(crate) fn constant_expression<'a>(expression: &'a TypedConstant) -> Document
             name,
             tag,
             type_,
+            field_map,
             ..
         } => {
-            // if type_.is_result() {
-            //     if tag == "Ok" {
-            //         tracker.ok_used = true;
-            //     } else {
-            //         tracker.error_used = true;
-            //     }
-            // }
-
             // If there's no arguments and the type is a function that takes
             // arguments then this is the constructor being referenced, not the
             // function being called.
@@ -1235,30 +1209,25 @@ pub(crate) fn constant_expression<'a>(expression: &'a TypedConstant) -> Document
                 }
             }
 
+            if field_map.is_none() && args.is_empty() {
+                return tag.to_doc();
+            }
+
             let field_values: Vec<_> = args
                 .iter()
                 .map(|arg| constant_expression(&arg.value))
-                .collect(); //.try_collect()
-                            //.expect("failed to collect field values");
+                .collect();
 
+            println!("type: {:#?}", type_);
             construct_record(
                 module.as_ref().map(|(module, _)| module.as_str()),
                 name,
                 field_values,
             )
-            // match context {
-            //     Context::Constant => Ok(docvec!["/* @__PURE__ */ ", constructor]),
-            //     Context::Function => Ok(constructor),
-            // }
         }
 
-        Constant::BitArray { segments, .. } => {
+        Constant::BitArray { .. } => {
             todo!()
-            // let bit_array = bit_array(segments, |expr| constant_expression(expr))?;
-            // match context {
-            //     Context::Constant => Ok(docvec!["/* @__PURE__ */ ", bit_array]),
-            //     Context::Function => Ok(bit_array),
-            // }
         }
 
         Constant::Var { name, module, .. } => {
@@ -1289,13 +1258,6 @@ fn record_constructor<'a>(
     name: &'a str,
     arity: u16,
 ) -> Document<'a> {
-    // if qualifier.is_none() && type_.is_result_constructor() {
-    //     if name == "Ok" {
-    //         tracker.ok_used = true;
-    //     } else if name == "Error" {
-    //         tracker.error_used = true;
-    //     }
-    // }
     if type_.is_bool() && name == "True" {
         "true".to_doc()
     } else if type_.is_bool() {
