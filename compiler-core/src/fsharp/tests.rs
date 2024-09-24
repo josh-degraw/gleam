@@ -21,6 +21,7 @@ mod panic;
 mod patterns;
 mod pipes;
 mod records;
+mod recursion;
 mod strings;
 mod todo;
 mod variables;

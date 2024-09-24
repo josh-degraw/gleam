@@ -34,15 +34,11 @@ mod prelude_functions {
 }
 
 pub fn render_module(module: &TypedModule) -> super::Result<String> {
-    let document = module_to_doc(module);
-    Ok(document.to_pretty_string(120))
-}
-
-fn module_to_doc(module: &TypedModule) -> Document<'_> {
-    join(
+    let document = join(
         vec![module_declaration(module), module_contents(module)],
         line(),
-    )
+    );
+    Ok(document.to_pretty_string(120))
 }
 
 fn module_declaration(module: &TypedModule) -> Document<'_> {
@@ -365,6 +361,8 @@ fn function(f: &TypedFunction) -> Document<'_> {
     let body = statements(body, Some(return_type));
     let return_type = type_to_fsharp(return_type);
 
+    // For now, since we mark all modules as recursive, we don't need to mark
+    // functions as recursive.
     docvec![
         "let ",
         map_publicity(f.publicity),
