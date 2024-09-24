@@ -1,0 +1,47 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 238
+expression: "\npub fn go(x) {\n  let _ = case x {\n    \"\\f\" <> rest -> \"test\"\n    \"\\n\" <> rest -> \"test\"\n    \"\\r\" <> rest -> \"test\"\n    \"\\t\" <> rest -> \"test\"\n    \"\\\"\" <> rest -> \"test\"\n    \"\\\\\" <> rest -> \"test\"\n    \"\\f \\n \\r \\t \\\" \\\\\" <> rest -> \"control chars with prefix assignment\"\n    \"\\u{9}\" <> rest -> \"test\"\n    \"\\u{000009}\" <> rest -> \"test\"\n    \"\\u{21}\" <> rest -> \"test\"\n    \"\\u{100}\" <> rest -> \"test\"\n    \"\\u{1000}\" <> rest -> \"test\"\n    \"\\u{1F600}\" <> rest -> \"test\"\n    \"\\u{1f600}\" <> rest -> \"test\"\n    \"\\u{01F600}\" <> rest -> \"test\"\n    \"\\u{01f600}\" <> rest -> \"test\"\n    \"\\u{9} \\u{000009} \\u{21} \\u{100} \\u{1000} \\u{1F600} \\u{01F600}\" <> rest -> \"test\"\n    _ -> \"Unknown\"\n  }\n}\n"
+---
+module rec my.``mod``
+let go (x: string): string = begin
+    let _ = 
+        match x with
+        | Gleam__codegen__prefix "\f" rest ->
+            "test"
+        | Gleam__codegen__prefix "\n" rest ->
+            "test"
+        | Gleam__codegen__prefix "\r" rest ->
+            "test"
+        | Gleam__codegen__prefix "\t" rest ->
+            "test"
+        | Gleam__codegen__prefix "\"" rest ->
+            "test"
+        | Gleam__codegen__prefix "\\" rest ->
+            "test"
+        | Gleam__codegen__prefix "\f \n \r \t \" \\" rest ->
+            "control chars with prefix assignment"
+        | Gleam__codegen__prefix "\u9" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u000009" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u21" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u100" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u1000" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u1F600" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u1f600" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u01F600" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u01f600" rest ->
+            "test"
+        | Gleam__codegen__prefix "\u9 \u000009 \u21 \u100 \u1000 \u1F600 \u01F600" rest ->
+            "test"
+        | _ ->
+            "Unknown"
+    _
+end

@@ -426,7 +426,6 @@ fn statement(s: &TypedStatement) -> (Document<'_>, Option<Document<'_>>) {
                 },
             ..
         }) => {
-            println!("string prefix assignment");
             // TODO: Add warning suppression when this is encountered:
             // #nowarn "25" // Incomplete pattern matches on this expression.
             let suffix_binding_name: Document<'_> = match right_side_assignment {
@@ -513,7 +512,7 @@ fn statements<'a>(s: &'a [TypedStatement], return_type: Option<&Type>) -> Docume
 fn unicode_escape_sequence_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
-        Regex::new(r#"(\\+)(u)\{(.+)\}"#)
+        Regex::new(r#"(\\+)(u)\{(\S+)\}"#)
             .expect("Unicode escape sequence regex cannot be constructed")
     })
 }
@@ -1029,7 +1028,6 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             left_side_assignment: maybe_prefix_label,
             ..
         } => {
-            println!("string prefix assignment");
             // TODO: Add warning suppression when this is encountered:
             // #nowarn "25" // Incomplete pattern matches on this expression.
             let suffix_binding_name: Document<'_> = match right_side_assignment {
@@ -1126,24 +1124,6 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             docvec![name.to_doc(), args]
         }
     }
-}
-
-fn string_prefix_pattern<'a>(
-    right_side_assignment: &'a AssignName,
-    left_side_string: &'a EcoString,
-) -> Document<'a> {
-    let right = match right_side_assignment {
-        AssignName::Variable(right) => right.to_doc(),
-        AssignName::Discard(_) => "_".to_doc(),
-    };
-
-    // Use an active pattern helper function defined in prelude.fs
-    prelude_functions::STRING_PATTERN_PREFIX
-        .to_doc()
-        .append(" ")
-        .append(string(left_side_string))
-        .append(" ")
-        .append(right)
 }
 
 fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {

@@ -39,7 +39,7 @@ let go (x: string): string = begin
             "test"
         | Gleam_codegen_string_parts "\u01f600" (start, rest) ->
             "test"
-        | Gleam_codegen_string_parts "\u9} \u{000009} \u{21} \u{100} \u{1000} \u{1F600} \u{01F600" (start, rest) ->
+        | Gleam_codegen_string_parts "\u9 \u000009 \u21 \u100 \u1000 \u1F600 \u01F600" (start, rest) ->
             "test"
         | _ ->
             "Unknown"
