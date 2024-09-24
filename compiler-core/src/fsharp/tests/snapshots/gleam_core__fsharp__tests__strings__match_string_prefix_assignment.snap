@@ -1,0 +1,13 @@
+---
+source: compiler-core/src/fsharp/tests/strings.rs
+assertion_line: 178
+expression: "\npub fn go(x) {\n  case x {\n    \"Hello, \" as greeting <> name -> greeting\n    _ -> \"Unknown\"\n  }\n}\n"
+---
+module rec my.``mod``
+let go (x: string): string = begin
+    match x with
+    | Gleam_codegen_string_parts "Hello, " (greeting, name) ->
+        greeting
+    | _ ->
+        "Unknown"
+end

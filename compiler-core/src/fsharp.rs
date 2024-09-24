@@ -25,16 +25,12 @@ pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 mod prelude_functions {
     /// This is used directly in pattern matching
     pub const STRING_PATTERN_PREFIX: &str = "Gleam__codegen__prefix";
-    /// This is the actual full function, and it is necessary when cl
-    pub const STRING_PATTERN_PREFIX_FUNCTION: &str = "(|Gleam__codegen__prefix|_|)";
 
     // TODO: Is it worth it to have two separate functions here?
     // Probably not
 
     /// This is used directly in pattern matching
     pub const STRING_PATTERN_PARTS: &str = "Gleam_codegen_string_parts";
-    /// This is the actual full function, and it is necessary when cl
-    pub const STRING_PATTERN_PARTS_FUNCTION: &str = "(|Gleam_codegen_string_parts|_|)";
 }
 
 pub fn render_module(module: &TypedModule) -> super::Result<String> {
@@ -434,48 +430,55 @@ fn statement(s: &TypedStatement) -> (Document<'_>, Option<Document<'_>>) {
             // TODO: Add warning suppression when this is encountered:
             // #nowarn "25" // Incomplete pattern matches on this expression.
             let suffix_binding_name: Document<'_> = match right_side_assignment {
-                AssignName::Variable(right) => right.to_doc(),
-                AssignName::Discard(_) => "_".to_doc(),
-            };
-            let suffix_binding_name = suffix_binding_name.to_doc();
-            last_var = Some(suffix_binding_name.clone());
+                AssignName::Variable(right) => {
+                    let v = right.to_doc();
 
-            let prefix = string(prefix);
-
-            let matching_function = match maybe_label {
-                Some(_) => prelude_functions::STRING_PATTERN_PARTS_FUNCTION,
-                None => prelude_functions::STRING_PATTERN_PREFIX_FUNCTION,
+                    last_var = Some(v.clone());
+                    v
+                }
+                AssignName::Discard(_) => {
+                    last_var = Some(expression(value).to_doc());
+                    "_".to_doc()
+                }
             };
 
             docvec![
-                "let (Some(",
-                suffix_binding_name,
+                "let (",
+                prelude_functions::STRING_PATTERN_PARTS,
+                " ",
+                string(prefix),
+                " (",
                 match maybe_label {
-                    Some((label, _)) => docvec![", ", label],
-                    None => "".to_doc(),
+                    Some((prefix_label, _)) => docvec![prefix_label, ", "],
+                    None => "_, ".to_doc(),
                 },
+                suffix_binding_name,
                 ")) = ",
-                matching_function,
-                " ",
-                prefix,
-                " ",
                 expression(value).to_doc(),
             ]
         }
+
         Statement::Assignment(a) => {
-            let name = pattern(&a.pattern);
-            last_var = Some(name);
-            assignment(a)
+            let (name, value) = get_assignment_info(a);
+
+            last_var = Some(name.clone());
+            match a.value.as_ref() {
+                TypedExpr::Case { .. } => {
+                    docvec![
+                        "let ",
+                        name,
+                        " = ",
+                        line().nest(INDENT),
+                        value.group().nest(INDENT)
+                    ]
+                }
+                _ => docvec!["let ", name, " = ", value],
+            }
         }
         Statement::Use(_) => docvec!["// TODO: Implement use statements"],
     };
 
     (statement_doc, last_var)
-}
-
-fn assignment(assignment: &TypedAssignment) -> Document<'_> {
-    let (name, value) = get_assignment_info(assignment);
-    "let ".to_doc().append(name).append(" = ").append(value)
 }
 
 fn statements<'a>(s: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
@@ -712,7 +715,7 @@ fn panic_(message: &Option<Box<TypedExpr>>) -> Document<'_> {
 fn tuple<'a>(elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
     join(elements, ", ".to_doc()).surround("(", ")")
 }
-fn case<'a>(subjects: &'a [TypedExpr], clauses_: &'a [TypedClause]) -> Document<'a> {
+fn case<'a>(subjects: &'a [TypedExpr], clauses: &'a [TypedClause]) -> Document<'a> {
     let subjects_doc = if subjects.len() == 1 {
         expression(
             subjects
@@ -723,22 +726,19 @@ fn case<'a>(subjects: &'a [TypedExpr], clauses_: &'a [TypedClause]) -> Document<
         tuple(subjects.iter().map(expression))
     };
 
-    "match "
-        .to_doc()
-        .append(subjects_doc)
-        .append(" with")
-        .append(line())
-        .append(clauses(clauses_))
-        .group()
-}
-
-fn clauses(clauses: &[TypedClause]) -> Document<'_> {
-    join(
+    let clauses = join(
         clauses
             .iter()
             .map(|c| "| ".to_doc().append(clause(c).group())),
         line(),
     )
+    .group();
+    docvec![
+        docvec!["match ", subjects_doc, " with"].group(),
+        line(),
+        clauses
+    ]
+    .group()
 }
 
 fn clause(clause: &TypedClause) -> Document<'_> {

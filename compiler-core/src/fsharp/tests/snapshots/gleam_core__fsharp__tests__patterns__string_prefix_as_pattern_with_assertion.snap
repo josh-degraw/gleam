@@ -5,6 +5,6 @@ expression: "pub fn a(x) {\n  let assert \"a\" as a <> rest = \"wibble\"\n  a\n}
 ---
 module rec my.``mod``
 let a (x: 'u8): string = begin
-    let (Some(rest, a)) = (|Gleam_codegen_string_parts|_|) "a" "wibble"
+    let (Gleam_codegen_string_parts "a" (a, rest)) = "wibble"
     a
 end
