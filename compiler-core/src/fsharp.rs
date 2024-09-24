@@ -11,6 +11,7 @@ use crate::{
     },
 };
 use ecow::EcoString;
+use itertools::Itertools;
 use regex::{Captures, Regex};
 use std::{
     collections::HashMap,
@@ -194,35 +195,16 @@ fn type_params(t: &CustomType<Arc<Type>>) -> Document<'_> {
 fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
     // need to track which named fields have the same name and position and generate method accessors for them
 
-    // For this type:
-    // Each constructor maps to a union case
-    // For each union case where all cases have a field of the same type in the same position,
-    // generate a method accessor for that field
-    // So for this type in gleam:
-    // ```gleam
-    //     pub type Foo {
-    //    Bar(name: String, age: Int)
-    //    Baz(quux: Int)
-    // }
-    // ```
-    // We generate this in F#
-    // ```fsharp
-    // type Foo =
-    //     | Bar of name: string * age: int
-    //     | Baz of name: string
-    //     member this.getname() =
-    //         match this with
-    //         | Bar(name, _) -> name
-    //         | Baz(name) -> name
-    // ```
     let mut named_fields = HashMap::new();
 
     let mut max_indices = vec![];
 
     let type_name = &t.name;
+    // Need to sort the constructors before mapping to ensure repeatable output
     let constructors = t
         .constructors
         .iter()
+        .sorted_by(|a, b| Ord::cmp(&a.name, &b.name))
         .map(|constructor| {
             let constructor_name = constructor.name.clone();
             let constructor_name_doc = constructor_name.to_doc();
@@ -268,60 +250,66 @@ fn discriminated_union<'a>(t: &'a CustomType<Arc<Type>>) -> Document<'a> {
         })
         .collect::<Vec<Document<'a>>>();
 
-    let member_declarations = named_fields.iter().filter_map(|(label, type_loc_list)| {
-        if type_loc_list.len() == t.constructors.len() {
-            let (first_index, first_type, _) = type_loc_list
-                .first()
-                .expect("Type loc list should have elements");
+    let member_declarations = named_fields
+        .iter()
+        .sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
+        .filter_map(|(label, type_loc_list)| {
+            if type_loc_list.len() == t.constructors.len() {
+                let (first_index, first_type, _) = type_loc_list
+                    .first()
+                    .expect("Type loc list should have elements");
 
-            let meets_requirements = type_loc_list
-                .iter()
-                .all(|(index, type_, _)| index == first_index && type_ == first_type);
-
-            if meets_requirements {
-                let cases = type_loc_list
+                let meets_requirements = type_loc_list
                     .iter()
-                    .map(|(index, _, constructor)| {
-                        let max_index = constructor.arguments.len() - 1;
+                    .all(|(index, type_, _)| index == first_index && type_ == first_type);
 
-                        let mut discards = (0..=max_index)
-                            .map(|_| "_".to_doc())
-                            .collect::<Vec<Document<'a>>>();
+                if meets_requirements {
+                    let cases = type_loc_list
+                        .iter()
+                        .sorted_by(|a, b| Ord::cmp(&a.2.name, &b.2.name))
+                        .map(|(index, _, constructor)| {
+                            let max_index = constructor.arguments.len() - 1;
 
-                        *discards.get_mut(*index).expect("Index out of bounds") = label.to_doc();
+                            let mut discards = (0..=max_index)
+                                .map(|_| "_".to_doc())
+                                .collect::<Vec<Document<'a>>>();
 
-                        let discards_doc = join(discards, ", ".to_doc()).surround("(", ")").group();
+                            *discards.get_mut(*index).expect("Index out of bounds") =
+                                label.to_doc();
 
+                            let discards_doc =
+                                join(discards, ", ".to_doc()).surround("(", ")").group();
+
+                            docvec![
+                                "| ",
+                                type_name.clone(),
+                                ".",
+                                constructor.name.clone().to_doc(),
+                                " ",
+                                discards_doc,
+                                " -> ",
+                                label,
+                            ]
+                        })
+                        .collect::<Vec<_>>();
+
+                    return Some(
                         docvec![
-                            "| ",
-                            type_name.clone(),
-                            ".",
-                            constructor.name.clone().to_doc(),
-                            " ",
-                            discards_doc,
-                            " -> ",
+                            "member this.",
                             label,
+                            " = ",
+                            line(),
+                            "match this with",
+                            line(),
+                            join(cases, line()),
                         ]
-                    })
-                    .collect::<Vec<_>>();
-
-                return Some(
-                    docvec![
-                        "member this.",
-                        label,
-                        " = ",
-                        line(),
-                        "match this with",
-                        line(),
-                        join(cases, line()),
-                    ]
-                    .group()
-                    .nest(INDENT),
-                );
+                        .group()
+                        .nest(INDENT),
+                    );
+                }
             }
-        }
-        None
-    });
+            None
+        });
 
     let member_declarations_doc = join(member_declarations, line()).nest(INDENT);
 
@@ -712,21 +700,13 @@ fn clause_consequence(consequence: &TypedExpr) -> Document<'_> {
 }
 
 fn statement_sequence(statements: &[TypedStatement]) -> Document<'_> {
-    let count = statements.len();
-    let mut documents = Vec::with_capacity(count * 3);
-    for (i, expression) in statements.iter().enumerate() {
-        documents.push(statement(expression).group());
+    let documents = statements.iter().map(|e| statement(e).group());
 
-        if i + 1 < count {
-            // This isn't the final expression so add the delimeters
-            documents.push(",".to_doc());
-            documents.push(line());
-        }
-    }
-    if count == 1 {
-        documents.to_doc()
+    let documents = join(documents, line());
+    if statements.len() == 1 {
+        documents
     } else {
-        documents.to_doc().force_break()
+        documents.force_break()
     }
 }
 fn optional_clause_guard<'a>(
@@ -743,7 +723,7 @@ fn optional_clause_guard<'a>(
             guard
         }
     });
-    let doc = join(guards_docs, " andalso ".to_doc());
+    let doc = join(guards_docs, " && ".to_doc());
     if doc.is_empty() {
         doc
     } else {

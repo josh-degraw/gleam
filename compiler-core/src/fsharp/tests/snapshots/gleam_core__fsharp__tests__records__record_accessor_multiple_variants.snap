@@ -5,12 +5,12 @@ expression: "\npub type Person {\n    Teacher(name: String, title: String)\n    
 ---
 module rec my.``mod``
 type Person =
-| Teacher of name: string * title: string
 | Student of name: string * age: int
+| Teacher of name: string * title: string
     member this.name = 
         match this with
-        | Person.Teacher (name, _) -> name
         | Person.Student (name, _) -> name
+        | Person.Teacher (name, _) -> name
 let get_name (person: Person): string = begin
     person.name
 end
