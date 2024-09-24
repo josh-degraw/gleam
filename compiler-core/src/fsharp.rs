@@ -48,7 +48,7 @@ fn santitize_name(name: &EcoString) -> Document<'_> {
     join(
         name.split("/").map(|s| {
             if is_reserved_word(s) {
-                "``".to_doc().append(s.to_doc()).append("``")
+                s.to_doc().surround("``", "``")
             } else {
                 s.to_doc()
             }
@@ -544,16 +544,46 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
         TypedExpr::Todo { message, .. } => todo(message),
         TypedExpr::Panic { message, .. } => panic_(message),
         TypedExpr::RecordAccess { label, record, .. } => record_access(record, label),
-        TypedExpr::ModuleSelect { .. } => todo!(),
-        TypedExpr::TupleIndex { .. } => todo!(),
-        TypedExpr::BitArray { .. } => todo!(),
-        TypedExpr::RecordUpdate { .. } => todo!(),
-        TypedExpr::NegateBool { .. } => todo!(),
-        TypedExpr::Invalid { .. } => todo!(),
+        TypedExpr::RecordUpdate { args, spread, .. } => {
+            // If the target of the update is the result of a pipeline, it needs to be
+            // surrounded in parentheses
+            let old_var_name = match spread.deref() {
+                TypedExpr::Pipeline { .. } => expression(spread).surround("(", ")"),
+                _ => expression(spread),
+            };
+
+            let new_values = args.iter().map(|arg| {
+                let child_expr = match &arg.value {
+                    // If the child here is a pipe operation, we need to indent at least
+                    // one more space so that it starts on a column after the `with` keyword
+                    TypedExpr::Pipeline { .. } => expression(&arg.value).nest(1),
+                    _ => expression(&arg.value),
+                };
+
+                docvec![arg.label.clone(), " = ", child_expr].group()
+            });
+
+            docvec![
+                "{ ",
+                old_var_name,
+                " with ",
+                join(new_values, "; ".to_doc()).force_break(),
+                " }"
+            ]
+        }
+        TypedExpr::ModuleSelect { .. } => "// TODO: TypedExpr::ModuleSelect".to_doc(),
+        TypedExpr::TupleIndex { tuple, index, .. } => {
+            // TODO: Add warning suppression when this is encountered:
+            // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
+            docvec![expression(tuple), ".Item", index + 1]
+        }
+        TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
+        TypedExpr::NegateBool { .. } => "// TODO: TypedExpr::NegateBool".to_doc(),
+        TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
     }
 }
 
-fn invert_field_map<'a>(field_map: &'a FieldMap) -> HashMap<&'a u32, &'a EcoString> {
+fn invert_field_map(field_map: &FieldMap) -> HashMap<&u32, &EcoString> {
     field_map
         .fields
         .iter()
@@ -1113,43 +1143,6 @@ fn module_constant(constant: &ModuleConstant<Arc<Type>, EcoString>) -> Document<
             constant_expression(&constant.value)
         ],
     }
-    // match value.deref().clone() {
-    //     Constant::Int { value, .. } | Constant::Float { value, .. } => {
-    //         annotation.append(binding.append(value.to_doc()))
-    //     }
-    //     Constant::String { value, .. } => annotation.append(binding.append(string(value.as_str()))),
-    //     Constant::Tuple { elements, .. } => {
-    //         binding.append(tuple(elements.iter().map(inline_constant)))
-    //     }
-    //     Constant::List { elements, .. } => {
-    //         binding.append(join(elements.iter().map(inline_constant), "; ".to_doc()))
-    //     }
-    //     Constant::Record {
-    //         location,
-    //         module,
-    //         name,
-    //         args,
-    //         tag,
-    //         type_,
-    //         field_map,
-    //     } => {
-    //         todo!()
-    //     }
-    //     Constant::BitArray { location, segments } => todo!(),
-    //     Constant::Var {
-    //         location,
-    //         module,
-    //         name,
-    //         constructor,
-    //         type_,
-    //     } => todo!(),
-    //     Constant::StringConcatenation {
-    //         location,
-    //         left,
-    //         right,
-    //     } => todo!(),
-    //     Constant::Invalid { location, type_ } => todo!(),
-    //}
 }
 
 pub(crate) fn constant_expression<'a>(expression: &'a TypedConstant) -> Document<'a> {
@@ -1213,9 +1206,7 @@ pub(crate) fn constant_expression<'a>(expression: &'a TypedConstant) -> Document
             )
         }
 
-        Constant::BitArray { .. } => {
-            todo!()
-        }
+        Constant::BitArray { .. } => "//TODO: Constant::BitArray".to_doc(),
 
         Constant::Var { name, module, .. } => {
             match module {

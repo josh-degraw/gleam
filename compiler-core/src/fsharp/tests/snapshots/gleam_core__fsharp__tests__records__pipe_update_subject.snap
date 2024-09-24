@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 270
+expression: "pub type Thing {\n  Thing(a: Int, b: Int)\n}\n\npub fn identity(x) { x }\n\npub fn main() {\n  let thing = Thing(1, 2)\n  Thing(..thing |> identity, b: 1000)\n}"
+---
+module rec my.``mod``
+type Thing = { a: int; b: int }
+let identity (x: 'u8): 'u8 = begin
+    x
+end
+let main (): Thing = begin
+    let thing = { a = 1; b = 2 }
+    { (begin
+        let _pipe = thing
+        (identity (_pipe))
+    end) with b = 1000 }
+end

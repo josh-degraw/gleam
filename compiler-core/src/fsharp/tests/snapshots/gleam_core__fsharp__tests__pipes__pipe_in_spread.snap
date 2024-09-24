@@ -4,11 +4,13 @@ assertion_line: 98
 expression: "pub type X {\n  X(a: Int, b: Int)\n}\n\nfn id(x) {\n  x\n}\n\npub fn main(x) {\n  X(..x, a: 1 |> id)\n}"
 ---
 module rec my.``mod``
-type X =
-| X of a: int * b: int
+type X = { a: int; b: int }
 let private id (x: 'u8): 'u8 = begin
     x
 end
 let main (x: X): X = begin
-    // TODO: Implement other expression types
+    { x with a = begin
+         let _pipe = 1
+         (id (_pipe))
+     end }
 end

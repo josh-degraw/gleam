@@ -19,5 +19,5 @@ let use_int_identity_alias (): int = begin
 end
 let private compound = (int, int_identity, int_identity_alias)
 let use_compound (): int = begin
-    // TODO: Implement other expression types (// TODO: Implement other expression types)
+    compound.Item2 (compound.Item1)
 end

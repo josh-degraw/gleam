@@ -82,7 +82,7 @@ fn float_negation() {
     assert_fsharp!(
         r#"
 pub fn main() {
-  let a = -3.0
+  let a = -3.1
   let b = -a
 }
 "#

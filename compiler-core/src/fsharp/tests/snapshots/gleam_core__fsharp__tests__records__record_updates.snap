@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 177
+expression: "\npub type Person { Person(name: String, age: Int) }\n\nfn main() {\n    let p = Person(\"Quinn\", 27)\n    let new_p = Person(..p, age: 28)\n    new_p\n}\n"
+---
+module rec my.``mod``
+type Person = { name: string; age: int }
+let private main (): Person = begin
+    let p = { name = "Quinn"; age = 27 }
+    let new_p = { p with age = 28 }
+    new_p
+end
