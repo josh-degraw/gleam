@@ -23,7 +23,18 @@ const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
 mod prelude_functions {
+    /// This is used directly in pattern matching
     pub const STRING_PATTERN_PREFIX: &str = "Gleam__codegen__prefix";
+    /// This is the actual full function, and it is necessary when cl
+    pub const STRING_PATTERN_PREFIX_FUNCTION: &str = "(|Gleam__codegen__prefix|_|)";
+
+    // TODO: Is it worth it to have two separate functions here?
+    // Probably not
+
+    /// This is used directly in pattern matching
+    pub const STRING_PATTERN_PARTS: &str = "Gleam_codegen_string_parts";
+    /// This is the actual full function, and it is necessary when cl
+    pub const STRING_PATTERN_PARTS_FUNCTION: &str = "(|Gleam_codegen_string_parts|_|)";
 }
 
 pub fn render_module(module: &TypedModule) -> super::Result<String> {
@@ -401,12 +412,65 @@ fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
         .group()
 }
 
-fn statement(s: &TypedStatement) -> Document<'_> {
-    match s {
-        TypedStatement::Expression(expr) => expression(expr),
-        TypedStatement::Assignment(a) => assignment(a),
-        TypedStatement::Use(_) => docvec!["// TODO: Implement use statements"],
-    }
+fn statement(s: &TypedStatement) -> (Document<'_>, Option<Document<'_>>) {
+    let mut last_var = None;
+    let statement_doc = match s {
+        Statement::Expression(expr) => {
+            last_var = None;
+            expression(expr)
+        }
+        TypedStatement::Assignment(Assignment {
+            value,
+            pattern:
+                Pattern::StringPrefix {
+                    left_side_string: prefix,
+                    right_side_assignment,
+                    left_side_assignment: maybe_label,
+                    ..
+                },
+            ..
+        }) => {
+            println!("string prefix assignment");
+            // TODO: Add warning suppression when this is encountered:
+            // #nowarn "25" // Incomplete pattern matches on this expression.
+            let suffix_binding_name: Document<'_> = match right_side_assignment {
+                AssignName::Variable(right) => right.to_doc(),
+                AssignName::Discard(_) => "_".to_doc(),
+            };
+            let suffix_binding_name = suffix_binding_name.to_doc();
+            last_var = Some(suffix_binding_name.clone());
+
+            let prefix = string(prefix);
+
+            let matching_function = match maybe_label {
+                Some(_) => prelude_functions::STRING_PATTERN_PARTS_FUNCTION,
+                None => prelude_functions::STRING_PATTERN_PREFIX_FUNCTION,
+            };
+
+            docvec![
+                "let (Some(",
+                suffix_binding_name,
+                match maybe_label {
+                    Some((label, _)) => docvec![", ", label],
+                    None => "".to_doc(),
+                },
+                ")) = ",
+                matching_function,
+                " ",
+                prefix,
+                " ",
+                expression(value).to_doc(),
+            ]
+        }
+        Statement::Assignment(a) => {
+            let name = pattern(&a.pattern);
+            last_var = Some(name);
+            assignment(a)
+        }
+        Statement::Use(_) => docvec!["// TODO: Implement use statements"],
+    };
+
+    (statement_doc, last_var)
 }
 
 fn assignment(assignment: &TypedAssignment) -> Document<'_> {
@@ -418,17 +482,10 @@ fn statements<'a>(s: &'a [TypedStatement], return_type: Option<&Type>) -> Docume
     let mut last_var = None;
     let mut res = s
         .iter()
-        .map(|s| match s {
-            Statement::Expression(expr) => {
-                last_var = None;
-                expression(expr)
-            }
-            Statement::Assignment(a) => {
-                let name = pattern(&a.pattern);
-                last_var = Some(name);
-                assignment(a)
-            }
-            Statement::Use(_) => docvec!["// TODO: Implement use statements"],
+        .map(|s| {
+            let statement_info = statement(s);
+            last_var = statement_info.1;
+            statement_info.0
         })
         .collect::<Vec<Document<'a>>>();
 
@@ -572,15 +629,17 @@ fn expression(expr: &TypedExpr) -> Document<'_> {
             ]
         }
         TypedExpr::ModuleSelect { .. } => "// TODO: TypedExpr::ModuleSelect".to_doc(),
-        TypedExpr::TupleIndex { tuple, index, .. } => {
-            // TODO: Add warning suppression when this is encountered:
-            // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
-            docvec![expression(tuple), ".Item", index + 1]
-        }
+        TypedExpr::TupleIndex { tuple, index, .. } => tuple_index(tuple, index),
         TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
         TypedExpr::NegateBool { .. } => "// TODO: TypedExpr::NegateBool".to_doc(),
         TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
     }
+}
+
+fn tuple_index<'a>(tuple: &'a TypedExpr, index: &'a u64) -> Document<'a> {
+    // TODO: Add warning suppression when this is encountered:
+    // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
+    docvec![expression(tuple), ".Item", index + 1]
 }
 
 fn invert_field_map(field_map: &FieldMap) -> HashMap<&u32, &EcoString> {
@@ -730,7 +789,7 @@ fn clause_consequence(consequence: &TypedExpr) -> Document<'_> {
 }
 
 fn statement_sequence(statements: &[TypedStatement]) -> Document<'_> {
-    let documents = statements.iter().map(|e| statement(e).group());
+    let documents = statements.iter().map(|e| statement(e).0.group());
 
     let documents = join(documents, line());
     if statements.len() == 1 {
@@ -860,29 +919,15 @@ fn bare_clause_guard(guard: &TypedClauseGuard) -> Document<'_> {
         // ClauseGuard::Vars are local variables
         ClauseGuard::Var { name, .. } => name.to_doc(),
 
-        // ClauseGuard::TupleIndex { tuple, index, .. } => tuple_index_inline(tuple, *index),
+        //ClauseGuard::TupleIndex { tuple, index, .. } => tuple_index(tuple, index),
 
         // ClauseGuard::FieldAccess {
         //     container, index, ..
         // } => tuple_index_inline(container, index.expect("Unable to find index") + 1),
 
         // ClauseGuard::ModuleSelect { literal, .. } => const_inline(literal),
-        ClauseGuard::Constant(c) => inline_constant(c),
+        ClauseGuard::Constant(c) => constant_expression(c),
         _ => docvec!["// TODO: Implement other guard types"],
-    }
-}
-
-fn inline_constant<'a>(c: &Constant<Arc<Type>, EcoString>) -> Document<'a> {
-    match c {
-        Constant::Int { value, .. } => value.to_doc(),
-        Constant::Float { value, .. } => value.to_doc(),
-        Constant::String { value, .. } => string(value.as_str()),
-        Constant::Tuple { elements, .. } => tuple(elements.iter().map(inline_constant)),
-        Constant::List { elements, .. } => {
-            join(elements.iter().map(inline_constant), "; ".to_doc()).surround("[", "]")
-        }
-
-        _ => docvec!["// TODO: Implement other inline_constant types"],
     }
 }
 
@@ -979,25 +1024,43 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         }
 
         Pattern::StringPrefix {
-            left_side_string,
+            left_side_string: prefix,
             right_side_assignment,
-            left_side_assignment,
+            left_side_assignment: maybe_prefix_label,
             ..
-        } if left_side_assignment.is_none() => {
-            let right = match right_side_assignment {
+        } => {
+            println!("string prefix assignment");
+            // TODO: Add warning suppression when this is encountered:
+            // #nowarn "25" // Incomplete pattern matches on this expression.
+            let suffix_binding_name: Document<'_> = match right_side_assignment {
                 AssignName::Variable(right) => right.to_doc(),
                 AssignName::Discard(_) => "_".to_doc(),
             };
 
-            // Use an active pattern helper function defined in prelude.fs
-            prelude_functions::STRING_PATTERN_PREFIX
-                .to_doc()
-                .append(" ")
-                .append(string(left_side_string))
-                .append(" ")
-                .append(right)
+            match maybe_prefix_label {
+                None => {
+                    docvec![
+                        prelude_functions::STRING_PATTERN_PREFIX,
+                        " ",
+                        string(prefix),
+                        " ",
+                        suffix_binding_name,
+                    ]
+                }
+                Some((prefix_label, _)) => {
+                    docvec![
+                        prelude_functions::STRING_PATTERN_PARTS,
+                        " ",
+                        string(prefix),
+                        " (",
+                        prefix_label.to_doc(),
+                        ", ",
+                        suffix_binding_name,
+                        ")"
+                    ]
+                }
+            }
         }
-        Pattern::StringPrefix { .. } => "// Prefix assignment pattern not yet supported".to_doc(),
         Pattern::BitArray { segments, .. } => {
             let segments_docs = segments.iter().map(|s| pattern(&s.value));
             join(segments_docs, "; ".to_doc()).surround("[|", "|]")
@@ -1010,7 +1073,9 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
                 .expect("Constructor not found for variable usage")
                 .variant;
             match v {
-                ValueConstructorVariant::ModuleConstant { literal, .. } => inline_constant(literal),
+                ValueConstructorVariant::ModuleConstant { literal, .. } => {
+                    constant_expression(literal)
+                }
                 _ => name.to_doc(),
             }
         }
@@ -1061,6 +1126,24 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
             docvec![name.to_doc(), args]
         }
     }
+}
+
+fn string_prefix_pattern<'a>(
+    right_side_assignment: &'a AssignName,
+    left_side_string: &'a EcoString,
+) -> Document<'a> {
+    let right = match right_side_assignment {
+        AssignName::Variable(right) => right.to_doc(),
+        AssignName::Discard(_) => "_".to_doc(),
+    };
+
+    // Use an active pattern helper function defined in prelude.fs
+    prelude_functions::STRING_PATTERN_PREFIX
+        .to_doc()
+        .append(" ")
+        .append(string(left_side_string))
+        .append(" ")
+        .append(right)
 }
 
 fn type_to_fsharp<'a>(t: &Type) -> Document<'a> {

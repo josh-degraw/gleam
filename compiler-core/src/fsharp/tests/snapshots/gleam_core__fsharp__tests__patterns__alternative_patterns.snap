@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/patterns.rs
+assertion_line: 6
+expression: "\npub fn main() {\n  let duplicate_name = 1\n\n  case 1 {\n    1 | 2 -> {\n      let duplicate_name = duplicate_name + 1\n      duplicate_name\n    }\n    _ -> 0\n  }\n}"
+---
+module rec my.``mod``
+let main (): int = begin
+    let duplicate_name = 1
+    match 1 with
+    | 1 | 2 ->
+        let duplicate_name = duplicate_name + 1
+        duplicate_name
+    | _ ->
+        0
+end

@@ -18,6 +18,7 @@ mod consts;
 mod functions;
 mod numbers;
 mod panic;
+mod patterns;
 mod pipes;
 mod records;
 mod strings;
