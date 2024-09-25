@@ -1,32 +1,17 @@
 # Project
 
-A test Gleam project.
+A test Gleam project compiling to dotnet via F#.
 
 It covers these features:
 
-- Downloading packages
-  - Specified in config.dependencies
-- Importing packages
-  - Specified in config.dependencies
-- Compilation of Gleam code
+- Compilation of Gleam code to F#
   - in src
-  - in test
-- Importing Gleam src code into test
-
-These features are not tested yet
-
-- Downloading packages
-  - Specified in config.dev-dependencies
-- Importing packages
-  - Specified in config.dev-dependencies
-- Compilation of locally defined JavaScript modules
-  - in src
-  - in test
-- Importing Gleam src code into test
+  - from an external F# file
 
 ## Quick start
-
+Requires .net 8 installed locally.
+From the root of this repository, run:
 ```sh
-gleam run
-gleam test
+./build-fsharp-package.sh
+./run-fsharp-package.sh
 ```
