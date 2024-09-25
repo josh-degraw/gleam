@@ -1,9 +1,8 @@
 ---
 source: compiler-core/src/fsharp/tests/todo.rs
-assertion_line: 16
-expression: "\npub fn main() {\n  todo as \"wibble\"\n}\n"
+expression: "\npub fn foo() {\n  todo as \"wibble\"\n}\n"
 ---
 module rec my.``mod``
-let main (): 'u9 = begin
+let foo (): 'u9 = begin
     failwith ("wibble")
 end

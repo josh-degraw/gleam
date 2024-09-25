@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/consts.rs
-assertion_line: 23
-expression: "\npub type X {\n  X(Int)\n}\n\npub const z = #(X)\n\npub fn main() {\n  z\n}"
+expression: "\npub type X {\n  X(Int)\n}\n\npub const z = #(X)\n\npub fn foo() {\n  z\n}"
 ---
 module rec my.``mod``
 type X =
 | X of int
     
 let z = (fun (var0) -> begin X(var0) end)
-let main (): (int -> X) = begin
+let foo (): (int -> X) = begin
     z
 end

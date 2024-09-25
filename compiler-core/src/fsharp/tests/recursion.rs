@@ -4,10 +4,10 @@ use crate::assert_fsharp;
 fn tco() {
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   case x {
     0 -> Nil
-    _ -> main(x - 1)
+    _ -> foo(x - 1)
   }
 }
 "#
@@ -18,12 +18,12 @@ pub fn main(x) {
 fn tco_case_block() {
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   case x {
     0 -> Nil
     _ -> {
       let y = x
-      main(y - 1)
+      foo(y - 1)
     }
   }
 }
@@ -36,10 +36,10 @@ pub fn main(x) {
 fn not_tco_due_to_assignment() {
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   let z = {
     let y = x
-    main(y - 1)
+    foo(y - 1)
   }
   z
 }

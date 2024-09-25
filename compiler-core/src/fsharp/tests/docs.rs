@@ -9,7 +9,7 @@ fn other() {
   Nil
 }
 
-pub fn main() {
+pub fn foo() {
   other
 }
 "#
@@ -26,7 +26,7 @@ fn other() {
   Nil
 }
 
-pub fn main() {
+pub fn foo() {
   other()
 }
 "#
@@ -44,7 +44,7 @@ fn other() {
   Nil
 }
 
-pub fn main() {
+pub fn foo() {
   other()
 }
 "#

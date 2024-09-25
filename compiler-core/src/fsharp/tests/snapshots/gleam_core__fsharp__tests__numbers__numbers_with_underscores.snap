@@ -1,10 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/numbers.rs
-assertion_line: 5
-expression: "\npub fn main() {\n  100_000\n  100_000.00101\n}\n"
+expression: "\npub fn foo() {\n  100_000\n  100_000.00101\n}\n"
 ---
 module rec my.``mod``
-let main (): float = begin
+let foo (): float = begin
     100_000
     100_000.00101
 end

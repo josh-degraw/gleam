@@ -1,9 +1,8 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 49
-expression: "\npub fn main(x) -> String {\n  x <> \"\\\\u{0308}\"\n}\n"
+expression: "\npub fn foo(x) -> String {\n  x <> \"\\\\u{0308}\"\n}\n"
 ---
 module rec my.``mod``
-let main (x: string): string = begin
+let foo (x: string): string = begin
     x + "\\u{0308}"
 end

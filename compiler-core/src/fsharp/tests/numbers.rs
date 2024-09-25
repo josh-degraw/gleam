@@ -4,7 +4,7 @@ use crate::assert_fsharp;
 fn numbers_with_underscores() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   100_000
   100_000.00101
 }
@@ -18,7 +18,7 @@ fn numbers_with_underscores1() {
         r#"
 const i = 100_000
 const f = 100_000.00101
-pub fn main() {
+pub fn foo() {
   i
   f
 }
@@ -30,7 +30,7 @@ pub fn main() {
 fn numbers_with_underscores2() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   let i = 100_000
   let f = 100_000.00101
   f
@@ -52,7 +52,7 @@ const l = -100.001e-1_230
 const m = 100.001e123_456_789
 const n = -100.001e-123_456_789
 
-pub fn main() {
+pub fn foo() {
   i
   j
   k
@@ -68,7 +68,7 @@ pub fn main() {
 fn int_negation() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   let a = 3
   let b = -a
   let c = -8
@@ -81,7 +81,7 @@ pub fn main() {
 // fn float_negation() {
 //     assert_fsharp!(
 //         r#"
-// pub fn main() {
+// pub fn foo() {
 //   let a = -3.1
 //   let b = -a
 // }
@@ -93,7 +93,7 @@ pub fn main() {
 fn repeated_int_negation() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   let a = 3
   let b = --a
 }
@@ -106,7 +106,7 @@ pub fn main() {
 fn zero_b_in_hex() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   0xffe0bb
 }
 "#

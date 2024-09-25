@@ -7,7 +7,7 @@ fn external_fn_from_std_lib() {
 @external(fsharp, "FSharp.MyApp", "run")
 pub fn run() -> Int
 
-pub fn main() -> Int {
+pub fn foo() -> Int {
     run()
 }
 "#
@@ -21,7 +21,7 @@ fn external_fn_from_file() {
 @external(fsharp, "./SomeFile.fs", "SomeFile.run")
 pub fn run() -> Int
 
-pub fn main() -> Int {
+pub fn foo() -> Int {
     run()
 }
 "#

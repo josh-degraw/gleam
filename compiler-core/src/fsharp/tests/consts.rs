@@ -11,7 +11,7 @@ pub type X {
 
 pub const z = X
 
-pub fn main() {
+pub fn foo() {
   z
 }"#
     );
@@ -28,7 +28,7 @@ pub type X {
 
 pub const z = #(X)
 
-pub fn main() {
+pub fn foo() {
   z
 }"#
     );
@@ -58,7 +58,7 @@ a
 
 const id  = identity
 
-pub fn main(){
+pub fn foo(){
   let num  = id(1)
   let word = id("Word")
 }"#

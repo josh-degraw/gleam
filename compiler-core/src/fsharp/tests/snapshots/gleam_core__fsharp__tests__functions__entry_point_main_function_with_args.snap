@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/functions.rs
+expression: "\npub fn main(args) {\n    0\n}\n"
+---
+module rec my.``mod``
+[<EntryPoint>]
+let main (args: string[]): int = begin
+    0
+end

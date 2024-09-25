@@ -4,7 +4,7 @@ use crate::assert_fsharp;
 fn string_literal() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   "Hello, World!"
 }
 "#
@@ -37,7 +37,7 @@ pub fn y_with_dieresis() -> String {
 fn unicode_concat1() {
     assert_fsharp!(
         r#"
-pub fn main(x) -> String {
+pub fn foo(x) -> String {
   x <> "\u{0308}"
 }
 "#,
@@ -48,7 +48,7 @@ pub fn main(x) -> String {
 fn unicode_concat2() {
     assert_fsharp!(
         r#"
-pub fn main(x) -> String {
+pub fn foo(x) -> String {
   x <> "\\u{0308}"
 }
 "#,
@@ -59,7 +59,7 @@ pub fn main(x) -> String {
 fn unicode_concat3() {
     assert_fsharp!(
         r#"
-pub fn main(x) -> String {
+pub fn foo(x) -> String {
   x <> "\\\u{0308}"
 }
 "#,
@@ -434,7 +434,7 @@ fn id(x) {
   x
 }
 
-pub fn main() {
+pub fn foo() {
   { "" |> id } <> { "" |> id }
 }
 "#,
@@ -445,7 +445,7 @@ pub fn main() {
 fn assert_string_prefix() {
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   let assert "m-" <> rest = x
   rest
 }
@@ -457,7 +457,7 @@ pub fn main(x) {
 fn assert_string_prefix_discard() {
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   let assert "m-" <> _ = x
 }
 "#,
@@ -471,7 +471,7 @@ fn assert_const_concat() {
 const cute = "cute"
 const cute_bee = cute <> "bee"
 
-pub fn main() {
+pub fn foo() {
   cute_bee
 }
 "#
@@ -484,7 +484,7 @@ fn assert_const_concat_many_strings() {
         r#"
 const big_concat = "a" <> "b" <> "c" <> "d" <> "e" <> "f" <> "g" <> "h" <> "i" <> "j" <> "k" <> "l" <> "m" <> "n" <> "o" <> "p" <> "q" <> "r" <> "s" <> "t" <> "u" <> "v" <> "w" <> "x" <> "y" <> "z"
 
-pub fn main() {
+pub fn foo() {
   big_concat
 }
 "#
@@ -497,7 +497,7 @@ fn assert_const_concat_many_strings_in_list() {
         r#"
 const big_concat_list = ["a" <> "b" <> "c" <> "d" <> "e" <> "f" <> "g" <> "h" <> "i" <> "j" <> "k" <> "l" <> "m" <> "n" <> "o" <> "p" <> "q" <> "r" <> "s" <> "t" <> "u" <> "v" <> "w" <> "x" <> "y" <> "z"]
 
-pub fn main() {
+pub fn foo() {
   big_concat_list
 }
 "#
@@ -511,7 +511,7 @@ fn assert_const_concat_other_const_concat() {
 const cute_bee = "cute" <> "bee"
 const cute_cute_bee_buzz = cute_bee <> "buzz"
 
-pub fn main() {
+pub fn foo() {
   cute_cute_bee_buzz
 }
 "#

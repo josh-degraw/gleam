@@ -4,7 +4,7 @@ use crate::assert_fsharp;
 fn panic_as() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   panic as "wibble"
 }
 "#
@@ -15,7 +15,7 @@ pub fn main() {
 fn plain() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   panic
 }
 "#
@@ -29,7 +29,7 @@ fn panic_as_function() {
 pub fn retstring() {
   "wibble"
 }
-pub fn main() {
+pub fn foo() {
   panic as { retstring() <> "wobble" }
 }
 "#
@@ -41,7 +41,7 @@ pub fn main() {
 fn piped() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   "lets"
   |> panic
 }
@@ -53,7 +53,7 @@ pub fn main() {
 fn piped_chain() {
     assert_fsharp!(
         r#"
-     pub fn main() {
+     pub fn foo() {
       "lets"
       |> panic as "pipe"
       |> panic as "other panic"

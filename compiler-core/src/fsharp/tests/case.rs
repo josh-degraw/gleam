@@ -4,7 +4,7 @@ use crate::assert_fsharp;
 fn basic_battern_matching() {
     assert_fsharp!(
         "
-pub fn main(x) {
+pub fn foo(x) {
   case x {
     1 -> 1
     _ -> 2
@@ -37,7 +37,7 @@ pub fn myfun(mt) {
 fn positive_zero_pattern() {
     assert_fsharp!(
         "
-pub fn main(x) {
+pub fn foo(x) {
   case x {
     0.0 -> 1
     _ -> 2
@@ -52,7 +52,7 @@ pub fn main(x) {
 fn negative_zero_pattern() {
     assert_fsharp!(
         "
-pub fn main(x) {
+pub fn foo(x) {
   case x {
     -0.0 -> 1
     _ -> 2
@@ -65,7 +65,7 @@ pub fn main(x) {
 #[test]
 fn not() {
     assert_fsharp!(
-        r#"pub fn main(x, y) {
+        r#"pub fn foo(x, y) {
   case x {
     _ if !y -> 0
     _ -> 1
@@ -78,7 +78,7 @@ fn not() {
 #[test]
 fn not_two() {
     assert_fsharp!(
-        r#"pub fn main(x, y) {
+        r#"pub fn foo(x, y) {
   case x {
     _ if !y && !x -> 0
     _ -> 1
@@ -93,7 +93,7 @@ fn not_two() {
 fn spread_empty_list() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   case [] {
     [..] -> 1
   }
@@ -107,7 +107,7 @@ pub fn main() {
 fn spread_empty_list_assigning() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   case [] {
     [..rest] -> rest
   }

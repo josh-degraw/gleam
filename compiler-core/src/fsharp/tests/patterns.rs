@@ -5,7 +5,7 @@ fn alternative_patterns() {
     // reassigning name in alternative patterns
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   let duplicate_name = 1
 
   case 1 {
@@ -24,7 +24,7 @@ fn alternative_patterns1() {
     // Alternative patterns with a clause containing vars
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   case Ok(1) {
     Ok(duplicate_name) | Error(duplicate_name) -> duplicate_name
   }
@@ -37,7 +37,7 @@ fn alternative_patterns2() {
     // Alternative patterns with a guard clause containing vars
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
     let duplicate_name = 1
 
     case 1 {
@@ -54,7 +54,7 @@ fn alternative_patterns3() {
         r#"
 pub const constant = Ok(1)
 
-pub fn main(arg) {
+pub fn foo(arg) {
   let _ = constant
   case arg {
     _ if arg == constant -> 1

@@ -8,9 +8,8 @@ use crate::{
     line_numbers::LineNumbers,
     Result,
 };
-use ecow::EcoString;
 use itertools::Itertools;
-use std::{collections::HashSet, fmt::Debug, fs};
+use std::fmt::Debug;
 
 use camino::{Utf8Path, Utf8PathBuf};
 

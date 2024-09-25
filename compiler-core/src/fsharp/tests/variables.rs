@@ -20,7 +20,7 @@ pub fn go(a) {
 fn shadow_param() {
     // https://github.com/gleam-lang/gleam/issues/772
     assert_fsharp!(
-        "pub fn main(board) {
+        "pub fn foo(board) {
 fn(board) { board }
   board
 }"
@@ -32,7 +32,7 @@ fn shadow_and_call() {
     // https://github.com/gleam-lang/gleam/issues/762
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   fn(x) { x }(x)
 }
 "#
@@ -43,7 +43,7 @@ pub fn main(x) {
 fn shadow_pipe() {
     assert_fsharp!(
         r#"
-pub fn main(x) {
+pub fn foo(x) {
   x
   |> fn(x) { x }
 }
@@ -71,7 +71,7 @@ fn discarded() {
 // @external(fsharp, "one.two", "three.four")
 // fn func() -> Nil
 
-// pub fn main() {
+// pub fn foo() {
 //   func
 // }"#
 //     );
@@ -98,7 +98,7 @@ pub fn use_compound() { compound.1(compound.0) }
 fn blocks_are_scopes() {
     assert_fsharp!(
         "
-pub fn main() {
+pub fn foo() {
   let x = 1
   {
     let x = 2
@@ -113,7 +113,7 @@ pub fn main() {
 fn simple_variable_assignment() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   let a = 3
 }
 "#

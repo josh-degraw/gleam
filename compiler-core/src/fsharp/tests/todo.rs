@@ -4,7 +4,7 @@ use crate::assert_fsharp;
 fn plain() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   todo
 }
 "#
@@ -15,7 +15,7 @@ pub fn main() {
 fn todo_as() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   todo as "wibble"
 }
 "#
@@ -29,7 +29,7 @@ fn todo_as_function() {
 pub fn retstring() {
   "wibble"
 }
-pub fn main() {
+pub fn foo() {
   todo as { retstring() <> "wobble" }
 }
 "#
@@ -40,7 +40,7 @@ pub fn main() {
 fn piped() {
     assert_fsharp!(
         r#"
-     pub fn main() {
+     pub fn foo() {
       "lets"
       |> todo as "pipe"
       |> todo as "other todo"

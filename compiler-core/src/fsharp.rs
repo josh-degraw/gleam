@@ -432,12 +432,35 @@ impl<'a> Generator<'a> {
 
         let return_type = self.type_to_fsharp(return_type);
 
+        // //let thing = matches!(arguments., [TypedArg { names: ArgNames::Named { name: "main", ..},..}]);
+        // let arg = match arguments[..] {
+        //     [] => "()".to_doc(),
+        //     [TypedArg { names: ArgNames::Named { name: arg_name, ..},..}] if arg_name == "main" => "(args: string[])".to_doc(),
+        //     _ => args,
+        // };
+
+        let a = args.clone().to_pretty_string(80);
+        println!("Given Args: {}", a);
         // TODO: Make this less magic
         let (entry_point_annotation, args) = if name == "main" {
-            (
-                "[<EntryPoint>]".to_doc().append(line()),
-                "(args: string[])".to_doc(),
-            )
+            match &arguments[..] {
+                [TypedArg {
+                    names: ArgNames::Named { name, .. },
+                    ..
+                }] => (
+                    "[<EntryPoint>]".to_doc().append(line()),
+                    EcoString::from(format!("({}: string[])", name)).to_doc(),
+                ),
+                []
+                | [TypedArg {
+                    names: ArgNames::Discard { .. },
+                    ..
+                }] => (
+                    "[<EntryPoint>]".to_doc().append(line()),
+                    "(_: string[])".to_doc(),
+                ),
+                _ => (nil(), args),
+            }
         } else {
             (nil(), args)
         };
@@ -626,7 +649,7 @@ impl<'a> Generator<'a> {
                 }
             })
             .to_string();
-        Document::String(content)
+        EcoString::from(content).to_doc()
     }
 
     fn string(&self, value: &str) -> Document<'a> {
@@ -1294,8 +1317,8 @@ impl<'a> Generator<'a> {
                 let borrowed = type_.borrow();
                 match borrowed.deref() {
                     TypeVar::Link { type_ } => self.type_to_fsharp(type_),
-                    TypeVar::Unbound { id } => Document::String(format!("'u{}", id)),
-                    TypeVar::Generic { id } => Document::String(format!("'t{}", id)),
+                    TypeVar::Unbound { id } => EcoString::from(format!("'u{}", id)).to_doc(),
+                    TypeVar::Generic { id } => EcoString::from(format!("'t{}", id)).to_doc(),
                 }
             }
         }
@@ -1336,10 +1359,7 @@ impl<'a> Generator<'a> {
             }
 
             Constant::List { elements, .. } => {
-                //tracker.list_used = true;
-                let list = self.list(elements.iter().map(|e| self.constant_expression(e)));
-
-                list
+                self.list(elements.iter().map(|e| self.constant_expression(e)))
             }
 
             Constant::Record { type_, name, .. } if type_.is_bool() && name == "True" => {
@@ -1430,7 +1450,7 @@ impl<'a> Generator<'a> {
                 None => docvec![name, "()"],
             }
         } else {
-            let vars = (0..arity).map(|i| Document::String(format!("var{i}")));
+            let vars = (0..arity).map(|i| EcoString::from(format!("var{i}")).to_doc());
             let body = self.construct_record(qualifier, name, vars.clone());
 
             docvec!(

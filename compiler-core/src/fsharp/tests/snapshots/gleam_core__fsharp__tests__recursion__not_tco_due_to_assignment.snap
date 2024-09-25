@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/recursion.rs
-assertion_line: 37
-expression: "\npub fn main(x) {\n  let z = {\n    let y = x\n    main(y - 1)\n  }\n  z\n}\n"
+expression: "\npub fn foo(x) {\n  let z = {\n    let y = x\n    foo(y - 1)\n  }\n  z\n}\n"
 ---
 module rec my.``mod``
-let main (x: int): 'u9 = begin
+let foo (x: int): 'u9 = begin
     let z = begin
         let y = x
-        main (y - 1)
+        foo (y - 1)
     end
     z
 end

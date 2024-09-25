@@ -106,7 +106,7 @@ type Triple {
     Triple(a: Int, b: Int, c: Int)
 }
 
-fn main() {
+fn foo() {
   let triple = Triple(1,2,3)
   let Triple(the_a, ..) = triple
   the_a
@@ -125,7 +125,7 @@ type Triple {
   Triple(a: Int, b: Int, c: Int)
 }
 
-fn main() {
+fn foo() {
   let triple = Triple(1,2,3)
   let Triple(b: the_b, ..) = triple
   the_b
@@ -143,7 +143,7 @@ type Triple {
   Triple(a: Int, b: Int, c: Int)
 }
 
-fn main() {
+fn foo() {
   let triple = Triple(1,2,3)
   let Triple(the_a, c: the_c, ..) = triple
   the_c
@@ -161,7 +161,7 @@ type Triple {
   Triple(a: Int, b: Int, c: Int)
 }
 
-fn main() {
+fn foo() {
   let triple = Triple(1,2,3)
   case triple {
     Triple(b: the_b, ..) -> the_b
@@ -178,7 +178,7 @@ fn record_updates() {
         r#"
 pub type Person { Person(name: String, age: Int) }
 
-fn main() {
+fn foo() {
     let p = Person("Quinn", 27)
     let new_p = Person(..p, age: 28)
     new_p
@@ -194,7 +194,7 @@ fn record_updates1() {
         r#"
 pub type Person { Person(name: String, age: Int) }
 
-fn main() {
+fn foo() {
     let p = Person("Quinn", 27)
     let new_p = Person(..p, age: p.age + 1)
     new_p
@@ -210,7 +210,7 @@ fn record_updates2() {
         r#"
 pub type Person { Person(name: String, age: Int) }
 
-fn main() {
+fn foo() {
     let p = Person("Quinn", 27)
     let new_p = Person(..p, age: 28, name: "Riley")
     new_p
@@ -226,7 +226,7 @@ fn record_updates3() {
         r#"
 pub type Person { Person(name: String, age: Int) }
 
-fn main() {
+fn foo() {
     let new_p = Person(..return_person(), age: 28)
     new_p
 }
@@ -246,7 +246,7 @@ fn record_updates4() {
 pub type Car { Car(make: String, model: String, driver: Person) }
 pub type Person { Person(name: String, age: Int) }
 
-fn main() {
+fn foo() {
     let car = Car(make: "Amphicar", model: "Model 770", driver: Person(name: "John Doe", age: 27))
     let new_p = Person(..car.driver, age: 28)
     new_p
@@ -274,7 +274,7 @@ fn pipe_update_subject() {
 
 pub fn identity(x) { x }
 
-pub fn main() {
+pub fn foo() {
   let thing = Thing(1, 2)
   Thing(..thing |> identity, b: 1000)
 }"
@@ -289,7 +289,7 @@ fn record_access_block() {
   Thing(a: Int, b: Int)
 }
 
-pub fn main() {
+pub fn foo() {
   {
     let thing = Thing(1, 2)
     thing
@@ -305,7 +305,7 @@ pub fn main() {
 //         ("other_package", "other_module", "pub type Let { Let(Int) }"),
 //         "import other_module
 
-// pub fn main() {
+// pub fn foo() {
 //   other_module.Let
 // }"
 //     );

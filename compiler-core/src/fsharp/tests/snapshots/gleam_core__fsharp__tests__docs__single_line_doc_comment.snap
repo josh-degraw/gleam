@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/docs.rs
-assertion_line: 5
-expression: "\n/// This is a doc comment\nfn other() {\n  Nil\n}\n\npub fn main() {\n  other\n}\n"
+expression: "\n/// This is a doc comment\nfn other() {\n  Nil\n}\n\npub fn foo() {\n  other\n}\n"
 ---
 module rec my.``mod``
 /// This is a doc comment
 let private other (): unit = begin
     ()
 end
-let main (): unit -> unit = begin
+let foo (): unit -> unit = begin
     other
 end

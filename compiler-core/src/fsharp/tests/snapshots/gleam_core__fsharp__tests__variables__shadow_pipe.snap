@@ -1,10 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/variables.rs
-assertion_line: 44
-expression: "\npub fn main(x) {\n  x\n  |> fn(x) { x }\n}\n"
+expression: "\npub fn foo(x) {\n  x\n  |> fn(x) { x }\n}\n"
 ---
 module rec my.``mod``
-let main (x: 'u10): 'u10 = begin
+let foo (x: 'u10): 'u10 = begin
     begin
         let _pipe = x
         ((fun(x: 'u10) -> begin x end) (_pipe))

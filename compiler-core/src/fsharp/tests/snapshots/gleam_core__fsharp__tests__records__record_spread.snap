@@ -1,11 +1,10 @@
 ---
 source: compiler-core/src/fsharp/tests/records.rs
-assertion_line: 103
-expression: "\ntype Triple {\n    Triple(a: Int, b: Int, c: Int)\n}\n\nfn main() {\n  let triple = Triple(1,2,3)\n  let Triple(the_a, ..) = triple\n  the_a\n}\n"
+expression: "\ntype Triple {\n    Triple(a: Int, b: Int, c: Int)\n}\n\nfn foo() {\n  let triple = Triple(1,2,3)\n  let Triple(the_a, ..) = triple\n  the_a\n}\n"
 ---
 module rec my.``mod``
 type private Triple = { a: int; b: int; c: int }
-let private main (): int = begin
+let private foo (): int = begin
     let triple = { a = 1; b = 2; c = 3 }
     let { a = the_a } = triple
     the_a

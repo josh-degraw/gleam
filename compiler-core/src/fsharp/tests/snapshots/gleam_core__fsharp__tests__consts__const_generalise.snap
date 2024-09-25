@@ -1,14 +1,13 @@
 ---
 source: compiler-core/src/fsharp/tests/consts.rs
-assertion_line: 53
-expression: "\nfn identity(a: a) -> a {\na\n}\n\nconst id  = identity\n\npub fn main(){\n  let num  = id(1)\n  let word = id(\"Word\")\n}"
+expression: "\nfn identity(a: a) -> a {\na\n}\n\nconst id  = identity\n\npub fn foo(){\n  let num  = id(1)\n  let word = id(\"Word\")\n}"
 ---
 module rec my.``mod``
 let private identity (a: 't8): 't8 = begin
     a
 end
 let private id = identity
-let main (): string = begin
+let foo (): string = begin
     let num = id (1)
     let word = id ("Word")
     word

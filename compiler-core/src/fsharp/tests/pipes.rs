@@ -6,7 +6,7 @@ fn simple_pipeline() {
         r#"
 pub fn add(x, y) { x + y }
 
-pub fn main() {
+pub fn foo() {
   1 |> add(2)
 }"#
     );
@@ -18,7 +18,7 @@ fn chained_pipeline() {
         r#"
 pub fn add(x, y) { x + y }
 
-pub fn main() {
+pub fn foo() {
   1 |> add(2) |> add(3)
 }"#
     );
@@ -49,7 +49,7 @@ pub fn apply(f: fn(a, Int) -> b, a: a) { a |> f(1) }
 fn block_expr_into_pipe() {
     assert_fsharp!(
         r#"fn id(a) { a }
-pub fn main() {
+pub fn foo() {
   {
     let x = 1
     x
@@ -104,7 +104,7 @@ fn id(x) {
   x
 }
 
-pub fn main(x) {
+pub fn foo(x) {
   X(..x, a: 1 |> id)
 }"
     );
@@ -118,7 +118,7 @@ fn pipe_in_eq() {
   x
 }
 
-pub fn main() {
+pub fn foo() {
     1 == 1 |> id
 }"
     );
@@ -129,7 +129,7 @@ pub fn main() {
 fn call_pipeline_result() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   { 1 |> add }(1)
 }
 
@@ -145,7 +145,7 @@ pub fn add(x) {
 fn pipe_in_call() {
     assert_fsharp!(
         r#"
-pub fn main() {
+pub fn foo() {
   123
   |> two(
     1 |> two(2),

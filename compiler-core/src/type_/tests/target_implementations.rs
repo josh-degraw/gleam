@@ -17,6 +17,16 @@ macro_rules! assert_targets {
         assert_eq!(expected, result);
     };
 }
+macro_rules! assert_targets_fsharp {
+    ($src:expr, $implementations:expr $(,)?) => {
+        let result = $crate::type_::tests::target_implementations::implementations_fsharp($src);
+        let expected = $implementations
+            .iter()
+            .map(|(name, expected_impl)| ((*name).into(), *expected_impl))
+            .collect_vec();
+        assert_eq!(expected, result);
+    };
+}
 
 pub fn implementations(src: &str) -> Vec<(EcoString, Implementations)> {
     compile_module_with_opts(
@@ -25,6 +35,25 @@ pub fn implementations(src: &str) -> Vec<(EcoString, Implementations)> {
         None,
         vec![],
         Target::Erlang,
+        TargetSupport::NotEnforced,
+        None,
+    )
+    .expect("compile src")
+    .type_info
+    .values
+    .into_iter()
+    .map(|(name, value)| (name, value.variant.implementations()))
+    .sorted()
+    .collect_vec()
+}
+
+pub fn implementations_fsharp(src: &str) -> Vec<(EcoString, Implementations)> {
+    compile_module_with_opts(
+        "test_module",
+        src,
+        None,
+        vec![],
+        Target::FSharp,
         TargetSupport::NotEnforced,
         None,
     )
@@ -112,11 +141,50 @@ pub fn erlang_only_2() { erlang_only_1() * 2 }
 }
 
 #[test]
+pub fn fsharp_only_function() {
+    assert_targets_fsharp!(
+        r#"
+@external(fsharp, "wibble", "wobble")
+pub fn fsharp_only_1() -> Int
+
+pub fn fsharp_only_2() { fsharp_only_1() * 2 }
+"#,
+        [
+            (
+                "fsharp_only_1",
+                Implementations {
+                    gleam: false,
+                    uses_erlang_externals: false,
+                    uses_javascript_externals: false,
+                    uses_fsharp_externals: true,
+                    can_run_on_erlang: false,
+                    can_run_on_javascript: false,
+                    can_run_on_fsharp: true,
+                }
+            ),
+            (
+                "fsharp_only_2",
+                Implementations {
+                    gleam: false,
+                    uses_erlang_externals: false,
+                    uses_javascript_externals: false,
+                    uses_fsharp_externals: true,
+                    can_run_on_erlang: false,
+                    can_run_on_javascript: false,
+                    can_run_on_fsharp: true,
+                }
+            )
+        ],
+    );
+}
+
+#[test]
 pub fn externals_only_function() {
     assert_targets!(
         r#"
 @external(erlang, "wibble", "wobble")
 @external(javascript, "wibble", "wobble")
+@external(fsharp, "wibble", "wobble")
 pub fn all_externals_1() -> Int
 
 pub fn all_externals_2() { all_externals_1() * 2 }
@@ -128,10 +196,10 @@ pub fn all_externals_2() { all_externals_1() * 2 }
                     gleam: false,
                     uses_erlang_externals: true,
                     uses_javascript_externals: true,
-                    uses_fsharp_externals: false,
+                    uses_fsharp_externals: true,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
-                    can_run_on_fsharp: false,
+                    can_run_on_fsharp: true,
                 }
             ),
             (
@@ -140,10 +208,10 @@ pub fn all_externals_2() { all_externals_1() * 2 }
                     gleam: false,
                     uses_erlang_externals: true,
                     uses_javascript_externals: true,
-                    uses_fsharp_externals: false,
+                    uses_fsharp_externals: true,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
-                    can_run_on_fsharp: false,
+                    can_run_on_fsharp: true,
                 }
             )
         ],
@@ -174,7 +242,7 @@ pub fn pure_gleam() {
                     uses_fsharp_externals: false,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
-                    can_run_on_fsharp: false,
+                    can_run_on_fsharp: true,
                 }
             ),
             (
@@ -186,7 +254,7 @@ pub fn pure_gleam() {
                     uses_fsharp_externals: false,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
-                    can_run_on_fsharp: false,
+                    can_run_on_fsharp: true,
                 }
             ),
             (
@@ -198,7 +266,7 @@ pub fn pure_gleam() {
                     uses_fsharp_externals: false,
                     can_run_on_erlang: true,
                     can_run_on_javascript: true,
-                    can_run_on_fsharp: false,
+                    can_run_on_fsharp: true,
                 }
             )
         ],

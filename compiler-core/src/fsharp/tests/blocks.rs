@@ -170,7 +170,7 @@ fn go() {
 fn concat_blocks() {
     assert_fsharp!(
         r#"
-fn main(f, a, b) {
+fn foo(f, a, b) {
   {
     a
     |> f
