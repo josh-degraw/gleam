@@ -173,17 +173,19 @@ impl<'a> FSharpApp<'a> {
   <PropertyGroup>
     <TargetFramework>{}</TargetFramework>
     <RootNamespace>{}</RootNamespace>
+    <IncludeDocumentation>true</IncludeDocumentation>
   </PropertyGroup>
 
   <ItemGroup Label="Modules">
-      <Compile Include="gleam_prelude.fs" />
+    <Compile Include="gleam_prelude.fs" />
 {}
   </ItemGroup>
 
   <ItemGroup Label="References">
 {}
   </ItemGroup>
-</Project>"#,
+</Project>
+"#,
             config.fsharp.target_framework,
             config.name,
             modules

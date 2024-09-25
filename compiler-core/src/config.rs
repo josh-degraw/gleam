@@ -678,7 +678,7 @@ pub struct FSharpConfig {
 }
 
 fn default_fsharp_target_framework() -> String {
-    "net8.0".to_string()
+    String::from("net8.0")
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq, Clone)]

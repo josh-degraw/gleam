@@ -7,7 +7,8 @@ use crate::{
     docvec,
     pretty::*,
     type_::{
-        FieldMap, PatternConstructor, Type, TypeVar, ValueConstructor, ValueConstructorVariant,
+        Deprecation, FieldMap, PatternConstructor, Type, TypeVar, ValueConstructor,
+        ValueConstructorVariant,
     },
 };
 use ecow::EcoString;
@@ -348,6 +349,8 @@ fn function(f: &TypedFunction) -> Document<'_> {
         arguments,
         body,
         return_type,
+        documentation,
+        deprecation,
         ..
     } = f;
 
@@ -361,9 +364,38 @@ fn function(f: &TypedFunction) -> Document<'_> {
     let body = statements(body, Some(return_type));
     let return_type = type_to_fsharp(return_type);
 
+    let docs = match documentation {
+        Some((_, ref doc)) => {
+            let mut comment_lines = doc.split('\n').collect::<Vec<_>>();
+
+            // Remove any trailing empty lines
+            if comment_lines.last().map_or(false, |line| line.is_empty()) {
+                _ = comment_lines.pop();
+            }
+
+            join(
+                comment_lines
+                    .iter()
+                    .map(|doc_line| docvec!["///", doc_line]),
+                line(),
+            )
+            .append(line())
+        }
+        None => "".to_doc(),
+    };
+
+    let deprecation_doc = match deprecation {
+        Deprecation::Deprecated { message } => {
+            docvec!["[<System.Obsolete(", string(message), ")>]", line()]
+        }
+        Deprecation::NotDeprecated => "".to_doc(),
+    };
+
     // For now, since we mark all modules as recursive, we don't need to mark
     // functions as recursive.
     docvec![
+        docs,
+        deprecation_doc,
         "let ",
         map_publicity(f.publicity),
         name,
@@ -748,7 +780,7 @@ fn clause(clause: &TypedClause) -> Document<'_> {
     } = clause;
     let mut then_doc = None;
 
-    let mut additional_guards = vec![];
+    let additional_guards = vec![];
     let patterns_doc = join(
         std::iter::once(pat)
             .chain(alternative_patterns)
@@ -1110,7 +1142,7 @@ fn pattern(p: &Pattern<Arc<Type>>) -> Document<'_> {
         Pattern::Constructor {
             name,
             arguments,
-            constructor,
+            //constructor,
             ..
         } => {
             let args = arguments.iter().map(|arg| pattern(&arg.value));

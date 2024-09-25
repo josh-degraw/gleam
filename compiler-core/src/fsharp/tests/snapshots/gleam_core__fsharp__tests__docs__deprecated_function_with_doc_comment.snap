@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/docs.rs
+assertion_line: 38
+expression: "\n/// This is a doc comment\n/// on multiple lines\n@deprecated(\"Use new_function instead\")\nfn other() {\n  Nil\n}\n\npub fn main() {\n  other()\n}\n"
+---
+module rec my.``mod``
+/// This is a doc comment
+/// on multiple lines
+[<System.Obsolete("Use new_function instead")>]
+let private other (): unit = begin
+    ()
+end
+let main (): unit = begin
+    other()
+end
