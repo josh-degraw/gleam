@@ -166,6 +166,7 @@ impl<'a> FSharpApp<'a> {
         modules: &[Module],
     ) -> Result<()> {
         let project_file_path = self.build_dir.join(format!("{}.fsproj", &config.name));
+        let mut external_files = vec![];
 
         // Create project file content
         let project_file_content = format!(
@@ -214,12 +215,13 @@ impl<'a> FSharpApp<'a> {
         let prelude_file_path = self.build_dir.join("gleam_prelude.fs");
         writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
 
+        let generator = fsharp::Generator::new(&external_files);
         // Write individual module files
         for module in modules {
             let module_file_path = self
                 .build_dir
                 .join(format!("{}.fs", module.name.replace("/", "\\")));
-            let module_content = fsharp::render_module(&module.ast)?;
+            let module_content = generator.render_module(&module.ast)?;
             writer.write(&module_file_path, &module_content)?;
         }
 

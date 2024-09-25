@@ -10,8 +10,6 @@ use crate::{
     warning::{TypeWarningEmitter, WarningEmitter},
 };
 
-use super::render_module;
-
 mod blocks;
 mod case;
 mod consts;
@@ -106,5 +104,7 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
     .expect("should successfully infer root FSharp");
 
     //println!("AST:{:#?}", &ast);
-    render_module(&ast).expect("should render FSharp")
+    let mut external_files = vec![];
+    let generator = crate::fsharp::Generator::new(&external_files);
+    generator.render_module(&ast).expect("should render FSharp")
 }

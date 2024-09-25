@@ -439,12 +439,15 @@ where
 
         let fsharp_app = crate::codegen::FSharpApp::new(&build_dir);
 
+        let mut external_files = vec![];
+
         for module in modules {
             let module_name = module.name.replace("/", ".");
             let path = build_dir.join(format!("{}.fs", module_name));
 
-            let output = &crate::fsharp::render_module(&module.ast)?;
-            self.io.write(&path, output)?;
+            let generator = crate::fsharp::Generator::new(&external_files);
+            let output = generator.render_module(&module.ast)?;
+            self.io.write(&path, &output)?;
         }
 
         fsharp_app.render(io, &self.config, modules)?;
