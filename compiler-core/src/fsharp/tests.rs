@@ -104,7 +104,6 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
     .expect("should successfully infer root FSharp");
 
     //println!("AST:{:#?}", &ast);
-    let mut external_files = vec![];
-    let generator = crate::fsharp::Generator::new(&external_files);
+    let mut generator = crate::fsharp::Generator::new();
     generator.render_module(&ast).expect("should render FSharp")
 }

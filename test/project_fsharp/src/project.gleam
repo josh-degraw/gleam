@@ -9,10 +9,10 @@ pub type Person {
 @external(fsharp, "System.Console", "WriteLine")
 pub fn printfn(format: String) -> Nil
 
-@external(fsharp, "./fsharp_custom_behavior.fs", "print_string_and_int")
+@external(fsharp, "./fsharp_custom_behavior.fs", "FSharpCustomBehavior.print_string_and_int")
 pub fn print_string_and_int(s: String, i: Int) -> Nil
 
-pub fn main() {
+pub fn main(args: List(String)) {
   let car =
     Car(
       make: "Amphicar",
@@ -23,4 +23,5 @@ pub fn main() {
   new_p
 
   printfn("Hello, world!" <> car.driver.name)
+  1
 }

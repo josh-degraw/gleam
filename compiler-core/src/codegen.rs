@@ -8,8 +8,9 @@ use crate::{
     line_numbers::LineNumbers,
     Result,
 };
+use ecow::EcoString;
 use itertools::Itertools;
-use std::fmt::Debug;
+use std::{collections::HashSet, fmt::Debug, fs};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
@@ -151,35 +152,66 @@ impl<'a> ErlangApp<'a> {
 
 #[derive(Debug)]
 pub struct FSharpApp<'a> {
-    build_dir: &'a Utf8PathBuf,
+    input_dir: &'a Utf8Path,
+    output_directory: &'a Utf8PathBuf,
 }
 
 impl<'a> FSharpApp<'a> {
-    pub fn new(build_dir: &'a Utf8PathBuf) -> Self {
-        Self { build_dir }
+    pub fn new(input_dir: &'a Utf8Path, output_directory: &'a Utf8PathBuf) -> Self {
+        Self {
+            input_dir,
+            output_directory,
+        }
     }
 
     pub fn render<Writer: FileSystemWriter>(
         &self,
         writer: Writer,
         config: &PackageConfig,
-        modules: &[Module],
+        modules: &'a [Module],
+        generator: &mut fsharp::Generator<'a>,
     ) -> Result<()> {
-        let project_file_path = self.build_dir.join(format!("{}.fsproj", &config.name));
-        let mut external_files = vec![];
+        let project_file_path = self
+            .output_directory
+            .join(format!("{}.fsproj", &config.name));
 
+        println!("input_dir: {}", self.input_dir);
+        println!("output_directory: {}", self.output_directory);
+
+        // Write prelude file
+        let prelude_file_path = self.output_directory.join("gleam_prelude.fs");
+        writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
+
+        // Write individual module files
+        for module in modules {
+            let module_file_path = self
+                .output_directory
+                .join(format!("{}.fs", module.name.replace("/", "\\")));
+            let module_content = generator.render_module(&module.ast)?;
+            writer.write(&module_file_path, &module_content)?;
+        }
+
+        let target_framework = if config.fsharp.target_framework.is_empty() {
+            "net8.0"
+        } else {
+            config.fsharp.target_framework.as_str()
+        };
+
+        // TODO: Support conditionally outputting an exe or library
         // Create project file content
         let project_file_content = format!(
             r#"<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>{}</TargetFramework>
+    <OutputType>Exe</OutputType>
     <RootNamespace>{}</RootNamespace>
     <IncludeDocumentation>true</IncludeDocumentation>
   </PropertyGroup>
 
   <ItemGroup Label="Modules">
     <Compile Include="gleam_prelude.fs" />
-{}
+    {}
+    {}
   </ItemGroup>
 
   <ItemGroup Label="References">
@@ -187,16 +219,19 @@ impl<'a> FSharpApp<'a> {
   </ItemGroup>
 </Project>
 "#,
-            config.fsharp.target_framework,
+            target_framework,
             config.name,
+            generator
+                .external_files
+                .iter()
+                .map(|file| format!("<Compile Include=\"{}\" />", file))
+                .collect::<Vec<_>>()
+                .join("\n    "),
             modules
                 .iter()
-                .map(|m| format!(
-                    "    <Compile Include=\"{}.fs\" />",
-                    m.name //.replace("/", "\\")
-                ))
+                .map(|m| format!("<Compile Include=\"{}.fs\" />", m.name))
                 .collect::<Vec<_>>()
-                .join("\n"),
+                .join("\n    "),
             "<!-- TODO: Add package references -->" // config
                                                     //     .dependencies
                                                     //     .iter()
@@ -207,24 +242,8 @@ impl<'a> FSharpApp<'a> {
                                                     //     .collect::<Vec<_>>()
                                                     // .join("\n")
         );
-
         // Write project file
         writer.write(&project_file_path, &project_file_content)?;
-
-        // Write prelude file
-        let prelude_file_path = self.build_dir.join("gleam_prelude.fs");
-        writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
-
-        let generator = fsharp::Generator::new(&external_files);
-        // Write individual module files
-        for module in modules {
-            let module_file_path = self
-                .build_dir
-                .join(format!("{}.fs", module.name.replace("/", "\\")));
-            let module_content = generator.render_module(&module.ast)?;
-            writer.write(&module_file_path, &module_content)?;
-        }
-
         Ok(())
     }
 }

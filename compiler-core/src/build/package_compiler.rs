@@ -23,6 +23,7 @@ use crate::{
 use askama::Template;
 use ecow::EcoString;
 use std::collections::HashSet;
+use std::fs;
 use std::{collections::HashMap, fmt::write, time::SystemTime};
 use vec1::Vec1;
 
@@ -422,13 +423,15 @@ where
     }
 
     fn perform_fsharp_codegen(&mut self, modules: &[Module]) -> Result<(), Error> {
-        let build_dir = self.out.join(paths::ARTEFACT_DIRECTORY_NAME);
+        let input_dir = self.root.join("src");
+        let output_dir = self.out.join(paths::ARTEFACT_DIRECTORY_NAME);
+
         let io = self.io.clone();
 
-        io.mkdir(&build_dir)?;
+        io.mkdir(&output_dir)?;
 
         if self.copy_native_files {
-            self.copy_project_native_files(&build_dir, &mut HashSet::new())?;
+            self.copy_project_native_files(&output_dir, &mut HashSet::new())?;
         } else {
             tracing::debug!("skipping_native_file_copying");
         }
@@ -437,23 +440,46 @@ where
 
         // Use the F# generator to render the modules
 
-        let fsharp_app = crate::codegen::FSharpApp::new(&build_dir);
+        let fsharp_app = crate::codegen::FSharpApp::new(&input_dir, &output_dir);
 
-        let mut external_files = vec![];
-
+        let mut generator = crate::fsharp::Generator::new();
         for module in modules {
             let module_name = module.name.replace("/", ".");
-            let path = build_dir.join(format!("{}.fs", module_name));
+            let path = output_dir.join(format!("{}.fs", module_name));
 
-            let generator = crate::fsharp::Generator::new(&external_files);
             let output = generator.render_module(&module.ast)?;
             self.io.write(&path, &output)?;
         }
 
-        fsharp_app.render(io, &self.config, modules)?;
+        fsharp_app.render(io, &self.config, modules, &mut generator)?;
+        // Copy external files
+        for file in &generator.external_files {
+            let input_file_name = Utf8Path::new(file);
+            let input_file_path = input_dir.join(&input_file_name);
+            let output_file_path = output_dir.join(&input_file_name);
+            let file_contents = fs::read_to_string(&input_file_path).expect(&format!(
+                "Could not read external file: {}",
+                &input_file_path.clone().as_str()
+            ));
+            self.io.write(&output_file_path, &file_contents)?;
+        }
+        // Implement F# compilation
+        // TODO: Support additional build options
 
-        // TODO: Implement F# compilation (if needed)
-        // This step might involve calling the F# compiler (fsc) to compile the generated F# code
+        let status = self.io.exec(
+            "dotnet",
+            &[String::from("build")],
+            &[],
+            Some(&output_dir),
+            self.subprocess_stdio,
+        )?;
+
+        if status != 0 {
+            return Err(Error::ShellCommand {
+                program: "dotnet".into(),
+                err: None,
+            });
+        }
 
         Ok(())
     }

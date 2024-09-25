@@ -15,7 +15,7 @@ use ecow::EcoString;
 use itertools::Itertools;
 use regex::{Captures, Regex};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ops::Deref,
     sync::{Arc, OnceLock},
 };
@@ -23,8 +23,9 @@ use std::{
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
+#[derive(Default, Debug)]
 pub struct Generator<'a> {
-    pub external_files: &'a Vec<String>,
+    pub external_files: HashSet<&'a EcoString>,
 }
 
 mod prelude_functions {
@@ -79,11 +80,13 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(external_files: &'a Vec<String>) -> Self {
-        Self { external_files }
+    pub fn new() -> Self {
+        Self {
+            external_files: HashSet::new(),
+        }
     }
 
-    pub fn render_module(&self, module: &TypedModule) -> super::Result<String> {
+    pub fn render_module(&mut self, module: &'a TypedModule) -> super::Result<String> {
         let document = join(
             vec![
                 self.module_declaration(module),
@@ -94,7 +97,7 @@ impl<'a> Generator<'a> {
         Ok(document.to_pretty_string(120))
     }
 
-    fn module_declaration(&'a self, module: &'a TypedModule) -> Document<'a> {
+    fn module_declaration(&mut self, module: &'a TypedModule) -> Document<'a> {
         //println!("module: {:#?}", module);
         // Use module rec to not need to worry about initialization order
         "module rec "
@@ -102,7 +105,7 @@ impl<'a> Generator<'a> {
             .append(self.santitize_name(&module.name))
     }
 
-    fn module_contents(&self, module: &'a TypedModule) -> Document<'a> {
+    fn module_contents(&mut self, module: &'a TypedModule) -> Document<'a> {
         join(
             module
                 .definitions
@@ -351,7 +354,7 @@ impl<'a> Generator<'a> {
         ]
     }
 
-    fn function(&self, f: &'a TypedFunction) -> Document<'a> {
+    fn function(&mut self, f: &'a TypedFunction) -> Document<'a> {
         let Function {
             name,
             arguments,
@@ -377,6 +380,7 @@ impl<'a> Generator<'a> {
 
                 // If the "module" qualifier is a file path, assume that fn_name is fully qualified
                 let qualifier = if module_name.contains("/") || module_name.contains("\\") {
+                    _ = self.external_files.insert(module_name);
                     nil()
                 } else {
                     docvec![module_name, "."]
@@ -428,11 +432,21 @@ impl<'a> Generator<'a> {
 
         let return_type = self.type_to_fsharp(return_type);
 
+        let (entry_point_annotation, args) = if name == "main" {
+            (
+                "[<EntryPoint>]".to_doc().append(line()),
+                "(args: string[])".to_doc(),
+            )
+        } else {
+            (nil(), args)
+        };
+
         // For now, since we mark all modules as recursive, we don't need to mark
         // functions as recursive.
         docvec![
             docs,
             deprecation_doc,
+            entry_point_annotation,
             "let ",
             self.map_publicity(f.publicity),
             name,
@@ -707,7 +721,17 @@ impl<'a> Generator<'a> {
                     " }"
                 ]
             }
-            TypedExpr::ModuleSelect { .. } => "// TODO: TypedExpr::ModuleSelect".to_doc(),
+            TypedExpr::ModuleSelect {
+                module_name,
+                module_alias,
+                constructor,
+                ..
+            } => {
+                println!("module_name: {:#?}", module_name);
+                println!("module_alias: {:#?}", module_alias);
+                println!("constructor: {:#?}", constructor);
+                "".to_doc()
+            }
             TypedExpr::TupleIndex { tuple, index, .. } => self.tuple_index(tuple, index),
             TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
             TypedExpr::NegateBool { .. } => "// TODO: TypedExpr::NegateBool".to_doc(),
