@@ -16,6 +16,7 @@ mod blocks;
 mod case;
 mod consts;
 mod docs;
+mod external_fn;
 mod functions;
 mod numbers;
 mod panic;

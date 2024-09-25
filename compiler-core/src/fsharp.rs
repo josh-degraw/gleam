@@ -351,10 +351,44 @@ fn function(f: &TypedFunction) -> Document<'_> {
         return_type,
         documentation,
         deprecation,
+        external_fsharp,
         ..
     } = f;
-
     let name = name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
+
+    let args = if arguments.is_empty() {
+        "()".to_doc()
+    } else {
+        fun_args(arguments)
+    };
+    match external_fsharp {
+        Some((ref module_name, ref fn_name, _)) => {
+            // TODO: look into tracking references to the external function
+            // and call it directly instead?
+
+            let calling_args = if arguments.is_empty() {
+                "()".to_doc()
+            } else {
+                join(arguments.iter().map(|arg| arg_name(arg)), " ".to_doc())
+            };
+            return docvec![
+                "let ",
+                name,
+                args,
+                " : ",
+                type_to_fsharp(return_type),
+                " = ",
+                module_name,
+                ".",
+                fn_name,
+                " ",
+                calling_args
+            ];
+        }
+
+        None => (), //statements(body, Some(return_type))),
+    };
+
     let args = if arguments.is_empty() {
         "()".to_doc()
     } else {
@@ -409,19 +443,19 @@ fn function(f: &TypedFunction) -> Document<'_> {
         "end"
     ]
 }
+
+fn arg_name(arg: &TypedArg) -> Document<'_> {
+    arg.names
+        .get_variable_name()
+        .map(|n| n.to_doc())
+        .unwrap_or_else(|| "_".to_doc())
+}
+
 fn fun_args(arguments: &[TypedArg]) -> Document<'_> {
     join(
-        arguments.iter().map(|arg| {
-            docvec![
-                arg.names
-                    .get_variable_name()
-                    .map(|n| n.to_doc())
-                    .unwrap_or_else(|| "_".to_doc()),
-                ": ",
-                type_to_fsharp(&arg.type_)
-            ]
-            .surround("(", ")")
-        }),
+        arguments
+            .iter()
+            .map(|arg| docvec![arg_name(arg), ": ", type_to_fsharp(&arg.type_)].surround("(", ")")),
         " ".to_doc(),
     )
     .group()
@@ -429,13 +463,22 @@ fn fun_args(arguments: &[TypedArg]) -> Document<'_> {
 
 /// Anonymous functions
 fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
-    "fun"
-        .to_doc()
-        .append(fun_args(args).append(" -> begin "))
-        .append(statements(body, None).nest(INDENT))
-        .append(break_("", " "))
-        .append("end")
-        .group()
+    docvec![
+        "fun",
+        fun_args(args),
+        "-> begin ",
+        statements(body, None).nest(INDENT),
+        break_("", " "),
+        "end"
+    ]
+    .group()
+    // "fun"
+    //     .to_doc()
+    //     .append(fun_args(args).append(" -> begin "))
+    //     .append(statements(body, None).nest(INDENT))
+    //     .append(break_("", " "))
+    //     .append("end")
+    //     .group()
 }
 
 fn statement(s: &TypedStatement) -> (Document<'_>, Option<Document<'_>>) {
