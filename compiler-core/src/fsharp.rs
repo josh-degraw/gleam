@@ -23,6 +23,8 @@ use std::{
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
+struct Generator {}
+
 mod prelude_functions {
     /// This is used directly in pattern matching
     pub const STRING_PATTERN_PREFIX: &str = "Gleam__codegen__prefix";
@@ -126,7 +128,7 @@ fn module_contents<'a>(module: &'a TypedModule) -> Document<'a> {
 
 fn map_publicity<'a>(publicity: Publicity) -> Document<'a> {
     match publicity {
-        Publicity::Public => "".to_doc(),
+        Publicity::Public => nil(),
         Publicity::Internal { .. } => "internal ".to_doc(),
         Publicity::Private => "private ".to_doc(),
     }
@@ -192,7 +194,7 @@ fn type_params(t: &CustomType<Arc<Type>>) -> Document<'_> {
     if !t.typed_parameters.is_empty() {
         type_params
     } else {
-        "".to_doc()
+        nil()
     }
 }
 
@@ -356,48 +358,41 @@ fn function(f: &TypedFunction) -> Document<'_> {
     } = f;
     let name = name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
 
-    let args = if arguments.is_empty() {
-        "()".to_doc()
-    } else {
-        fun_args(arguments)
-    };
-    match external_fsharp {
+    let body = match external_fsharp {
         Some((ref module_name, ref fn_name, _)) => {
-            // TODO: look into tracking references to the external function
-            // and call it directly instead?
+            // TODO: look into tracking references to the external function in Call expressions
+            // and call them directly instead? Or maybe add an inline specifier for this [instead]?
 
             let calling_args = if arguments.is_empty() {
                 "()".to_doc()
             } else {
                 join(arguments.iter().map(|arg| arg_name(arg)), " ".to_doc())
             };
-            return docvec![
-                "let ",
-                name,
-                args,
-                " : ",
-                type_to_fsharp(return_type),
-                " = ",
-                module_name,
-                ".",
-                fn_name,
-                " ",
-                calling_args
-            ];
+
+            // If the "module" qualifier is a file path, assume that fn_name is fully qualified
+            let qualifier = if module_name.contains("/") || module_name.contains("\\") {
+                nil()
+            } else {
+                docvec![module_name, "."]
+            };
+
+            docvec![qualifier, fn_name, " ", calling_args]
         }
 
-        None => (), //statements(body, Some(return_type))),
+        None => {
+            docvec![
+                "begin",
+                line()
+                    .append(statements(body, Some(return_type)))
+                    .nest(INDENT)
+                    .group(),
+                line(),
+                "end"
+            ]
+        }
     };
 
-    let args = if arguments.is_empty() {
-        "()".to_doc()
-    } else {
-        fun_args(arguments)
-    };
-
-    let body = statements(body, Some(return_type));
-    let return_type = type_to_fsharp(return_type);
-
+    let args = fun_args(arguments);
     let docs = match documentation {
         Some((_, ref doc)) => {
             let mut comment_lines = doc.split('\n').collect::<Vec<_>>();
@@ -415,15 +410,17 @@ fn function(f: &TypedFunction) -> Document<'_> {
             )
             .append(line())
         }
-        None => "".to_doc(),
+        None => nil(),
     };
 
     let deprecation_doc = match deprecation {
         Deprecation::Deprecated { message } => {
             docvec!["[<System.Obsolete(", string(message), ")>]", line()]
         }
-        Deprecation::NotDeprecated => "".to_doc(),
+        Deprecation::NotDeprecated => nil(),
     };
+
+    let return_type = type_to_fsharp(return_type);
 
     // For now, since we mark all modules as recursive, we don't need to mark
     // functions as recursive.
@@ -437,10 +434,8 @@ fn function(f: &TypedFunction) -> Document<'_> {
         args,
         ": ",
         return_type,
-        " = begin",
-        line().append(body).nest(INDENT).group(),
-        line(),
-        "end"
+        " = ",
+        body
     ]
 }
 
@@ -451,14 +446,19 @@ fn arg_name(arg: &TypedArg) -> Document<'_> {
         .unwrap_or_else(|| "_".to_doc())
 }
 
+/// Function definition arguments
 fn fun_args(arguments: &[TypedArg]) -> Document<'_> {
-    join(
-        arguments
-            .iter()
-            .map(|arg| docvec![arg_name(arg), ": ", type_to_fsharp(&arg.type_)].surround("(", ")")),
-        " ".to_doc(),
-    )
-    .group()
+    if arguments.is_empty() {
+        "()".to_doc()
+    } else {
+        join(
+            arguments.iter().map(|arg| {
+                docvec![arg_name(arg), ": ", type_to_fsharp(&arg.type_)].surround("(", ")")
+            }),
+            " ".to_doc(),
+        )
+        .group()
+    }
 }
 
 /// Anonymous functions
@@ -466,19 +466,12 @@ fn fun<'a>(args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
     docvec![
         "fun",
         fun_args(args),
-        "-> begin ",
+        " -> begin ",
         statements(body, None).nest(INDENT),
         break_("", " "),
         "end"
     ]
     .group()
-    // "fun"
-    //     .to_doc()
-    //     .append(fun_args(args).append(" -> begin "))
-    //     .append(statements(body, None).nest(INDENT))
-    //     .append(break_("", " "))
-    //     .append("end")
-    //     .group()
 }
 
 fn statement(s: &TypedStatement) -> (Document<'_>, Option<Document<'_>>) {

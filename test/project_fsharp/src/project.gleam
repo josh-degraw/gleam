@@ -9,6 +9,9 @@ pub type Person {
 @external(fsharp, "System.Console", "WriteLine")
 pub fn printfn(format: String) -> Nil
 
+@external(fsharp, "./fsharp_custom_behavior.fs", "print_string_and_int")
+pub fn print_string_and_int(s: String, i: Int) -> Nil
+
 pub fn main() {
   let car =
     Car(

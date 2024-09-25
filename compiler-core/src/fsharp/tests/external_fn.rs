@@ -1,10 +1,24 @@
 use crate::assert_fsharp;
 
 #[test]
-fn integration_test1_3() {
+fn external_fn_from_std_lib() {
     assert_fsharp!(
         r#"
 @external(fsharp, "FSharp.MyApp", "run")
+pub fn run() -> Int
+
+pub fn main() -> Int {
+    run()
+}
+"#
+    );
+}
+
+#[test]
+fn external_fn_from_file() {
+    assert_fsharp!(
+        r#"
+@external(fsharp, "./SomeFile.fs", "SomeFile.run")
 pub fn run() -> Int
 
 pub fn main() -> Int {
