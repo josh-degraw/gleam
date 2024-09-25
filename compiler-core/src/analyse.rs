@@ -298,6 +298,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             module_types_constructors: types_constructors,
             module_values: values,
             accessors,
+            names: type_names,
             ..
         } = env;
 
@@ -334,6 +335,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
                 warnings,
                 minimum_required_version: self.minimum_required_version,
             },
+            names: type_names,
         };
 
         match Vec1::try_from_vec(self.problems.take_errors()) {
@@ -1051,7 +1053,7 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
                 deprecation.clone(),
             );
 
-            environment.value_names.named_constructor_in_scope(
+            environment.names.named_constructor_in_scope(
                 environment.current_module.clone(),
                 constructor.name.clone(),
                 constructor.name.clone(),
@@ -1138,6 +1140,12 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
             )
             .expect("name uniqueness checked above");
 
+        environment.names.named_type_in_scope(
+            environment.current_module.clone(),
+            name.clone(),
+            name.clone(),
+        );
+
         if *opaque && constructors.is_empty() {
             self.problems.warning(Warning::OpaqueExternalType {
                 location: *location,
@@ -1185,6 +1193,10 @@ impl<'a, A> ModuleAnalyzer<'a, A> {
         let tryblock = || {
             hydrator.disallow_new_type_variables();
             let type_ = hydrator.type_from_ast(resolved_type, environment, &mut self.problems)?;
+
+            environment
+                .names
+                .type_in_scope(name.clone(), type_.as_ref());
 
             // Insert the alias so that it can be used by other code.
             environment.insert_type_constructor(
@@ -1682,7 +1694,7 @@ fn assert_unique_name(
     }
 }
 
-fn custom_type_accessors<A>(
+fn custom_type_accessors<A: std::fmt::Debug>(
     constructors: &[RecordConstructor<A>],
     hydrator: &mut Hydrator,
     environment: &mut Environment<'_>,
@@ -1708,7 +1720,7 @@ fn custom_type_accessors<A>(
 
 /// Returns the fields that have the same label and type across all variants of
 /// the given type.
-fn get_compatible_record_fields<A>(
+fn get_compatible_record_fields<A: std::fmt::Debug>(
     constructors: &[RecordConstructor<A>],
 ) -> Vec<(usize, &EcoString, &TypeAst)> {
     let mut compatible = vec![];
@@ -1772,7 +1784,7 @@ fn get_type_dependencies(type_: &TypeAst) -> Vec<EcoString> {
             ..
         }) => {
             deps.push(match module {
-                Some((module, _)) => format!("{}.{}", name, module).into(),
+                Some((module, _)) => format!("{name}.{module}").into(),
                 None => name.clone(),
             });
 

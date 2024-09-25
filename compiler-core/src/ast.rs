@@ -15,6 +15,7 @@ use crate::analyse::Inferred;
 use crate::build::{Located, Target};
 use crate::parse::SpannedString;
 use crate::type_::expression::Implementations;
+use crate::type_::printer::Names;
 use crate::type_::{
     self, Deprecation, ModuleValueConstructor, PatternConstructor, Type, ValueConstructor,
 };
@@ -46,6 +47,7 @@ pub struct Module<Info, Statements> {
     pub documentation: Vec<EcoString>,
     pub type_info: Info,
     pub definitions: Vec<Statements>,
+    pub names: Names,
 }
 
 impl TypedModule {
@@ -317,7 +319,9 @@ impl TypeAst {
                     arguments: o_arguments,
                     location: _,
                 }) => {
-                    module == o_module
+                    let module_name =
+                        |m: &Option<(EcoString, _)>| m.as_ref().map(|(m, _)| m.clone());
+                    module_name(module) == module_name(o_module)
                         && name == o_name
                         && arguments.len() == o_arguments.len()
                         && arguments
@@ -648,7 +652,7 @@ pub type TypedFunction = Function<Arc<Type>, TypedExpr>;
 pub type UntypedFunction = Function<(), UntypedExpr>;
 
 impl<T, E> Function<T, E> {
-    fn full_location(&self) -> SrcSpan {
+    pub fn full_location(&self) -> SrcSpan {
         SrcSpan::new(self.location.start, self.end_position)
     }
 }
@@ -1781,7 +1785,7 @@ pub enum AssignName {
 }
 
 impl AssignName {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &EcoString {
         match self {
             AssignName::Variable(name) | AssignName::Discard(name) => name,
         }
