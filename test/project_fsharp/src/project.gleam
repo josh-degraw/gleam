@@ -7,21 +7,20 @@ pub type Person {
 }
 
 @external(fsharp, "System.Console", "WriteLine")
-pub fn printfn(format: String) -> Nil
+pub fn println(format: String) -> Nil
 
 @external(fsharp, "./fsharp_custom_behavior.fs", "FSharpCustomBehavior.print_string_and_int")
 pub fn print_string_and_int(s: String, i: Int) -> Nil
 
-pub fn main(args: List(String)) {
+pub fn main() {
   let car =
     Car(
       make: "Amphicar",
       model: "Model 770",
       driver: Person(name: "John Doe", age: 27),
     )
-  let new_p = Person(..car.driver, age: 28)
-  new_p
 
-  printfn("Hello, world!" <> car.driver.name)
+  println("Hello, world!" <> car.driver.name)
+  print_string_and_int("Hello, "<> car.driver.name <> "! Age:", car.driver.age)
   1
 }

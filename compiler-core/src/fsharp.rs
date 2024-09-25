@@ -432,6 +432,7 @@ impl<'a> Generator<'a> {
 
         let return_type = self.type_to_fsharp(return_type);
 
+        // TODO: Make this less magic
         let (entry_point_annotation, args) = if name == "main" {
             (
                 "[<EntryPoint>]".to_doc().append(line()),
