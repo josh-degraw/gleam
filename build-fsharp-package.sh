@@ -1,3 +1,4 @@
+#! /bin/bash
 cargo build
 cd test/project_fsharp
 pwd
