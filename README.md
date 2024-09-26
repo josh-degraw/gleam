@@ -11,14 +11,17 @@
 <!-- A spacer -->
 <div>&nbsp;</div>
 
+Gleam is a friendly language for building type-safe systems that scale! For more
+information see [the website](https://gleam.run).
+
 # Gleam\.NET
 
 This is a fork of Gleam with support for compiling to run on the .NET runtime.
 
 **This is a work in progress**. Many features are implemented, and many are not yet. If you try it out and something doesn't work, feel free to raise an issue or submit a PR.
 
-Gleam is a friendly language for building type-safe systems that scale! For more
-information see [the website](https://gleam.run).
+For a working example, look at [./test/project_fsharp/README.md](./test/project_fsharp/README.md)
+
 
 ## Sponsors
 
