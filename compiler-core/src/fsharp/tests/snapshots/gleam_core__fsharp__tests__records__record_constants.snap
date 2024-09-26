@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/records.rs
-assertion_line: 260
 expression: "pub type Test { A }\nconst some_test = A\npub fn a() { A }"
 ---
 module rec my.``mod``
 type Test =
 | A
     
-let a (): Test = begin
+let a () = begin
     A
 end
 let private some_test = A

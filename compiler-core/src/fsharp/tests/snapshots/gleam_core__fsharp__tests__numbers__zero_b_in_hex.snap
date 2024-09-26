@@ -3,6 +3,6 @@ source: compiler-core/src/fsharp/tests/numbers.rs
 expression: "\npub fn foo() {\n  0xffe0bb\n}\n"
 ---
 module rec my.``mod``
-let foo (): int = begin
+let foo () = begin
     0xffe0bb
 end

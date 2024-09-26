@@ -3,6 +3,6 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\npub fn foo(x) -> String {\n  x <> \"\\u{0308}\"\n}\n"
 ---
 module rec my.``mod``
-let foo (x: string): string = begin
+let foo (x: string) = begin
     x + "\u0308"
 end

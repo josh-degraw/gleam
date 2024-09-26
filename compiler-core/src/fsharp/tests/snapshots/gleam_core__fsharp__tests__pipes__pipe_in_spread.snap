@@ -4,10 +4,10 @@ expression: "pub type X {\n  X(a: Int, b: Int)\n}\n\nfn id(x) {\n  x\n}\n\npub f
 ---
 module rec my.``mod``
 type X = { a: int; b: int }
-let private id (x: 'u8): 'u8 = begin
+let private id (x: 'u8) = begin
     x
 end
-let foo (x: X): X = begin
+let foo (x: X) = begin
     { x with a = begin
          let _pipe = 1
          (id (_pipe))

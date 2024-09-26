@@ -1,10 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/blocks.rs
-assertion_line: 130
 expression: "\nfn go() {\n  \"one\"\n  \"two\"\n  \"three\"\n}\n"
 ---
 module rec my.``mod``
-let private go (): string = begin
+let private go () = begin
     "one"
     "two"
     "three"

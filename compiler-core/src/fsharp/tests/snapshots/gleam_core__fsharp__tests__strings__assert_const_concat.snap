@@ -6,6 +6,6 @@ module rec my.``mod``
 [<Literal>]
 let private cute = "cute"
 let private cute_bee = cute + "bee"
-let foo (): string = begin
+let foo () = begin
     cute_bee
 end

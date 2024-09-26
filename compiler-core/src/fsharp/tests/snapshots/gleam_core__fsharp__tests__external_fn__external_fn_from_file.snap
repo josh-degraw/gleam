@@ -3,7 +3,7 @@ source: compiler-core/src/fsharp/tests/external_fn.rs
 expression: "\n@external(fsharp, \"./SomeFile.fs\", \"SomeFile.run\")\npub fn run() -> Int\n\npub fn foo() -> Int {\n    run()\n}\n"
 ---
 module rec my.``mod``
-let run (): int = SomeFile.run ()
-let foo (): int = begin
+let run () = SomeFile.run ()
+let foo () = begin
     run()
 end

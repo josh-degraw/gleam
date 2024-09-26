@@ -546,8 +546,8 @@ impl<'a> Generator<'a> {
             name,
             " ",
             args,
-            ": ",
-            return_type,
+            // ": ",
+            // return_type,
             " = ",
             body
         ]

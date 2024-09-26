@@ -3,7 +3,7 @@ source: compiler-core/src/fsharp/tests/todo.rs
 expression: "\n     pub fn foo() {\n      \"lets\"\n      |> todo as \"pipe\"\n      |> todo as \"other todo\"\n    }\n    "
 ---
 module rec my.``mod``
-let foo (): 'u12 = begin
+let foo () = begin
     begin
         let _pipe = "lets"
         let _pipe = failwith ("pipe") (_pipe)

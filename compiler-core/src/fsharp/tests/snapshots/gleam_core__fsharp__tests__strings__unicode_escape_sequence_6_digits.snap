@@ -1,9 +1,8 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 106
 expression: "\npub fn unicode_escape_sequence_6_digits() -> String {\n  \"\\u{10abcd}\"\n}\n"
 ---
 module rec my.``mod``
-let unicode_escape_sequence_6_digits (): string = begin
+let unicode_escape_sequence_6_digits () = begin
     "\u10abcd"
 end

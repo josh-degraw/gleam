@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 414
 expression: "\nconst cs = s\n\nfn s() {\n  \"s\"\n}\n\npub fn go() {\n  cs() <> cs()\n}\n"
 ---
 module rec my.``mod``
-let private s (): string = begin
+let private s () = begin
     "s"
 end
 let private cs = s
-let go (): string = begin
+let go () = begin
     cs() + cs()
 end

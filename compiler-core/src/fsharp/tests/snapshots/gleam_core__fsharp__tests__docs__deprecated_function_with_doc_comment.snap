@@ -6,9 +6,9 @@ module rec my.``mod``
 /// This is a doc comment
 /// on multiple lines
 [<System.Obsolete("Use new_function instead")>]
-let private other (): unit = begin
+let private other () = begin
     ()
 end
-let foo (): unit = begin
+let foo () = begin
     other()
 end

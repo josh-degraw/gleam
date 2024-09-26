@@ -3,7 +3,7 @@ source: compiler-core/src/fsharp/tests/patterns.rs
 expression: "\npub fn foo() {\n    let duplicate_name = 1\n\n    case 1 {\n        1 | 2 if duplicate_name == 1 -> duplicate_name\n        _ -> 0\n    }\n}"
 ---
 module rec my.``mod``
-let foo (): int = begin
+let foo () = begin
     let duplicate_name = 1
     match 1 with
     | 1 | 2 when duplicate_name = 1 ->

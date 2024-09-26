@@ -1,10 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/consts.rs
-assertion_line: 121
 expression: "\n              fn identity(a) {\n                a\n              }\n\n              pub const id = identity\n        "
 ---
 module rec my.``mod``
-let private identity (a: 'u8): 'u8 = begin
+let private identity (a: 'u8) = begin
     a
 end
 let id = identity

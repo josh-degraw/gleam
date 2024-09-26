@@ -1,10 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 238
 expression: "\npub fn go(x) {\n  let _ = case x {\n    \"\\f\" <> rest -> \"test\"\n    \"\\n\" <> rest -> \"test\"\n    \"\\r\" <> rest -> \"test\"\n    \"\\t\" <> rest -> \"test\"\n    \"\\\"\" <> rest -> \"test\"\n    \"\\\\\" <> rest -> \"test\"\n    \"\\f \\n \\r \\t \\\" \\\\\" <> rest -> \"control chars with prefix assignment\"\n    \"\\u{9}\" <> rest -> \"test\"\n    \"\\u{000009}\" <> rest -> \"test\"\n    \"\\u{21}\" <> rest -> \"test\"\n    \"\\u{100}\" <> rest -> \"test\"\n    \"\\u{1000}\" <> rest -> \"test\"\n    \"\\u{1F600}\" <> rest -> \"test\"\n    \"\\u{1f600}\" <> rest -> \"test\"\n    \"\\u{01F600}\" <> rest -> \"test\"\n    \"\\u{01f600}\" <> rest -> \"test\"\n    \"\\u{9} \\u{000009} \\u{21} \\u{100} \\u{1000} \\u{1F600} \\u{01F600}\" <> rest -> \"test\"\n    _ -> \"Unknown\"\n  }\n}\n"
 ---
 module rec my.``mod``
-let go (x: string): string = begin
+let go (x: string) = begin
     let _ = 
         match x with
         | Gleam__codegen__prefix "\f" rest ->

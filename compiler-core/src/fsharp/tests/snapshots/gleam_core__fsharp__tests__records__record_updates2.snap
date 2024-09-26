@@ -4,7 +4,7 @@ expression: "\npub type Person { Person(name: String, age: Int) }\n\nfn foo() {\
 ---
 module rec my.``mod``
 type Person = { name: string; age: int }
-let private foo (): Person = begin
+let private foo () = begin
     let p = { name = "Quinn"; age = 27 }
     let new_p = { p with age = 28; name = "Riley" }
     new_p

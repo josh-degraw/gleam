@@ -7,7 +7,7 @@ module rec my.``mod``
 let private i = 100_000
 [<Literal>]
 let private f = 100_000.00101
-let foo (): float = begin
+let foo () = begin
     i
     f
 end

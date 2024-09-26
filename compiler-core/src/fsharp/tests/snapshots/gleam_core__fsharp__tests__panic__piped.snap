@@ -3,7 +3,7 @@ source: compiler-core/src/fsharp/tests/panic.rs
 expression: "\npub fn foo() {\n  \"lets\"\n  |> panic\n}\n    "
 ---
 module rec my.``mod``
-let foo (): 'u10 = begin
+let foo () = begin
     begin
         let _pipe = "lets"
         (failwith "Panic encountered" (_pipe))

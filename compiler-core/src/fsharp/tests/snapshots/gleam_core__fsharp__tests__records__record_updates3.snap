@@ -4,10 +4,10 @@ expression: "\npub type Person { Person(name: String, age: Int) }\n\nfn foo() {\
 ---
 module rec my.``mod``
 type Person = { name: string; age: int }
-let private return_person (): Person = begin
+let private return_person () = begin
     { name = "Quinn"; age = 27 }
 end
-let private foo (): Person = begin
+let private foo () = begin
     let new_p = { return_person() with age = 28 }
     new_p
 end

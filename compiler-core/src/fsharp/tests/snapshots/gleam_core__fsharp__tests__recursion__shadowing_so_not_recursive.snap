@@ -1,9 +1,8 @@
 ---
 source: compiler-core/src/fsharp/tests/recursion.rs
-assertion_line: 54
 expression: "\npub fn map(map) {\n  map()\n}\n"
 ---
 module rec my.``mod``
-let map (map: unit -> 'u10): 'u10 = begin
+let map (map: unit -> 'u10) = begin
     map()
 end

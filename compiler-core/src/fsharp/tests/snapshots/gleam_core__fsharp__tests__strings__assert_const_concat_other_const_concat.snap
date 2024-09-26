@@ -5,6 +5,6 @@ expression: "\nconst cute_bee = \"cute\" <> \"bee\"\nconst cute_cute_bee_buzz = 
 module rec my.``mod``
 let private cute_bee = "cute" + "bee"
 let private cute_cute_bee_buzz = cute_bee + "buzz"
-let foo (): string = begin
+let foo () = begin
     cute_cute_bee_buzz
 end

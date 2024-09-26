@@ -1,6 +1,5 @@
 ---
 source: compiler-core/src/fsharp/tests/strings.rs
-assertion_line: 400
 expression: "\nconst a = \"Hello, \"\nconst b = \"Joe!\"\n\npub fn go() {\n  a <> b\n}\n"
 ---
 module rec my.``mod``
@@ -8,6 +7,6 @@ module rec my.``mod``
 let private a = "Hello, "
 [<Literal>]
 let private b = "Joe!"
-let go (): string = begin
+let go () = begin
     a + b
 end

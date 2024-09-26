@@ -1,10 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/variables.rs
-assertion_line: 57
 expression: "pub fn go() {\n  let _r = 1\n  let _r = 2\n  Nil\n}"
 ---
 module rec my.``mod``
-let go (): unit = begin
+let go () = begin
     let _r = 1
     let _r = 2
     ()

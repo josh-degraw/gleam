@@ -15,7 +15,7 @@ let private l = -100.001e-1_230
 let private m = 100.001e123_456_789
 [<Literal>]
 let private n = -100.001e-123_456_789
-let foo (): float = begin
+let foo () = begin
     i
     j
     k

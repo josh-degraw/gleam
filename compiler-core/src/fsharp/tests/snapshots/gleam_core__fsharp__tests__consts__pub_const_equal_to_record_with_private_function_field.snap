@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/consts.rs
-assertion_line: 83
 expression: "\n          fn identity(a) {\n            a\n          }\n\n          pub type Mapper(b) {\n            Mapper(fn(b) -> b)\n          }\n\n          pub const id_mapper = Mapper(identity)\n        "
 ---
 module rec my.``mod``
 type Mapper<'t8> =
 | Mapper of ('t8 -> 't8)
     
-let private identity (a: 'u9): 'u9 = begin
+let private identity (a: 'u9) = begin
     a
 end
 let id_mapper = Mapper(identity)

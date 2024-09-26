@@ -4,7 +4,7 @@ expression: "\ntype Triple {\n    Triple(a: Int, b: Int, c: Int)\n}\n\nfn foo() 
 ---
 module rec my.``mod``
 type private Triple = { a: int; b: int; c: int }
-let private foo (): int = begin
+let private foo () = begin
     let triple = { a = 1; b = 2; c = 3 }
     let { a = the_a } = triple
     the_a

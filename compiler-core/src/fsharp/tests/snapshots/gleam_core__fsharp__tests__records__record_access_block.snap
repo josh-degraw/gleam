@@ -4,7 +4,7 @@ expression: "pub type Thing {\n  Thing(a: Int, b: Int)\n}\n\npub fn foo() {\n  {
 ---
 module rec my.``mod``
 type Thing = { a: int; b: int }
-let foo (): int = begin
+let foo () = begin
     begin
         let thing = { a = 1; b = 2 }
         thing

@@ -3,9 +3,9 @@ source: compiler-core/src/fsharp/tests/functions.rs
 expression: "\nfn other() {\n  Nil\n}\n\npub fn foo() {\n  other\n}\n"
 ---
 module rec my.``mod``
-let private other (): unit = begin
+let private other () = begin
     ()
 end
-let foo (): unit -> unit = begin
+let foo () = begin
     other
 end

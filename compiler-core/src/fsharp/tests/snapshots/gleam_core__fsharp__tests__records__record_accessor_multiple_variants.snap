@@ -1,6 +1,5 @@
 ---
 source: compiler-core/src/fsharp/tests/records.rs
-assertion_line: 46
 expression: "\npub type Person {\n    Teacher(name: String, title: String)\n    Student(name: String, age: Int)\n}\npub fn get_name(person: Person) { person.name }"
 ---
 module rec my.``mod``
@@ -11,6 +10,6 @@ type Person =
         match this with
         | Person.Student (name, _) -> name
         | Person.Teacher (name, _) -> name
-let get_name (person: Person): string = begin
+let get_name (person: Person) = begin
     person.name
 end

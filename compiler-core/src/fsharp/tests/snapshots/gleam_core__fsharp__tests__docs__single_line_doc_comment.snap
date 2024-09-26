@@ -4,9 +4,9 @@ expression: "\n/// This is a doc comment\nfn other() {\n  Nil\n}\n\npub fn foo()
 ---
 module rec my.``mod``
 /// This is a doc comment
-let private other (): unit = begin
+let private other () = begin
     ()
 end
-let foo (): unit -> unit = begin
+let foo () = begin
     other
 end

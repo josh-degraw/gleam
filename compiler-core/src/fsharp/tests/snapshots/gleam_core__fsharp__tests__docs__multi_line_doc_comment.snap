@@ -5,9 +5,9 @@ expression: "\n/// This is a doc comment\n/// on multiple lines\nfn other() {\n 
 module rec my.``mod``
 /// This is a doc comment
 /// on multiple lines
-let private other (): unit = begin
+let private other () = begin
     ()
 end
-let foo (): unit = begin
+let foo () = begin
     other()
 end

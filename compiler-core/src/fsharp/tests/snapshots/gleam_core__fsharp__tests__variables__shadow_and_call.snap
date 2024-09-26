@@ -3,6 +3,6 @@ source: compiler-core/src/fsharp/tests/variables.rs
 expression: "\npub fn foo(x) {\n  fn(x) { x }(x)\n}\n"
 ---
 module rec my.``mod``
-let foo (x: 'u10): 'u10 = begin
+let foo (x: 'u10) = begin
     (fun(x: 'u10) -> begin x end) (x)
 end

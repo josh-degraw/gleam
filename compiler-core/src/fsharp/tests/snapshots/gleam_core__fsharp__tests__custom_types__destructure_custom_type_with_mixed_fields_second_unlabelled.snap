@@ -1,6 +1,5 @@
 ---
 source: compiler-core/src/fsharp/tests/custom_types.rs
-assertion_line: 274
 expression: "\ntype Cat {\n  Cat(name: String, Int)\n}\n\nfn go(cat) {\n  let Cat(x, y) = cat\n  let Cat(name: x, ..) = cat\n  let Cat(y, name: x) = cat\n  x\n}\n\n"
 ---
 module rec my.``mod``
@@ -9,7 +8,7 @@ type private Cat =
     member this.name = 
         match this with
         | Cat.Cat (name, _) -> name
-let private go (cat: Cat): string = begin
+let private go (cat: Cat) = begin
     let (Cat(x, y)) = cat
     let (Cat(x, _)) = cat
     let (Cat(x, y)) = cat

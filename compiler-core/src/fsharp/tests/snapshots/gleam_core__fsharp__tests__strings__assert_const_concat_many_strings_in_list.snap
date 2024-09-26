@@ -4,6 +4,6 @@ expression: "\nconst big_concat_list = [\"a\" <> \"b\" <> \"c\" <> \"d\" <> \"e\
 ---
 module rec my.``mod``
 let private big_concat_list = ["a" + "b" + "c" + "d" + "e" + "f" + "g" + "h" + "i" + "j" + "k" + "l" + "m" + "n" + "o" + "p" + "q" + "r" + "s" + "t" + "u" + "v" + "w" + "x" + "y" + "z"]
-let foo (): list<string> = begin
+let foo () = begin
     big_concat_list
 end

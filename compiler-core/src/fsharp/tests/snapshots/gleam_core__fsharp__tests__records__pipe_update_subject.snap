@@ -4,10 +4,10 @@ expression: "pub type Thing {\n  Thing(a: Int, b: Int)\n}\n\npub fn identity(x) 
 ---
 module rec my.``mod``
 type Thing = { a: int; b: int }
-let identity (x: 'u8): 'u8 = begin
+let identity (x: 'u8) = begin
     x
 end
-let foo (): Thing = begin
+let foo () = begin
     let thing = { a = 1; b = 2 }
     { (begin
         let _pipe = thing

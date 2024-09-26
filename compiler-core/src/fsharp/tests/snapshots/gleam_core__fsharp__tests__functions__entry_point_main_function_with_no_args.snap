@@ -4,6 +4,6 @@ expression: "\npub fn main() {\n    0\n}\n"
 ---
 module rec my.``mod``
 [<EntryPoint>]
-let main (_: string[]): int = begin
+let main (_: string[]) = begin
     0
 end
