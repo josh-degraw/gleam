@@ -183,7 +183,7 @@ impl<'a> Generator<'a> {
                 .definitions
                 .iter()
                 .map(|def| match def {
-                    Definition::CustomType(t) => self.record_type(t),
+                    Definition::CustomType(t) => self.custom_type(t),
                     Definition::TypeAlias(t) => self.type_alias(t),
                     Definition::ModuleConstant(c) => self.module_constant(c),
                     Definition::Function(f) => self.function(f),
@@ -238,36 +238,52 @@ impl<'a> Generator<'a> {
     ///
     /// ```fsharp
     /// type Person = { name: string; age: int }
-    fn record_type(&self, t: &'a CustomType<Arc<Type>>) -> Document<'a> {
-        if self.is_fsharp_union_type(t) {
-            return self.discriminated_union(t);
+    fn custom_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+        if self.is_fsharp_union_type(type_) {
+            self.discriminated_union(type_)
+        } else {
+            self.record_type(type_)
         }
+    }
 
-        let constructor = t
+    fn record_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+        let constructor = type_
             .constructors
             .first()
             .expect("Single constructor should exist");
 
-        let name = &t.name;
+        let name = &type_.name;
         let fields = constructor
             .arguments
             .iter()
             .map(|r| {
-                let type_ = self.type_to_fsharp(&r.type_);
+                let type_doc = self.type_to_fsharp(&r.type_);
                 match &r.label {
-                    Some((_, ref label)) => docvec![self.santitize_name(label), ": ", type_],
-                    None => type_,
+                    Some((_, ref label)) => docvec![self.santitize_name(label), ": ", type_doc],
+                    None => type_doc,
                 }
             })
             .collect::<Vec<Document<'a>>>();
 
+        let opacity = if type_.opaque {
+            line()
+                .nest(INDENT)
+                .append("private ".to_doc())
+                .append(line().nest(INDENT * 2))
+        } else {
+            nil()
+        };
         docvec![
             "type ",
-            self.map_publicity(t.publicity),
+            self.map_publicity(type_.publicity),
             name,
-            self.type_params(t),
+            self.type_params(type_),
             " = ",
-            join(fields, "; ".to_doc()).group().surround("{ ", " }"),
+            opacity,
+            join(fields, "; ".to_doc())
+                .surround("{ ", " }")
+                .group()
+                .nest(INDENT),
         ]
     }
 
@@ -406,17 +422,30 @@ impl<'a> Generator<'a> {
 
         let member_declarations_doc = join(member_declarations, line()).nest(INDENT);
 
+        let opacity = if t.opaque {
+            line()
+                .nest(INDENT)
+                .append("private ".to_doc())
+                .append(line().nest(INDENT))
+        } else {
+            line()
+        };
+
+        let case_indent = if t.opaque { INDENT } else { 0 };
+
         docvec![
             "type ",
             self.map_publicity(t.publicity),
             type_name,
             self.type_params(t),
             " =",
-            line(),
+            opacity,
             join(
                 constructors.into_iter().map(|c| docvec!["| ".to_doc(), c]),
                 line()
-            ),
+            )
+            .group()
+            .nest(case_indent),
             line().nest(INDENT),
             member_declarations_doc
         ]
@@ -1308,9 +1337,6 @@ impl<'a> Generator<'a> {
             } if arguments.len() == field_map.fields.len() => {
                 let field_map = invert_field_map(field_map);
 
-                println!("arguments: {:#?}", arguments);
-                println!("spread: {}", spread.is_some());
-                println!("field_map: {:#?}", field_map);
                 let args = arguments.iter().enumerate().filter_map(|(i, arg)| {
                     if spread.is_some() && arg.value.is_discard() {
                         return None;
@@ -1326,10 +1352,19 @@ impl<'a> Generator<'a> {
                 join(args, "; ".to_doc()).group().surround("{ ", " }")
             }
 
+            Pattern::Constructor { name, type_, .. } if type_.is_bool() && name == "True" => {
+                "true".to_doc()
+            }
+            Pattern::Constructor { name, type_, .. } if type_.is_bool() && name == "False" => {
+                "false".to_doc()
+            }
+
+            Pattern::Constructor { type_, .. } if type_.is_nil() => "()".to_doc(),
+
             Pattern::Constructor {
                 name,
                 arguments,
-                //constructor,
+                constructor,
                 ..
             } => {
                 let args = arguments.iter().map(|arg| self.pattern(&arg.value));

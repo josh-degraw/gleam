@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 642
+expression: "pub opaque type Animal {\n  Cat(goes_outside: Bool)\n  Dog(plays_fetch: Bool)\n}\n"
+---
+module rec my.``mod``
+type Animal =
+    private 
+    | Cat of goes_outside: bool
+    | Dog of plays_fetch: bool

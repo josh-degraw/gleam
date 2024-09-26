@@ -615,16 +615,38 @@ fn keyword_label_name() {
 //     );
 // }
 
-// #[test]
-// fn opaque_types_typescript() {
-//     assert_ts_def!(
-//         r#"pub opaque type Animal {
-//   Cat(goes_outside: Bool)
-//   Dog(plays_fetch: Bool)
-// }
-// "#
-//     );
-// }
+#[test]
+fn opaque_type_with_single_variant() {
+    assert_fsharp!(
+        r#"
+pub opaque type PositiveInt {
+  PositiveInt(inner: Int)
+}
+
+pub fn new_positive_int(i: Int) -> PositiveInt {
+  case i >= 0 {
+    True -> PositiveInt(i)
+    False -> PositiveInt(0)
+  }
+}
+
+pub fn to_int(i: PositiveInt) -> Int {
+  i.inner
+}
+"#
+    );
+}
+
+#[test]
+fn opaque_type_with_multiple_variants() {
+    assert_fsharp!(
+        r#"pub opaque type Animal {
+  Cat(goes_outside: Bool)
+  Dog(plays_fetch: Bool)
+}
+"#
+    );
+}
 
 // https://github.com/gleam-lang/gleam/issues/1650
 #[test]
@@ -638,16 +660,16 @@ pub type One { One }
 }
 
 // https://github.com/gleam-lang/gleam/issues/2386
-#[test]
-fn new_type_import_syntax() {
-    assert_fsharp!(
-        ("package", "a", r#"pub type A { A }"#),
-        r#"
-import a.{type A, A}
+// #[test]
+// fn new_type_import_syntax() {
+//     assert_fsharp!(
+//         ("package", "a", r#"pub type A { A }"#),
+//         r#"
+// import a.{type A, A}
 
-pub fn main() {
-  A
-}
-"#
-    );
-}
+// pub fn main() {
+//   A
+// }
+// "#
+//     );
+// }

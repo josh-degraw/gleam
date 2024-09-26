@@ -1,0 +1,19 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 620
+expression: "\npub opaque type PositiveInt {\n  PositiveInt(inner: Int)\n}\n\npub fn new_positive_int(i: Int) -> PositiveInt {\n  case i >= 0 {\n    True -> PositiveInt(i)\n    False -> PositiveInt(0)\n  }\n}\n\npub fn to_int(i: PositiveInt) -> Int {\n  i.inner\n}\n"
+---
+module rec my.``mod``
+type PositiveInt = 
+    private 
+        { inner: int }
+let new_positive_int (i: int) = begin
+    match i >= 0 with
+    | true ->
+        { inner = i }
+    | false ->
+        { inner = 0 }
+end
+let to_int (i: PositiveInt) = begin
+    i.inner
+end
