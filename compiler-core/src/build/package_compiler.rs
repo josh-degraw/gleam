@@ -442,7 +442,9 @@ where
 
         let fsharp_app = crate::codegen::FSharpApp::new(&input_dir, &output_dir);
 
-        let mut generator = crate::fsharp::Generator::new();
+        let mut generator = crate::fsharp::Generator::new(
+            &modules.first().expect("Must be at least one module").ast,
+        );
         for module in modules {
             let module_name = module.name.replace("/", ".");
             let path = output_dir.join(format!("{}.fs", module_name));
@@ -453,7 +455,7 @@ where
 
         fsharp_app.render(io, &self.config, modules, &mut generator)?;
         // Copy external files
-        for file in &generator.external_files {
+        for file in generator.external_files {
             let input_file_name = Utf8Path::new(file);
             let input_file_path = input_dir.join(&input_file_name);
             let output_file_path = output_dir.join(&input_file_name);

@@ -1,0 +1,7 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 585
+expression: "pub type Thing {\n  Thing(in: Int, class: Nil)\n}\n"
+---
+module rec my.``mod``
+type Thing = { ``in``: int; ``class``: unit }

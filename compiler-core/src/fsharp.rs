@@ -23,9 +23,10 @@ use std::{
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Generator<'a> {
     pub external_files: HashSet<&'a EcoString>,
+    module: &'a TypedModule,
 }
 
 mod prelude_functions {
@@ -68,6 +69,73 @@ fn is_reserved_word(name: &str) -> bool {
             | "tailcall"
             | "trait"
             | "virtual"
+
+            // Keywords
+            | "abstract"
+            | "and"
+            | "as"
+            | "assert"
+            | "base"
+            | "begin"
+            | "class"
+            | "default"
+            | "delegate"
+            | "do"
+            | "done"
+            | "downcast"
+            | "downto"
+            | "elif"
+            | "else"
+            | "end"
+            | "exception"
+            | "extern"
+            | "false"
+            | "finally"
+            | "fixed"
+            | "for"
+            | "fun"
+            | "function"
+            | "global"
+            | "if"
+            | "in"
+            | "inherit"
+            | "inline"
+            | "interface"
+            | "internal"
+            | "lazy"
+            | "let"
+            | "match"
+            | "member"
+            | "module"
+            | "mutable"
+            | "namespace"
+            | "new"
+            | "not"
+            | "null"
+            | "of"
+            | "open"
+            | "or"
+            | "override"
+            | "private"
+            | "public"
+            | "rec"
+            | "return"
+            | "select"
+            | "static"
+            | "struct"
+            | "then"
+            | "to"
+            | "true"
+            | "try"
+            | "type"
+            | "upcast"
+            | "use"
+            | "val"
+            | "void"
+            | "when"
+            | "while"
+            | "with"
+            | "yield"
     )
 }
 
@@ -80,52 +148,42 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new() -> Self {
+    pub fn new(module: &'a TypedModule) -> Self {
         Self {
             external_files: HashSet::new(),
+            module,
         }
     }
 
-    pub fn render_module(&mut self, module: &'a TypedModule) -> super::Result<String> {
+    pub fn render(&mut self) -> super::Result<String> {
         let document = join(
-            vec![
-                self.module_declaration(module),
-                self.module_contents(module),
-            ],
+            vec![self.module_declaration(), self.module_contents()],
             line(),
         );
         Ok(document.to_pretty_string(120))
     }
 
-    fn module_declaration(&mut self, module: &'a TypedModule) -> Document<'a> {
+    /// Update the currently referenced module and render it
+    pub fn render_module(&mut self, new_module: &'a TypedModule) -> super::Result<String> {
+        self.module = new_module;
+        self.render()
+    }
+
+    fn module_declaration(&mut self) -> Document<'a> {
         //println!("module: {:#?}", module);
         // Use module rec to not need to worry about initialization order
         "module rec "
             .to_doc()
-            .append(self.santitize_name(&module.name))
+            .append(self.santitize_name(&self.module.name))
     }
 
-    fn module_contents(&mut self, module: &'a TypedModule) -> Document<'a> {
+    fn module_contents(&mut self) -> Document<'a> {
         join(
-            module
+            self.module
                 .definitions
                 .iter()
                 .map(|def| match def {
-                    Definition::CustomType(t) => {
-                        if t.constructors.len() == 1 {
-                            // Might be an F# record type, but only if the constructor name
-                            // matches the type name and all constructor arguments have a label
-                            let c = t.constructors.first().expect("There must be a constructor");
-                            if c.name == t.name
-                                && !c.arguments.is_empty()
-                                && c.arguments.iter().all(|a| a.label.is_some())
-                                && c.arguments.len() > 1
-                            {
-                                return self.record_type(t);
-                            }
-                        }
-                        self.discriminated_union(t)
-                    }
+                    Definition::CustomType(t) => self.record_type(t),
                     Definition::TypeAlias(t) => self.type_alias(t),
                     Definition::ModuleConstant(c) => self.module_constant(c),
                     Definition::Function(f) => self.function(f),
@@ -143,6 +201,32 @@ impl<'a> Generator<'a> {
             Publicity::Private => "private ".to_doc(),
         }
     }
+
+    fn is_fsharp_union_type(&self, t: &'a CustomType<Arc<Type>>) -> bool {
+        // If there is more than one type constructor, it must be an F# union type
+        if t.constructors.len() != 1 {
+            true
+        } else {
+            assert!(t.constructors.len() == 1);
+            // Might be an F# record type, but only if the constructor name
+            // matches the type name and all constructor arguments have a label
+            let c = t
+                .constructors
+                .first()
+                .expect("Type must have a constructor");
+
+            // Single constructor must match the type name and all arguments must have labels, otherwise
+            // it must be an F# union type
+            if c.name != t.name
+                || c.arguments.is_empty()
+                || c.arguments.iter().any(|a| a.label.is_none())
+            {
+                return true;
+            }
+            false
+        }
+    }
+
     /// Should convert a single-constructor custom type to an F# record
     /// gleam type:
     ///
@@ -155,20 +239,14 @@ impl<'a> Generator<'a> {
     /// ```fsharp
     /// type Person = { name: string; age: int }
     fn record_type(&self, t: &'a CustomType<Arc<Type>>) -> Document<'a> {
-        assert!(
-            t.constructors.len() == 1,
-            "Gleam records must have a single constructor to count as a record"
-        );
+        if self.is_fsharp_union_type(t) {
+            return self.discriminated_union(t);
+        }
 
         let constructor = t
             .constructors
             .first()
             .expect("Single constructor should exist");
-
-        // If a gleam record has an argument with 0 arguments, we need to treat this type like a DU
-        if constructor.arguments.is_empty() {
-            return self.discriminated_union(t);
-        }
 
         let name = &t.name;
         let fields = constructor
@@ -177,7 +255,7 @@ impl<'a> Generator<'a> {
             .map(|r| {
                 let type_ = self.type_to_fsharp(&r.type_);
                 match &r.label {
-                    Some((_, ref label)) => docvec![label, ": ", type_],
+                    Some((_, ref label)) => docvec![self.santitize_name(label), ": ", type_],
                     None => type_,
                 }
             })
@@ -676,14 +754,23 @@ impl<'a> Generator<'a> {
                         ValueConstructor {
                             variant:
                                 ValueConstructorVariant::Record {
+                                    constructors_count: 1,
+                                    arity,
                                     field_map: Some(ref field_map),
                                     ..
                                 },
                             ..
                         },
                     ..
-                } => self.record_instantiation(field_map, args),
-                _ => self.function_call(fun, args),
+                } if *arity == field_map.fields.len() as u16 => {
+                    // Every constructor field must have a label to be a record type
+                    // println!("record instantiation: {:#?}", expr);
+                    self.record_instantiation(field_map, args)
+                }
+                _ => {
+                    println!("function call: {:#?}", expr);
+                    self.function_call(fun, args)
+                }
             },
 
             TypedExpr::BinOp {
@@ -760,7 +847,11 @@ impl<'a> Generator<'a> {
 
         let args = args.iter().enumerate().map(|(i, arg)| {
             let label = field_map.get(&(i as u32)).expect("Index out of bounds");
-            docvec![label.to_doc(), " = ", self.expression(&arg.value)]
+            docvec![
+                self.santitize_name(label).to_doc(),
+                " = ",
+                self.expression(&arg.value)
+            ]
         });
 
         join(args, "; ".to_doc()).group().surround("{ ", " }")
@@ -1092,7 +1183,7 @@ impl<'a> Generator<'a> {
         for a in assignments {
             let (name, value) = self.get_assignment_info(a);
 
-            documents.push("let ".to_doc().append(name).append(" = ").append(value));
+            documents.push(docvec!["let ", name, " = ", value]);
             documents.push(line());
         }
 
@@ -1214,20 +1305,23 @@ impl<'a> Generator<'a> {
                 spread,
                 arguments,
                 ..
-            } => {
+            } if arguments.len() == field_map.fields.len() => {
                 let field_map = invert_field_map(field_map);
 
+                println!("arguments: {:#?}", arguments);
+                println!("spread: {}", spread.is_some());
+                println!("field_map: {:#?}", field_map);
                 let args = arguments.iter().enumerate().filter_map(|(i, arg)| {
                     if spread.is_some() && arg.value.is_discard() {
                         return None;
                     }
 
                     let label = match &arg.label {
-                        Some(label) => label,
-                        None => field_map.get(&(i as u32)).expect("Index out of bounds"),
+                        Some(label) => Some(label.to_doc()),
+                        None => field_map.get(&(i as u32)).map(|label| label.to_doc()),
                     };
 
-                    Some(docvec![label.to_doc(), " = ", self.pattern(&arg.value)])
+                    label.map(|label| docvec![label.to_doc(), " = ", self.pattern(&arg.value)])
                 });
                 join(args, "; ".to_doc()).group().surround("{ ", " }")
             }
@@ -1242,9 +1336,9 @@ impl<'a> Generator<'a> {
                 let args = if arguments.is_empty() {
                     "()".to_doc()
                 } else {
-                    join(args, "; ".to_doc()).surround("(", ")")
+                    join(args, ", ".to_doc()).surround("(", ")")
                 };
-                docvec![name.to_doc(), args]
+                docvec![name.to_doc(), args].surround("(", ")")
             }
         }
     }
@@ -1355,19 +1449,52 @@ impl<'a> Generator<'a> {
             Constant::Record {
                 args,
                 module,
-                name,
+                name: type_name,
                 tag,
                 type_,
                 field_map,
                 ..
             } => {
+                if let Some(constructor) = self.module.type_info.values.get(type_name) {
+                    if let ValueConstructorVariant::Record {
+                        name,
+                        constructors_count,
+                        field_map: Some(field_map),
+                        arity,
+                        ..
+                    } = &constructor.variant
+                    {
+                        // Is a genuine record constructor if:
+                        // only one constructor exists
+                        // constructor name is the same as the type name
+                        // All fields have labels
+
+                        if *constructors_count == 1u16
+                            && name == type_name
+                            && *arity == field_map.fields.len() as u16
+                        {
+                            let field_map = invert_field_map(field_map);
+
+                            println!("arity: {}", arity);
+                            println!("field_map: {:#?}", field_map);
+                            let args = args.iter().enumerate().map(|(i, arg)| {
+                                let label =
+                                    field_map.get(&(i as u32)).expect("Index out of bounds");
+                                docvec![label.to_doc(), " = ", self.constant_expression(&arg.value)]
+                            });
+
+                            return join(args, "; ".to_doc()).group().surround("{ ", " }");
+                        }
+                    }
+                }
+
                 // If there's no arguments and the type is a function that takes
                 // arguments then this is the constructor being referenced, not the
                 // function being called.
                 if let Some(arity) = type_.fn_arity() {
                     if args.is_empty() && arity != 0 {
                         let arity = arity as u16;
-                        return self.record_constructor(type_.clone(), None, name, arity);
+                        return self.type_constructor(type_.clone(), None, type_name, arity);
                     }
                 }
 
@@ -1375,14 +1502,16 @@ impl<'a> Generator<'a> {
                     return tag.to_doc();
                 }
 
+                // if let Type::Custom type_.deref()
+
                 let field_values: Vec<_> = args
                     .iter()
                     .map(|arg| self.constant_expression(&arg.value))
                     .collect();
 
-                self.construct_record(
+                self.construct_type(
                     module.as_ref().map(|(module, _)| module.as_str()),
-                    name,
+                    type_name,
                     field_values,
                 )
             }
@@ -1413,7 +1542,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn record_constructor(
+    fn type_constructor(
         &self,
         type_: Arc<Type>,
         qualifier: Option<&'a str>,
@@ -1433,7 +1562,7 @@ impl<'a> Generator<'a> {
             }
         } else {
             let vars = (0..arity).map(|i| EcoString::from(format!("var{i}")).to_doc());
-            let body = self.construct_record(qualifier, name, vars.clone());
+            let body = self.construct_type(qualifier, name, vars.clone());
 
             docvec!(
                 "fun ",
@@ -1448,6 +1577,7 @@ impl<'a> Generator<'a> {
             .append("end")
         }
     }
+
     fn wrap_args(&self, args: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
         break_("", "")
             .append(join(args, break_(",", ", ")))
@@ -1457,7 +1587,7 @@ impl<'a> Generator<'a> {
             .group()
     }
 
-    fn construct_record(
+    fn construct_type(
         &self,
         module: Option<&'a str>,
         name: &'a str,
@@ -1482,6 +1612,7 @@ impl<'a> Generator<'a> {
             docvec![name, "()"]
         }
     }
+
     fn list(&self, elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
         join(elements, "; ".to_doc()).group().surround("[", "]")
     }

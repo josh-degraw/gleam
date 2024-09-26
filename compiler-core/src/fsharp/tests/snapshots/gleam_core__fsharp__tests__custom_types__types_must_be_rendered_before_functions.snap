@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 632
+expression: "\npub fn one() { One }\npub type One { One }\n"
+---
+module rec my.``mod``
+type One =
+| One
+    
+let one (): One = begin
+    One
+end

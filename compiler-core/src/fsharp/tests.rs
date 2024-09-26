@@ -13,6 +13,7 @@ use crate::{
 mod blocks;
 mod case;
 mod consts;
+mod custom_types;
 mod docs;
 mod external_fn;
 mod functions;
@@ -104,6 +105,6 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
     .expect("should successfully infer root FSharp");
 
     //println!("AST:{:#?}", &ast);
-    let mut generator = crate::fsharp::Generator::new();
-    generator.render_module(&ast).expect("should render FSharp")
+    let mut generator = crate::fsharp::Generator::new(&ast);
+    generator.render().expect("should render FSharp")
 }

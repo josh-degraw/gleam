@@ -1,0 +1,14 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 293
+expression: "pub type Box(x) { Box(a: Int, b: x) }\nfn go(x) {\n  case x {\n    Box(a: _, b: Box(a: a, b: b)) -> a + b\n    _ -> 1\n  }\n}\n"
+---
+module rec my.``mod``
+type Box<'t8> = { a: int; b: 't8 }
+let private go (x: Box<Box<int>>): int = begin
+    match x with
+    | { a = _; b = { a = a; b = b } } ->
+        a + b
+    | _ ->
+        1
+end

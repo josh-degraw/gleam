@@ -1,0 +1,14 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 5
+expression: "\ntype Mine {\n    This\n    ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant\n}\n\nfn go() {\n    This\n    ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant\n}\n"
+---
+module rec my.``mod``
+type private Mine =
+| ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant
+| This
+    
+let private go (): Mine = begin
+    This
+    ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant
+end

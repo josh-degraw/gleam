@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 139
+expression: "\ntype Mine {\n  Mine(a: Int, b: Int)\n}\n\nconst labels = Mine(b: 2, a: 1)\nconst no_labels = Mine(3, 4)\n"
+---
+module rec my.``mod``
+type private Mine = { a: int; b: int }
+let private labels = { a = 1; b = 2 }
+let private no_labels = { a = 3; b = 4 }
