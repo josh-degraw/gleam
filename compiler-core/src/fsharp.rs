@@ -681,7 +681,7 @@ impl<'a> Generator<'a> {
                     _ => docvec!["let ", name, " = ", value],
                 }
             }
-            Statement::Use(_) => docvec!["// TODO: Implement use statements"],
+            Statement::Use(_) => docvec!["// This should never be emitted, use statements are transformed into function calls"],
         };
 
         (statement_doc, last_var)
@@ -793,10 +793,7 @@ impl<'a> Generator<'a> {
                     // println!("record instantiation: {:#?}", expr);
                     self.record_instantiation(field_map, args)
                 }
-                _ => {
-                    println!("function call: {:#?}", expr);
-                    self.function_call(fun, args)
-                }
+                _ => self.function_call(fun, args),
             },
 
             TypedExpr::BinOp {
@@ -1507,8 +1504,6 @@ impl<'a> Generator<'a> {
                         {
                             let field_map = invert_field_map(field_map);
 
-                            println!("arity: {}", arity);
-                            println!("field_map: {:#?}", field_map);
                             let args = args.iter().enumerate().map(|(i, arg)| {
                                 let label =
                                     field_map.get(&(i as u32)).expect("Index out of bounds");

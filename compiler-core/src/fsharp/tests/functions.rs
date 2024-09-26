@@ -48,3 +48,30 @@ pub fn main(args) {
 "
     );
 }
+
+#[test]
+fn function_with_use_statement() {
+    assert_fsharp!(
+        r#"
+fn go() {
+  use a <- something
+  a + 1
+}
+fn something(cba) { cba(1) }
+"#
+    );
+}
+
+#[test]
+fn function_with_use_statements() {
+    assert_fsharp!(
+        r#"
+fn go() {
+  use a <- something
+  use b <- something
+  a + 1 + b
+}
+fn something(cba) { cba(1) }
+"#
+    );
+}
