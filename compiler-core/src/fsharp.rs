@@ -537,9 +537,6 @@ impl<'a> Generator<'a> {
             Deprecation::NotDeprecated => nil(),
         };
 
-        let return_type = self.type_to_fsharp(return_type);
-
-        let a = args.clone().to_pretty_string(80);
         // TODO: Make this less magic
         let (entry_point_annotation, args) = if name == "main" {
             match &arguments[..] {
@@ -1364,7 +1361,7 @@ impl<'a> Generator<'a> {
             Pattern::Constructor {
                 name,
                 arguments,
-                constructor,
+                //constructor,
                 ..
             } => {
                 let args = arguments.iter().map(|arg| self.pattern(&arg.value));
