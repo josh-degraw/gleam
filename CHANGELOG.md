@@ -34,3 +34,10 @@
 - Fixed a bug where the formatter would not format strings with big grapheme
   clusters properly.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+## v1.5.1 - 2024-09-26
+
+### Bug Fixes
+
+- Fixed a bug where Erlang file paths would not be escaped on Windows.
+  ([Louis Pilfold](https://github.com/lpil))
