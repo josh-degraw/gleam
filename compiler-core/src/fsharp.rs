@@ -432,15 +432,7 @@ impl<'a> Generator<'a> {
 
         let return_type = self.type_to_fsharp(return_type);
 
-        // //let thing = matches!(arguments., [TypedArg { names: ArgNames::Named { name: "main", ..},..}]);
-        // let arg = match arguments[..] {
-        //     [] => "()".to_doc(),
-        //     [TypedArg { names: ArgNames::Named { name: arg_name, ..},..}] if arg_name == "main" => "(args: string[])".to_doc(),
-        //     _ => args,
-        // };
-
         let a = args.clone().to_pretty_string(80);
-        println!("Given Args: {}", a);
         // TODO: Make this less magic
         let (entry_point_annotation, args) = if name == "main" {
             match &arguments[..] {
@@ -745,17 +737,7 @@ impl<'a> Generator<'a> {
                     " }"
                 ]
             }
-            TypedExpr::ModuleSelect {
-                module_name,
-                module_alias,
-                constructor,
-                ..
-            } => {
-                println!("module_name: {:#?}", module_name);
-                println!("module_alias: {:#?}", module_alias);
-                println!("constructor: {:#?}", constructor);
-                "".to_doc()
-            }
+            TypedExpr::ModuleSelect { .. } => "// TODO: TypedExpr::ModuleSelect".to_doc(),
             TypedExpr::TupleIndex { tuple, index, .. } => self.tuple_index(tuple, index),
             TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
             TypedExpr::NegateBool { .. } => "// TODO: TypedExpr::NegateBool".to_doc(),
