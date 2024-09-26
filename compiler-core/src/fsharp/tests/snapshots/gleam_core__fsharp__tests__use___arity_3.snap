@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/use_.rs
+expression: "\npub fn go() {\n  use <- trip(1.0, \"\")\n  123\n}\n\nfn trip(x, y, f) {\n  let z = f()\n  #(x, y, z)\n}\n"
+---
+module rec my.``mod``
+let private trip (x: 'u9) (y: 'u10) (f: unit -> 'u13) = begin
+    let z = f()
+    (x, y, z)
+end
+let go () = begin
+    trip (1.0) ("") (fun() -> begin 123 end)
+end

@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/use_.rs
+expression: "\npub fn go() {\n  use Box(x) <- apply(Box(1))\n  x\n}\n\ntype Box(a) {\n  Box(a)\n}\n\nfn apply(arg, fun) {\n  fun(arg)\n}\n"
+---
+module rec my.``mod``
+type private Box<'t8> =
+| Box of 't8
+    
+let private apply (arg: 'u10) (``fun``: 'u10 -> 'u14) = begin
+    ``fun`` (arg)
+end
+let go () = begin
+    apply (Box (1)) (fun(_use0: Box<int>) -> begin let (Box(x)) = _use0
+        x end)
+end

@@ -579,15 +579,15 @@ impl<'a> Generator<'a> {
         ]
     }
 
-    fn arg_name(&self, arg: &TypedArg) -> Document<'a> {
+    fn arg_name(&self, arg: &'a TypedArg) -> Document<'a> {
         arg.names
             .get_variable_name()
-            .map(|n| n.to_doc())
+            .map(|n| self.santitize_name(n).to_doc())
             .unwrap_or_else(|| "_".to_doc())
     }
 
     /// Function definition arguments
-    fn fun_args(&self, arguments: &[TypedArg]) -> Document<'a> {
+    fn fun_args(&self, arguments: &'a [TypedArg]) -> Document<'a> {
         if arguments.is_empty() {
             "()".to_doc()
         } else {
@@ -767,7 +767,7 @@ impl<'a> Generator<'a> {
                 "Nil" => "()".to_doc(),
                 "True" => "true".to_doc(),
                 "False" => "false".to_doc(),
-                _ => name.to_doc(),
+                _ => self.santitize_name(name).to_doc(),
             },
             TypedExpr::Fn { args, body, .. } => self.fun(args, body),
             TypedExpr::List { elements, .. } => {

@@ -1,0 +1,9 @@
+---
+source: compiler-core/src/fsharp/tests/use_.rs
+expression: "\npub fn go() {\n  let thingy = fn(f) { f() }\n  use <- thingy()\n}\n"
+---
+module rec my.``mod``
+let go () = begin
+    let thingy = fun(f: unit -> 'u11) -> begin f() end
+    thingy (fun() -> begin failwith "Not implemented" end)
+end
