@@ -14,3 +14,14 @@ let (|Gleam_codegen_string_parts|_|) (p: string) (s: string) : Option<string * s
     Some(p, s.Substring(p.Length))
   else
     None
+
+// Re-implement some core types under the gleam namespace in case they are
+// Referenced explicitly from gleam code
+module gleam =
+  type Result<'T, 'TErr> = Microsoft.FSharp.Core.Result<'T, 'TErr>
+
+  [<GeneralizableValue>]
+  let inline Ok value = Ok value
+
+  [<GeneralizableValue>]
+  let inline Error value = Error value

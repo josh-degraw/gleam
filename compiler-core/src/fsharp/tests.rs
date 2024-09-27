@@ -28,6 +28,7 @@ mod patterns;
 mod pipes;
 mod records;
 mod recursion;
+mod results;
 mod strings;
 mod todo;
 mod use_;
