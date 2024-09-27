@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/generics.rs
+expression: "pub fn map(result, fun) {\n            case result {\n              Ok(a) -> Ok(fun(a))\n              Error(e) -> Error(e)\n            }\n          }"
+---
+module rec my.``mod``
+let map (result: Result<'u19, 'u18>) (``fun``: 'u19 -> 'u21) = begin
+    match result with
+    | (Ok(a)) ->
+        Ok (``fun`` (a))
+    | (Error(e)) ->
+        Error (e)
+end

@@ -27,3 +27,20 @@ pub fn foo() -> Int {
 "#
     );
 }
+
+// #[test]
+// fn external_type() {
+//     assert_fsharp!(
+//         r#"
+// type ExternalType
+// "#
+//     );
+// }
+// #[test]
+// fn generic_external_type() {
+//     assert_fsharp!(
+//         r#"
+// type ExternalType
+// "#
+//     );
+// }

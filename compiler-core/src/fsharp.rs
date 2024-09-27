@@ -194,7 +194,7 @@ impl<'a> Generator<'a> {
         )
     }
 
-    fn map_publicity(&self, publicity: Publicity) -> Document<'a> {
+    fn map_publicity(&self, publicity: &'a Publicity) -> Document<'a> {
         match publicity {
             Publicity::Public => nil(),
             Publicity::Internal { .. } => "internal ".to_doc(),
@@ -239,11 +239,45 @@ impl<'a> Generator<'a> {
     /// ```fsharp
     /// type Person = { name: string; age: int }
     fn custom_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
-        if self.is_fsharp_union_type(type_) {
+        if type_.constructors.is_empty() {
+            println!("custom_type: {:#?}", type_);
+            self.external_type(type_)
+        } else if self.is_fsharp_union_type(type_) {
             self.discriminated_union(type_)
         } else {
             self.record_type(type_)
         }
+    }
+
+    /// TODO: Is this safe or incorrect?
+    /// We should probably emit a warning at least
+    fn external_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+        let name = &type_.name;
+        let values = if !type_.typed_parameters.is_empty() {
+            join(
+                type_
+                    .typed_parameters
+                    .iter()
+                    .map(|tp| self.type_to_fsharp(tp)),
+                " * ".to_doc(),
+            )
+        } else {
+            nil()
+        };
+        docvec![
+            "/// NOTE: This type has no clear definition so the compiler made a best guess at a way to represent it.", line(),
+            "/// Please report any issues", line(),
+            self.documentation(&type_.documentation),
+            self.deprecation(&type_.deprecation),
+            "type ",
+            self.map_publicity(&type_.publicity),
+            name,
+            self.type_params(type_),
+            " = ",
+            name,
+            " of ",
+            values
+        ]
     }
 
     fn record_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
@@ -274,8 +308,10 @@ impl<'a> Generator<'a> {
             nil()
         };
         docvec![
+            self.documentation(&type_.documentation),
+            self.deprecation(&type_.deprecation),
             "type ",
-            self.map_publicity(type_.publicity),
+            self.map_publicity(&type_.publicity),
             name,
             self.type_params(type_),
             " = ",
@@ -288,14 +324,12 @@ impl<'a> Generator<'a> {
     }
 
     fn type_params(&self, t: &CustomType<Arc<Type>>) -> Document<'a> {
-        let type_params = join(
-            t.typed_parameters.iter().map(|tp| self.type_to_fsharp(tp)),
-            ", ".to_doc(),
-        )
-        .surround("<", ">");
-
         if !t.typed_parameters.is_empty() {
-            type_params
+            join(
+                t.typed_parameters.iter().map(|tp| self.type_to_fsharp(tp)),
+                ", ".to_doc(),
+            )
+            .surround("<", ">")
         } else {
             nil()
         }
@@ -435,7 +469,7 @@ impl<'a> Generator<'a> {
 
         docvec![
             "type ",
-            self.map_publicity(t.publicity),
+            self.map_publicity(&t.publicity),
             type_name,
             self.type_params(t),
             " =",
@@ -451,13 +485,57 @@ impl<'a> Generator<'a> {
         ]
     }
 
+    fn documentation(&self, documentation: &'a Option<(u32, EcoString)>) -> Document<'a> {
+        match documentation {
+            Some((_, ref doc)) => {
+                let mut comment_lines = doc.split('\n').collect::<Vec<_>>();
+
+                // Remove any trailing empty lines
+                if comment_lines.last().map_or(false, |line| line.is_empty()) {
+                    _ = comment_lines.pop();
+                }
+
+                join(
+                    comment_lines
+                        .iter()
+                        .map(|doc_line| docvec!["///", doc_line]),
+                    line(),
+                )
+                .append(line())
+            }
+            None => nil(),
+        }
+    }
+
+    fn deprecation(&self, deprecation: &'a Deprecation) -> Document<'a> {
+        match deprecation {
+            Deprecation::Deprecated { message } => {
+                docvec!["[<System.Obsolete(", self.string(message), ")>]", line()]
+            }
+            Deprecation::NotDeprecated => nil(),
+        }
+    }
+
     fn type_alias(&self, t: &'a TypeAlias<Arc<Type>>) -> Document<'a> {
+        let TypeAlias {
+            alias,
+            type_,
+            publicity,
+            documentation,
+            deprecation,
+            // parameters,
+            // type_ast,
+            ..
+        } = t;
+
         docvec![
+            self.documentation(documentation),
+            self.deprecation(deprecation),
             "type ",
-            self.map_publicity(t.publicity),
-            t.alias.clone(),
+            self.map_publicity(publicity),
+            alias.clone(),
             " = ",
-            self.type_to_fsharp(&t.type_)
+            self.type_to_fsharp(type_)
         ]
     }
 
@@ -510,32 +588,9 @@ impl<'a> Generator<'a> {
         };
 
         let args = self.fun_args(arguments);
-        let docs = match documentation {
-            Some((_, ref doc)) => {
-                let mut comment_lines = doc.split('\n').collect::<Vec<_>>();
+        let docs = self.documentation(documentation);
 
-                // Remove any trailing empty lines
-                if comment_lines.last().map_or(false, |line| line.is_empty()) {
-                    _ = comment_lines.pop();
-                }
-
-                join(
-                    comment_lines
-                        .iter()
-                        .map(|doc_line| docvec!["///", doc_line]),
-                    line(),
-                )
-                .append(line())
-            }
-            None => nil(),
-        };
-
-        let deprecation_doc = match deprecation {
-            Deprecation::Deprecated { message } => {
-                docvec!["[<System.Obsolete(", self.string(message), ")>]", line()]
-            }
-            Deprecation::NotDeprecated => nil(),
-        };
+        let deprecation_doc = self.deprecation(deprecation);
 
         // TODO: Make this less magic
         let (entry_point_annotation, args) = if name == "main" {
@@ -568,7 +623,7 @@ impl<'a> Generator<'a> {
             deprecation_doc,
             entry_point_annotation,
             "let ",
-            self.map_publicity(f.publicity),
+            self.map_publicity(&f.publicity),
             name,
             " ",
             args,
@@ -1464,7 +1519,7 @@ impl<'a> Generator<'a> {
         docvec![
             attr,
             "let ",
-            self.map_publicity(constant.publicity),
+            self.map_publicity(&constant.publicity),
             name,
             " = ",
             self.constant_expression(&constant.value)
