@@ -209,8 +209,6 @@ impl<'a> Generator<'a> {
             ..
         } = i;
 
-        println!("import: {:#?}", i);
-
         let full_module_name = EcoString::from(module.split('/').join("."));
 
         let module_ref = match as_name {
@@ -299,7 +297,6 @@ impl<'a> Generator<'a> {
     /// type Person = { name: string; age: int }
     fn custom_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
         if type_.constructors.is_empty() {
-            println!("custom_type: {:#?}", type_);
             self.external_type(type_)
         } else if self.is_fsharp_union_type(type_) {
             self.discriminated_union(type_)
@@ -910,7 +907,6 @@ impl<'a> Generator<'a> {
                     ..
                 } if *arity == field_map.fields.len() as u16 => {
                     // Every constructor field must have a label to be a record type
-                    // println!("record instantiation: {:#?}", expr);
                     self.record_instantiation(field_map, args)
                 }
                 _ => self.function_call(fun, args),
@@ -1300,8 +1296,16 @@ impl<'a> Generator<'a> {
 
             ClauseGuard::Constant(c) => self.constant_expression(c),
             ClauseGuard::TupleIndex { .. } => "// TODO: ClauseGuard::TupleIndex".to_doc(),
-            ClauseGuard::FieldAccess { .. } => "// TODO: ClauseGuard::FieldAccess".to_doc(),
-            ClauseGuard::ModuleSelect { .. } => "// TODO: ClauseGuard::ModuleSelect".to_doc(),
+            ClauseGuard::FieldAccess {
+                container, label, ..
+            } => self.clause_guard(container).append(".").append(label),
+            ClauseGuard::ModuleSelect {
+                module_alias,
+                label,
+                ..
+            } => {
+                docvec![module_alias, ".", label]
+            }
         }
     }
 

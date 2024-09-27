@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/case_clause_guards.rs
+expression: "\n          import hero/submodule\n          pub fn go() {\n            let name = \"Tony Stark\"\n            case name {\n              n if n == submodule.ironman.name -> True\n              _ -> False\n            }\n          }\n        "
+---
+module rec my.``mod``
+open package
+
+let go () = begin
+    let name = "Tony Stark"
+    match name with
+    | n when n = submodule.ironman.name ->
+        true
+    | _ ->
+        false
+end
