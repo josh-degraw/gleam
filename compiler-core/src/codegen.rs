@@ -243,6 +243,21 @@ impl<'a> FSharpApp<'a> {
         );
         // Write project file
         writer.write(&project_file_path, &project_file_content)?;
+
+        let directory_build_props =
+            std::fs::read_to_string(self.input_dir.join("Directory.Build.props"));
+        match directory_build_props {
+            Ok(props_file) => {
+                writer.write(
+                    &self.output_directory.join("Directory.Build.props"),
+                    &props_file,
+                );
+            }
+            Err(e) => {
+                println!("Error reading Directory.Build.props: {}", e);
+            }
+        }
+
         Ok(())
     }
 }
