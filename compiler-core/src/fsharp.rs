@@ -17,7 +17,6 @@ use regex::{Captures, Regex};
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
-    str::Split,
     sync::{Arc, OnceLock},
 };
 
@@ -201,8 +200,6 @@ impl<'a> Generator<'a> {
         let Import {
             module,
             as_name,
-            documentation,
-            location,
             unqualified_values,
             unqualified_types,
             package,
@@ -964,20 +961,8 @@ impl<'a> Generator<'a> {
                 ]
             }
             TypedExpr::ModuleSelect {
-                module_name,
-                module_alias,
-                label,
-                constructor,
-                type_,
-                ..
+                module_name, label, ..
             } => {
-                // let mut module_parts: Split<'_, char> = module_name.split('/');
-
-                // if module_name.as_str().ends_with(label.as_str()) {
-                //     // Remove the last part if it is the same as the label
-                //     _ = module_parts.next_back();
-                // }
-
                 let full_module_name = self.sanitize_name(module_name);
                 let full_module_name = if full_module_name.is_empty() {
                     self.sanitize_name(label).to_doc()
@@ -987,10 +972,10 @@ impl<'a> Generator<'a> {
                 full_module_name
             }
             TypedExpr::TupleIndex { tuple, index, .. } => self.tuple_index(tuple, index),
-            TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
             TypedExpr::NegateBool { value, .. } => {
                 docvec!["not ", self.expression(value).surround("(", ")")]
             }
+            TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
             TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
         }
     }
@@ -1631,13 +1616,12 @@ impl<'a> Generator<'a> {
             Constant::Record {
                 args,
                 module,
-                name,
-                tag,
+                name: record_name,
                 type_,
                 field_map,
                 ..
             } => {
-                if let Some(constructor) = self.module.type_info.values.get(name) {
+                if let Some(constructor) = self.module.type_info.values.get(record_name) {
                     if let ValueConstructorVariant::Record {
                         name,
                         constructors_count,
@@ -1652,7 +1636,7 @@ impl<'a> Generator<'a> {
                         // All fields have labels
 
                         if *constructors_count == 1u16
-                            && name == name
+                            && name == record_name
                             && *arity == field_map.fields.len() as u16
                         {
                             let field_map = invert_field_map(field_map);
@@ -1672,7 +1656,7 @@ impl<'a> Generator<'a> {
                 // arguments then this is the constructor being referenced, not the
                 // function being called.
                 if let Some(arity) = type_.fn_arity() {
-                    if type_.is_bool() && name == "True" {
+                    if type_.is_bool() && record_name == "True" {
                         return "true".to_doc();
                     } else if type_.is_bool() {
                         return "false".to_doc();
@@ -1680,23 +1664,18 @@ impl<'a> Generator<'a> {
                         return "undefined".to_doc();
                     } else if arity == 0 {
                         return match module {
-                            Some((module, _)) => docvec![module, ".", name, "()"],
-                            None => docvec![name, "()"],
+                            Some((module, _)) => docvec![module, ".", record_name, "()"],
+                            None => docvec![record_name, "()"],
                         };
                     } else if let Some((module, _)) = module {
-                        return docvec![module, ".", self.sanitize_name(name)];
+                        return docvec![module, ".", self.sanitize_name(record_name)];
                     } else {
-                        return self.sanitize_name(name).to_doc();
+                        return self.sanitize_name(record_name).to_doc();
                     }
-
-                    // if args.is_empty() && arity != 0 {
-                    //     let arity = arity as u16;
-                    //     return self.type_constructor(type_.clone(), None, name, arity);
-                    // }
                 }
 
                 if field_map.is_none() && args.is_empty() {
-                    return self.sanitize_name(name).to_doc();
+                    return self.sanitize_name(record_name).to_doc();
                 }
 
                 let field_values: Vec<_> = args
@@ -1706,7 +1685,7 @@ impl<'a> Generator<'a> {
 
                 self.construct_type(
                     module.as_ref().map(|(module, _)| module.as_str()),
-                    name,
+                    record_name,
                     field_values,
                 )
             }

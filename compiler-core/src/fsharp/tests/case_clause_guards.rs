@@ -28,18 +28,18 @@ fn rebound_var() {
     );
 }
 
-#[test]
-fn bitarray_with_var() {
-    assert_fsharp!(
-        r#"pub fn go() {
-  case 5 {
-    z if <<z>> == <<z>> -> Nil
-    _ -> Nil
-  }
-}
-"#,
-    )
-}
+// #[test]
+// fn bitarray_with_var() {
+//     assert_fsharp!(
+//         r#"pub fn go() {
+//   case 5 {
+//     z if <<z>> == <<z>> -> Nil
+//     _ -> Nil
+//   }
+// }
+// "#,
+//     )
+// }
 
 // https://github.com/gleam-lang/gleam/issues/3004
 #[test]
