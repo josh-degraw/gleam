@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/imports.rs
+expression: "import rocket_ship.{a,b as bb}\npub fn go() { a() + bb() }\n"
+---
+module rec my.``mod``
+
+let a = rocket_ship.a
+let bb = rocket_ship.b
+let go () = begin
+    a() + bb()
+end

@@ -443,6 +443,7 @@ where
         let fsharp_app = crate::codegen::FSharpApp::new(&input_dir, &output_dir);
 
         let mut generator = crate::fsharp::Generator::new(
+            &self.config.name,
             &modules.first().expect("Must be at least one module").ast,
         );
         for module in modules {

@@ -17,6 +17,7 @@ use regex::{Captures, Regex};
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
+    str::Split,
     sync::{Arc, OnceLock},
 };
 
@@ -25,6 +26,7 @@ pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
 #[derive(Debug)]
 pub struct Generator<'a> {
+    package_name: &'a EcoString,
     pub external_files: HashSet<&'a EcoString>,
     module: &'a TypedModule,
 }
@@ -148,8 +150,9 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(module: &'a TypedModule) -> Self {
+    pub fn new(package_name: &'a EcoString, module: &'a TypedModule) -> Self {
         Self {
+            package_name,
             external_files: HashSet::new(),
             module,
         }
@@ -187,11 +190,67 @@ impl<'a> Generator<'a> {
                     Definition::TypeAlias(t) => self.type_alias(t),
                     Definition::ModuleConstant(c) => self.module_constant(c),
                     Definition::Function(f) => self.function(f),
-                    Definition::Import(_) => docvec!["// TODO: Implement imports"],
+                    Definition::Import(i) => self.import(i),
                 })
                 .collect::<Vec<Document<'a>>>(),
             line(),
         )
+    }
+
+    fn import(&self, i: &'a Import<EcoString>) -> Document<'a> {
+        let Import {
+            module,
+            as_name,
+            documentation,
+            location,
+            unqualified_values,
+            unqualified_types,
+            package,
+            ..
+        } = i;
+
+        println!("import: {:#?}", i);
+
+        let full_module_name = EcoString::from(module.split('/').join("."));
+
+        let module_ref = match as_name {
+            Some((AssignName::Variable(name), _)) => {
+                docvec![
+                    "module ",
+                    self.sanitize_name(name),
+                    " = ",
+                    &full_module_name
+                ]
+            }
+            Some((AssignName::Discard(_), _)) => {
+                docvec![]
+            }
+            // If the imports are from the same package, don't need to open it
+            None if unqualified_values.is_empty() && unqualified_types.is_empty() => {
+                // if package is empty, it's from a builtin
+                if self.package_name == package || package.is_empty() {
+                    nil()
+                } else {
+                    docvec!["open ", self.sanitize_name(package)]
+                }
+            }
+            None => nil(),
+        };
+
+        let values = unqualified_values.iter().map(|v| {
+            let name = &v.name;
+            let label = v.as_name.as_ref().unwrap_or(name);
+            docvec![
+                "let ",
+                self.sanitize_name(label),
+                " = ",
+                &full_module_name,
+                ".",
+                self.sanitize_name(name)
+            ]
+        });
+
+        docvec![module_ref, line(), join(values, line())]
     }
 
     fn map_publicity(&self, publicity: &'a Publicity) -> Document<'a> {
@@ -908,7 +967,29 @@ impl<'a> Generator<'a> {
                     " }"
                 ]
             }
-            TypedExpr::ModuleSelect { .. } => "// TODO: TypedExpr::ModuleSelect".to_doc(),
+            TypedExpr::ModuleSelect {
+                module_name,
+                module_alias,
+                label,
+                constructor,
+                type_,
+                ..
+            } => {
+                // let mut module_parts: Split<'_, char> = module_name.split('/');
+
+                // if module_name.as_str().ends_with(label.as_str()) {
+                //     // Remove the last part if it is the same as the label
+                //     _ = module_parts.next_back();
+                // }
+
+                let full_module_name = self.sanitize_name(module_name);
+                let full_module_name = if full_module_name.is_empty() {
+                    self.sanitize_name(label).to_doc()
+                } else {
+                    docvec![full_module_name, ".", self.sanitize_name(label)]
+                };
+                full_module_name
+            }
             TypedExpr::TupleIndex { tuple, index, .. } => self.tuple_index(tuple, index),
             TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
             TypedExpr::NegateBool { value, .. } => {

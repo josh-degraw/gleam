@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/imports.rs
+expression: "\nimport esa/rocket_ship\nimport nasa/rocket_ship as _nasa_rocket\npub fn go() { rocket_ship.go() }\n"
+---
+module rec my.``mod``
+
+
+
+
+let go () = begin
+    esa.rocket_ship.go()
+end

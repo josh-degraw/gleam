@@ -1,0 +1,8 @@
+---
+source: compiler-core/src/fsharp/tests/imports.rs
+expression: "\nimport rocket_ship.{ x as y }\nconst z = y\n"
+---
+module rec my.``mod``
+
+let y = rocket_ship.x
+let private z = y

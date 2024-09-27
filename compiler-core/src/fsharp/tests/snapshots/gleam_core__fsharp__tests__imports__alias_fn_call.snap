@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/imports.rs
+expression: "\nimport rocket_ship as boop\npub fn go() { boop.go() }\n"
+---
+module rec my.``mod``
+module boop = rocket_ship
+
+let go () = begin
+    rocket_ship.go()
+end

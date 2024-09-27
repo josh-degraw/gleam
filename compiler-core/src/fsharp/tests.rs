@@ -20,6 +20,7 @@ mod docs;
 mod external_fn;
 mod functions;
 mod generics;
+mod imports;
 mod lists;
 mod numbers;
 mod panic;
@@ -31,24 +32,34 @@ mod strings;
 mod todo;
 mod use_;
 mod variables;
+pub static CURRENT_PACKAGE: &str = "thepackage";
 
 #[macro_export]
 macro_rules! assert_fsharp {
     (($dep_package:expr, $dep_name:expr, $dep_src:expr), $src:expr $(,)?) => {{
         let output = $crate::fsharp::tests::compile_test_project(
             $src,
-            Some(($dep_package, $dep_name, $dep_src)),
+            vec![($dep_package, $dep_name, $dep_src)],
         );
         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
     }};
 
     ($src:expr $(,)?) => {{
-        let output = $crate::fsharp::tests::compile_test_project($src, None);
+        let output = $crate::fsharp::tests::compile_test_project($src, vec![]);
         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
     }};
 }
 
-pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> String {
+#[macro_export]
+macro_rules! assert_fsharp_with_multiple_imports {
+    ($(($name:literal, $module_src:literal)),+; $src:literal) => {
+        let output =
+            $crate::fsharp::tests::compile_test_project($src, vec![$((CURRENT_PACKAGE, $name, $module_src)),*]);
+        insta::assert_snapshot!(insta::internals::AutoName, output, $src);
+    };
+}
+
+pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String {
     let mut modules = im::HashMap::new();
     let ids = UniqueIdGenerator::new();
     // DUPE: preludeinsertion
@@ -60,7 +71,7 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
         crate::type_::build_prelude(&ids),
     );
     let mut direct_dependencies = std::collections::HashMap::from_iter(vec![]);
-    if let Some((dep_package, dep_name, dep_src)) = dep {
+    for (dep_package, dep_name, dep_src) in deps {
         let mut dep_config = PackageConfig::default();
         dep_config.name = dep_package.into();
         let parsed = crate::parse::parse_module(
@@ -110,6 +121,6 @@ pub fn compile_test_project(src: &str, dep: Option<(&str, &str, &str)>) -> Strin
     .expect("should successfully infer root FSharp");
 
     //println!("AST:{:#?}", &ast);
-    let mut generator = crate::fsharp::Generator::new(&ast);
+    let mut generator = crate::fsharp::Generator::new(&config.name, &ast);
     generator.render().expect("should render FSharp")
 }

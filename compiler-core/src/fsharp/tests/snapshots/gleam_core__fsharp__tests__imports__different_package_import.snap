@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/imports.rs
+expression: "import one\npub fn go() { one.go() }\n"
+---
+module rec my.``mod``
+open other_package
+
+let go () = begin
+    one.go()
+end
