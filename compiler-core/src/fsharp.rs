@@ -1216,6 +1216,7 @@ impl<'a> Generator<'a> {
         }
     }
     fn bare_clause_guard(&self, guard: &'a TypedClauseGuard) -> Document<'a> {
+        println!("bare_clause_guard {:#?}", guard);
         match guard {
             ClauseGuard::Not { expression, .. } => {
                 docvec!["not ", self.bare_clause_guard(expression)]
@@ -1623,13 +1624,13 @@ impl<'a> Generator<'a> {
             Constant::Record {
                 args,
                 module,
-                name: type_name,
+                name,
                 tag,
                 type_,
                 field_map,
                 ..
             } => {
-                if let Some(constructor) = self.module.type_info.values.get(type_name) {
+                if let Some(constructor) = self.module.type_info.values.get(name) {
                     if let ValueConstructorVariant::Record {
                         name,
                         constructors_count,
@@ -1644,7 +1645,7 @@ impl<'a> Generator<'a> {
                         // All fields have labels
 
                         if *constructors_count == 1u16
-                            && name == type_name
+                            && name == name
                             && *arity == field_map.fields.len() as u16
                         {
                             let field_map = invert_field_map(field_map);
@@ -1666,12 +1667,12 @@ impl<'a> Generator<'a> {
                 if let Some(arity) = type_.fn_arity() {
                     if args.is_empty() && arity != 0 {
                         let arity = arity as u16;
-                        return self.type_constructor(type_.clone(), None, type_name, arity);
+                        return self.type_constructor(type_.clone(), None, name, arity);
                     }
                 }
 
                 if field_map.is_none() && args.is_empty() {
-                    return tag.to_doc();
+                    return self.sanitize_name(name).to_doc();
                 }
 
                 // if let Type::Custom type_.deref()
@@ -1683,7 +1684,7 @@ impl<'a> Generator<'a> {
 
                 self.construct_type(
                     module.as_ref().map(|(module, _)| module.as_str()),
-                    type_name,
+                    name,
                     field_values,
                 )
             }
