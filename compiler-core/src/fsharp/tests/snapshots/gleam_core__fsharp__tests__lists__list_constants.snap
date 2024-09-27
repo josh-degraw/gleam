@@ -1,0 +1,7 @@
+---
+source: compiler-core/src/fsharp/tests/lists.rs
+expression: "\nconst a = []\nconst b = [1, 2, 3]\n"
+---
+module rec my.``mod``
+let private a = []
+let private b = [1; 2; 3]

@@ -770,8 +770,14 @@ impl<'a> Generator<'a> {
                 _ => self.santitize_name(name).to_doc(),
             },
             TypedExpr::Fn { args, body, .. } => self.fun(args, body),
-            TypedExpr::List { elements, .. } => {
-                join(elements.iter().map(|e| self.expression(e)), "; ".to_doc()).surround("[", "]")
+            TypedExpr::List { elements, tail, .. } => {
+                let list = join(elements.iter().map(|e| self.expression(e)), "; ".to_doc())
+                    .surround("[", "]");
+
+                match tail {
+                    Some(tail) => docvec![list, " @ ", self.expression(tail)],
+                    None => list,
+                }
             }
 
             TypedExpr::Call { fun, args, .. } => match fun.as_ref() {
@@ -1425,7 +1431,8 @@ impl<'a> Generator<'a> {
                 docvec![arg_types, " -> ", return_type]
             }
             Type::Tuple { elems } => {
-                join(elems.iter().map(|t| self.type_to_fsharp(t)), "; ".to_doc()).surround("(", ")")
+                join(elems.iter().map(|t| self.type_to_fsharp(t)), " * ".to_doc())
+                    .surround("(", ")")
             }
             Type::Var { type_ } => {
                 let borrowed = type_.borrow();

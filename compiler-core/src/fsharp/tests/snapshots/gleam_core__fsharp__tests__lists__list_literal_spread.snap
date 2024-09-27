@@ -1,0 +1,8 @@
+---
+source: compiler-core/src/fsharp/tests/lists.rs
+expression: "\nfn go(x) {\n    [1, 2, ..x]\n}\n"
+---
+module rec my.``mod``
+let private go (x: list<int>) = begin
+    [1; 2] @ x
+end

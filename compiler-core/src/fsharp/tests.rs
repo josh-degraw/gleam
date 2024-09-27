@@ -18,6 +18,7 @@ mod custom_types;
 mod docs;
 mod external_fn;
 mod functions;
+mod lists;
 mod numbers;
 mod panic;
 mod patterns;
