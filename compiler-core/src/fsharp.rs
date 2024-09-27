@@ -1212,7 +1212,6 @@ impl<'a> Generator<'a> {
         }
     }
     fn bare_clause_guard(&self, guard: &'a TypedClauseGuard) -> Document<'a> {
-        println!("bare_clause_guard {:#?}", guard);
         match guard {
             ClauseGuard::Not { expression, .. } => {
                 docvec!["not ", self.bare_clause_guard(expression)]
@@ -1736,53 +1735,6 @@ impl<'a> Generator<'a> {
                 panic!("invalid constants should not reach code generation")
             }
         }
-    }
-
-    fn type_constructor(
-        &self,
-        type_: Arc<Type>,
-        qualifier: Option<&'a str>,
-        name: &'a str,
-        arity: u16,
-    ) -> Document<'a> {
-        println!("constructor {:#?}", type_);
-        if type_.is_bool() && name == "True" {
-            "true".to_doc()
-        } else if type_.is_bool() {
-            "false".to_doc()
-        } else if type_.is_nil() {
-            "undefined".to_doc()
-        } else if arity == 0 {
-            match qualifier {
-                Some(module) => docvec![module, ".", name, "()"],
-                None => docvec![name, "()"],
-            }
-        } else {
-            let vars = (0..arity).map(|i| EcoString::from(format!("var{i}")).to_doc());
-            let body = self.construct_type(qualifier, name, vars.clone());
-
-            // TODO: is this necessary??
-            docvec!(
-                "fun ",
-                self.wrap_args(vars),
-                " -> begin",
-                break_("", " "),
-                body
-            )
-            .nest(INDENT)
-            .append(break_("", " "))
-            .group()
-            .append("end")
-        }
-    }
-
-    fn wrap_args(&self, args: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
-        break_("", "")
-            .append(join(args, break_(",", ", ")))
-            .nest(INDENT)
-            .append(break_("", ""))
-            .surround("(", ")")
-            .group()
     }
 
     fn construct_type(
