@@ -1669,17 +1669,32 @@ impl<'a> Generator<'a> {
                 // arguments then this is the constructor being referenced, not the
                 // function being called.
                 if let Some(arity) = type_.fn_arity() {
-                    if args.is_empty() && arity != 0 {
-                        let arity = arity as u16;
-                        return self.type_constructor(type_.clone(), None, name, arity);
+                    if type_.is_bool() && name == "True" {
+                        return "true".to_doc();
+                    } else if type_.is_bool() {
+                        return "false".to_doc();
+                    } else if type_.is_nil() {
+                        return "undefined".to_doc();
+                    } else if arity == 0 {
+                        return match module {
+                            Some((module, _)) => docvec![module, ".", name, "()"],
+                            None => docvec![name, "()"],
+                        };
+                    } else if let Some((module, _)) = module {
+                        return docvec![module, ".", self.sanitize_name(name)];
+                    } else {
+                        return self.sanitize_name(name).to_doc();
                     }
+
+                    // if args.is_empty() && arity != 0 {
+                    //     let arity = arity as u16;
+                    //     return self.type_constructor(type_.clone(), None, name, arity);
+                    // }
                 }
 
                 if field_map.is_none() && args.is_empty() {
                     return self.sanitize_name(name).to_doc();
                 }
-
-                // if let Type::Custom type_.deref()
 
                 let field_values: Vec<_> = args
                     .iter()
@@ -1726,6 +1741,7 @@ impl<'a> Generator<'a> {
         name: &'a str,
         arity: u16,
     ) -> Document<'a> {
+        println!("constructor {:#?}", type_);
         if type_.is_bool() && name == "True" {
             "true".to_doc()
         } else if type_.is_bool() {
@@ -1741,6 +1757,7 @@ impl<'a> Generator<'a> {
             let vars = (0..arity).map(|i| EcoString::from(format!("var{i}")).to_doc());
             let body = self.construct_type(qualifier, name, vars.clone());
 
+            // TODO: is this necessary??
             docvec!(
                 "fun ",
                 self.wrap_args(vars),
