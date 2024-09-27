@@ -13,6 +13,7 @@ use crate::{
 mod blocks;
 mod bools;
 mod case;
+mod case_clause_guards;
 mod consts;
 mod custom_types;
 mod docs;

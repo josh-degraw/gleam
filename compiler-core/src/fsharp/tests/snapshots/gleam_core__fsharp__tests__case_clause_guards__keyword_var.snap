@@ -1,0 +1,27 @@
+---
+source: compiler-core/src/fsharp/tests/case_clause_guards.rs
+expression: "\npub const function = 5\npub const do = 10\npub fn go() {\n  let class = 5\n  let while = 10\n  let var = 7\n  case var {\n    _ if class == while -> True\n    _ if [class] == [5] -> True\n    function if #(function) == #(5) -> False\n    _ if do == function -> True\n    while if while > 5 -> False\n    class -> False\n  }\n}\n"
+---
+module rec my.``mod``
+[<Literal>]
+let ``function`` = 5
+[<Literal>]
+let ``do`` = 10
+let go () = begin
+    let ``class`` = 5
+    let ``while`` = 10
+    let var = 7
+    match var with
+    | _ when ``class`` = ``while`` ->
+        true
+    | _ when [``class``] = [5] ->
+        true
+    | ``function`` when (``function``) = (5) ->
+        false
+    | _ when 10 = 5 ->
+        true
+    | ``while`` when ``while`` > 5 ->
+        false
+    | ``class`` ->
+        false
+end

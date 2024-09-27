@@ -174,7 +174,7 @@ impl<'a> Generator<'a> {
         // Use module rec to not need to worry about initialization order
         "module rec "
             .to_doc()
-            .append(self.santitize_name(&self.module.name))
+            .append(self.sanitize_name(&self.module.name))
     }
 
     fn module_contents(&mut self) -> Document<'a> {
@@ -293,7 +293,7 @@ impl<'a> Generator<'a> {
             .map(|r| {
                 let type_doc = self.type_to_fsharp(&r.type_);
                 match &r.label {
-                    Some((_, ref label)) => docvec![self.santitize_name(label), ": ", type_doc],
+                    Some((_, ref label)) => docvec![self.sanitize_name(label), ": ", type_doc],
                     None => type_doc,
                 }
             })
@@ -637,7 +637,7 @@ impl<'a> Generator<'a> {
     fn arg_name(&self, arg: &'a TypedArg) -> Document<'a> {
         arg.names
             .get_variable_name()
-            .map(|n| self.santitize_name(n).to_doc())
+            .map(|n| self.sanitize_name(n).to_doc())
             .unwrap_or_else(|| "_".to_doc())
     }
 
@@ -771,7 +771,7 @@ impl<'a> Generator<'a> {
         join(res, line()).group()
     }
 
-    fn santitize_name(&self, name: &'a EcoString) -> Document<'a> {
+    fn sanitize_name(&self, name: &'a EcoString) -> Document<'a> {
         join(
             name.split("/").map(|s| {
                 if is_reserved_word(s) {
@@ -822,7 +822,7 @@ impl<'a> Generator<'a> {
                 "Nil" => "()".to_doc(),
                 "True" => "true".to_doc(),
                 "False" => "false".to_doc(),
-                _ => self.santitize_name(name).to_doc(),
+                _ => self.sanitize_name(name).to_doc(),
             },
             TypedExpr::Fn { args, body, .. } => self.fun(args, body),
             TypedExpr::List { elements, tail, .. } => {
@@ -934,7 +934,7 @@ impl<'a> Generator<'a> {
         let args = args.iter().enumerate().map(|(i, arg)| {
             let label = field_map.get(&(i as u32)).expect("Index out of bounds");
             docvec![
-                self.santitize_name(label).to_doc(),
+                self.sanitize_name(label).to_doc(),
                 " = ",
                 self.expression(&arg.value)
             ]
@@ -1213,19 +1213,13 @@ impl<'a> Generator<'a> {
                 .append(" % ")
                 .append(self.clause_guard(right)),
 
-            // TODO: Only local variables are supported and the typer ensures that all
             // ClauseGuard::Vars are local variables
-            ClauseGuard::Var { name, .. } => name.to_doc(),
+            ClauseGuard::Var { name, .. } => self.sanitize_name(name).to_doc(),
 
-            //ClauseGuard::TupleIndex { tuple, index, .. } => tuple_index(tuple, index),
-
-            // ClauseGuard::FieldAccess {
-            //     container, index, ..
-            // } => tuple_index_inline(container, index.expect("Unable to find index") + 1),
-
-            // ClauseGuard::ModuleSelect { literal, .. } => const_inline(literal),
             ClauseGuard::Constant(c) => self.constant_expression(c),
-            _ => docvec!["// TODO: Implement other guard types"],
+            ClauseGuard::TupleIndex { .. } => "// TODO: ClauseGuard::TupleIndex".to_doc(),
+            ClauseGuard::FieldAccess { .. } => "// TODO: ClauseGuard::FieldAccess".to_doc(),
+            ClauseGuard::ModuleSelect { .. } => "// TODO: ClauseGuard::ModuleSelect".to_doc(),
         }
     }
 
@@ -1307,7 +1301,7 @@ impl<'a> Generator<'a> {
             Pattern::Int { value, .. } => value.to_doc(),
             Pattern::Float { value, .. } => value.to_doc(),
             Pattern::String { value, .. } => self.string(value.as_str()),
-            Pattern::Variable { name, .. } => name.to_doc(),
+            Pattern::Variable { name, .. } => self.sanitize_name(name).to_doc(),
             Pattern::Discard { name, .. } => name.to_doc(),
             Pattern::List { elements, tail, .. } => {
                 let head = join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc())
@@ -1501,8 +1495,6 @@ impl<'a> Generator<'a> {
     }
 
     fn module_constant(&self, constant: &'a ModuleConstant<Arc<Type>, EcoString>) -> Document<'a> {
-        let name = constant.name.as_str();
-
         let attr = match constant.value.deref() {
             Constant::Int { .. } | Constant::Float { .. } | Constant::String { .. } => {
                 docvec!["[<Literal>]", line(),]
@@ -1520,7 +1512,7 @@ impl<'a> Generator<'a> {
             attr,
             "let ",
             self.map_publicity(&constant.publicity),
-            name,
+            self.sanitize_name(&constant.name),
             " = ",
             self.constant_expression(&constant.value)
         ]
@@ -1619,12 +1611,12 @@ impl<'a> Generator<'a> {
 
             Constant::Var { name, module, .. } => {
                 match module {
-                    None => self.santitize_name(name),
+                    None => self.sanitize_name(name),
                     Some((module, _)) => {
                         // JS keywords can be accessed here, but we must escape anyway
                         // as we escape when exporting such names in the first place,
                         // and the imported name has to match the exported name.
-                        docvec![module, ".", self.santitize_name(name)]
+                        docvec![module, ".", self.sanitize_name(name)]
                     }
                 }
             }
