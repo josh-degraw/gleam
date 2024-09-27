@@ -1295,7 +1295,11 @@ impl<'a> Generator<'a> {
             ClauseGuard::Var { name, .. } => self.sanitize_name(name).to_doc(),
 
             ClauseGuard::Constant(c) => self.constant_expression(c),
-            ClauseGuard::TupleIndex { .. } => "// TODO: ClauseGuard::TupleIndex".to_doc(),
+            ClauseGuard::TupleIndex { tuple, index, .. } => {
+                // TODO: Add warning suppression when this is encountered:
+                // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
+                docvec![self.clause_guard(tuple), ".Item", index + 1]
+            }
             ClauseGuard::FieldAccess {
                 container, label, ..
             } => self.clause_guard(container).append(".").append(label),

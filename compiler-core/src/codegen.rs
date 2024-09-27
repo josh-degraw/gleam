@@ -248,7 +248,7 @@ impl<'a> FSharpApp<'a> {
             std::fs::read_to_string(self.input_dir.join("Directory.Build.props"));
         match directory_build_props {
             Ok(props_file) => {
-                writer.write(
+                _ = writer.write(
                     &self.output_directory.join("Directory.Build.props"),
                     &props_file,
                 );
