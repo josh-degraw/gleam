@@ -1,0 +1,14 @@
+---
+source: compiler-core/src/fsharp/tests/case_clause_guards.rs
+expression: "pub fn go() {\n  let x = False\n  let x = True\n  case x {\n    _ if x -> 1\n    _ -> 0\n  }\n}\n"
+---
+module rec my.``mod``
+let go () = begin
+    let x = false
+    let x = true
+    match x with
+    | _ when x ->
+        1
+    | _ ->
+        0
+end
