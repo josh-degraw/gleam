@@ -1,0 +1,8 @@
+---
+source: compiler-core/src/fsharp/tests/bools.rs
+expression: "pub fn negate(x) {\n    x && panic\n}"
+---
+module rec my.``mod``
+let negate (x: bool) = begin
+    x && failwith "Panic encountered"
+end

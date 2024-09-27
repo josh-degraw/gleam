@@ -850,7 +850,9 @@ impl<'a> Generator<'a> {
             TypedExpr::ModuleSelect { .. } => "// TODO: TypedExpr::ModuleSelect".to_doc(),
             TypedExpr::TupleIndex { tuple, index, .. } => self.tuple_index(tuple, index),
             TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
-            TypedExpr::NegateBool { .. } => "// TODO: TypedExpr::NegateBool".to_doc(),
+            TypedExpr::NegateBool { value, .. } => {
+                docvec!["not ", self.expression(value).surround("(", ")")]
+            }
             TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
         }
     }
@@ -1358,12 +1360,19 @@ impl<'a> Generator<'a> {
             Pattern::Constructor {
                 name,
                 arguments,
-                //constructor,
+                constructor,
                 ..
             } => {
                 let args = arguments.iter().map(|arg| self.pattern(&arg.value));
                 let args = if arguments.is_empty() {
-                    "()".to_doc()
+                    if let Inferred::Known(PatternConstructor {
+                        field_map: None, ..
+                    }) = constructor
+                    {
+                        nil()
+                    } else {
+                        "()".to_doc()
+                    }
                 } else {
                     join(args, ", ".to_doc()).surround("(", ")")
                 };
@@ -1432,26 +1441,27 @@ impl<'a> Generator<'a> {
     fn module_constant(&self, constant: &'a ModuleConstant<Arc<Type>, EcoString>) -> Document<'a> {
         let name = constant.name.as_str();
 
-        match constant.value.deref() {
+        let attr = match constant.value.deref() {
             Constant::Int { .. } | Constant::Float { .. } | Constant::String { .. } => {
-                docvec![
-                    "[<Literal>]",
-                    line(),
-                    "let ",
-                    self.map_publicity(constant.publicity),
-                    name,
-                    " = ",
-                    self.constant_expression(&constant.value)
-                ]
+                docvec!["[<Literal>]", line(),]
             }
-            _ => docvec![
-                "let ",
-                self.map_publicity(constant.publicity),
-                name,
-                " = ",
-                self.constant_expression(&constant.value)
-            ],
-        }
+            Constant::Record { type_, name, .. } if type_.is_bool() && name == "True" => {
+                docvec!["[<Literal>]", line(),]
+            }
+            Constant::Record { type_, name, .. } if type_.is_bool() && name == "False" => {
+                docvec!["[<Literal>]", line(),]
+            }
+
+            _ => nil(),
+        };
+        docvec![
+            attr,
+            "let ",
+            self.map_publicity(constant.publicity),
+            name,
+            " = ",
+            self.constant_expression(&constant.value)
+        ]
     }
 
     fn constant_expression(&self, expression: &'a TypedConstant) -> Document<'a> {

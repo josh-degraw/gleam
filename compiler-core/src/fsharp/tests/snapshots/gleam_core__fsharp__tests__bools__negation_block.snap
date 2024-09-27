@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/bools.rs
+expression: "pub fn negate(x) {\n  !{\n    123\n    x\n  }\n}"
+---
+module rec my.``mod``
+let negate (x: bool) = begin
+    not (begin
+        123
+        x
+    end)
+end

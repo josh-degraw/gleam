@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/bools.rs
+expression: "\nconst a = True\nconst b = False\nconst c = Nil\n"
+---
+module rec my.``mod``
+[<Literal>]
+let private a = true
+[<Literal>]
+let private b = false
+let private c = ()

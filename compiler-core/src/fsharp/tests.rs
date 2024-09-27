@@ -11,6 +11,7 @@ use crate::{
 };
 
 mod blocks;
+mod bools;
 mod case;
 mod consts;
 mod custom_types;
