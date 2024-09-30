@@ -33,6 +33,7 @@ mod results;
 mod strings;
 mod todo;
 mod tuples;
+mod type_alias;
 mod use_;
 mod variables;
 pub static CURRENT_PACKAGE: &str = "thepackage";
