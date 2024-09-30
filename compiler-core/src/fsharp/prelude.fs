@@ -25,3 +25,5 @@ module gleam =
 
   [<GeneralizableValue>]
   let inline Error value = Error value
+
+  let Nil = ()

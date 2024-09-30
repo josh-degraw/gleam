@@ -26,6 +26,7 @@ mod numbers;
 mod panic;
 mod patterns;
 mod pipes;
+mod prelude;
 mod records;
 mod recursion;
 mod results;
