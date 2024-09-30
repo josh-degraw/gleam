@@ -675,6 +675,10 @@ pub struct JavaScriptConfig {
 pub struct FSharpConfig {
     #[serde(default = "default_fsharp_target_framework")]
     pub target_framework: String,
+    /// Nuget Package References
+    /// TODO: Maybe add support for Update variant of package?
+    #[serde(default, rename = "package_references")]
+    pub package_references: HashMap<String, String>,
 }
 
 fn default_fsharp_target_framework() -> String {

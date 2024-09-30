@@ -190,11 +190,13 @@ impl<'a> FSharpApp<'a> {
             writer.write(&module_file_path, &module_content)?;
         }
 
-        let target_framework = if config.fsharp.target_framework.is_empty() {
-            "net8.0"
-        } else {
-            config.fsharp.target_framework.as_str()
-        };
+        let target_framework = config.fsharp.target_framework.as_str();
+
+        // if config.fsharp.target_framework.is_empty() {
+        //     "net8.0"
+        // } else {
+        //     config.fsharp.target_framework.as_str()
+        // };
 
         // TODO: Support conditionally outputting an exe or library
         // Create project file content
@@ -213,8 +215,12 @@ impl<'a> FSharpApp<'a> {
     {}
   </ItemGroup>
 
-  <ItemGroup Label="References">
-{}
+  <ItemGroup Label="ProjectReferences">
+    <!-- TODO: Add support for local project references -->
+  </ItemGroup>
+
+  <ItemGroup Label="PackageReferences">
+    {}
   </ItemGroup>
 </Project>
 "#,
@@ -231,15 +237,16 @@ impl<'a> FSharpApp<'a> {
                 .map(|m| format!("<Compile Include=\"{}.fs\" />", m.name))
                 .collect::<Vec<_>>()
                 .join("\n    "),
-            "<!-- TODO: Add package references -->" // config
-                                                    //     .dependencies
-                                                    //     .iter()
-                                                    //     .map(|(name, version)| format!(
-                                                    //         "    <PackageReference Include=\"{}\" Version=\"{}\" />",
-                                                    //         name, version.to_toml(root_path)
-                                                    //     ))
-                                                    //     .collect::<Vec<_>>()
-                                                    // .join("\n")
+            config
+                .fsharp
+                .package_references
+                .iter()
+                .map(|(name, version)| format!(
+                    "<PackageReference Include=\"{}\" Version=\"{}\" />",
+                    name, version
+                ))
+                .collect::<Vec<_>>()
+                .join("\n    ")
         );
         // Write project file
         writer.write(&project_file_path, &project_file_content)?;

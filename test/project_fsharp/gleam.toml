@@ -2,6 +2,11 @@ name = "project"
 version = "0.1.0"
 target = "fsharp"
 
+[fsharp]
+target_framework = "net8.0"
+
+[fsharp.package_references]
+"Newtonsoft.Json" = "13.0.3"
 # [dependencies]
 # gleam_erlang = "~> 0.23"
 
