@@ -602,6 +602,7 @@ fn analyse(
 
             Outcome::PartialFailure(ast, errors) => {
                 let error = Error::Type {
+                    names: ast.names.clone(),
                     path: path.clone(),
                     src: code.clone(),
                     errors,
@@ -626,6 +627,7 @@ fn analyse(
 
             Outcome::TotalFailure(errors) => {
                 return Outcome::TotalFailure(Error::Type {
+                    names: Default::default(),
                     path: path.clone(),
                     src: code.clone(),
                     errors,

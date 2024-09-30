@@ -104,7 +104,6 @@ Parsed {
             imported_modules: {},
             type_variables: {},
             local_value_constructors: {},
-            constructor_names: {},
         },
     },
     extra: ModuleExtra {
