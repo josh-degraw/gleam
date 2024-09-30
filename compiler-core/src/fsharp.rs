@@ -28,7 +28,8 @@ pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 pub struct Generator<'a> {
     package_name: &'a EcoString,
     pub external_files: HashSet<Utf8PathBuf>,
-    module: &'a super::build::Module,
+    module: &'a TypedModule,
+    input_file_path: &'a Utf8PathBuf,
 }
 
 mod prelude_functions {
@@ -150,11 +151,16 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(package_name: &'a EcoString, module: &'a super::build::Module) -> Self {
+    pub fn new(
+        package_name: &'a EcoString,
+        module: &'a TypedModule,
+        input_file_path: &'a Utf8PathBuf,
+    ) -> Self {
         Self {
             package_name,
             external_files: HashSet::new(),
             module,
+            input_file_path,
         }
     }
 
@@ -167,8 +173,13 @@ impl<'a> Generator<'a> {
     }
 
     /// Update the currently referenced module and render it
-    pub fn render_module(&mut self, new_module: &'a super::build::Module) -> super::Result<String> {
+    pub fn render_module(
+        &mut self,
+        new_module: &'a TypedModule,
+        input_file_path: &'a Utf8PathBuf,
+    ) -> super::Result<String> {
         self.module = new_module;
+        self.input_file_path = input_file_path;
         self.render()
     }
 
@@ -183,7 +194,6 @@ impl<'a> Generator<'a> {
     fn module_contents(&mut self) -> Document<'a> {
         join(
             self.module
-                .ast
                 .definitions
                 .iter()
                 .map(|def| match def {
@@ -605,7 +615,9 @@ impl<'a> Generator<'a> {
             external_fsharp,
             ..
         } = f;
-        let name = name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
+        let name_str = name.as_ref().map(|n| n.1.as_str()).unwrap_or("_");
+
+        let sanitized_name = self.sanitize_str(name_str);
 
         let body = match external_fsharp {
             Some((ref module_name, ref fn_name, _)) => {
@@ -621,12 +633,10 @@ impl<'a> Generator<'a> {
                 // If the "module" qualifier is a file path, assume that fn_name is fully qualified
                 let qualifier = if module_name.contains("/") || module_name.contains("\\") {
                     let full_path = self
-                        .module
-                        .input_path
+                        .input_file_path
                         .parent()
                         .expect("must have a parent")
                         .join(module_name.as_str());
-
                     _ = self.external_files.insert(
                         full_path
                             .canonicalize_utf8()
@@ -659,7 +669,7 @@ impl<'a> Generator<'a> {
         let deprecation_doc = self.deprecation(deprecation);
 
         // TODO: Make this less magic
-        let (entry_point_annotation, args) = if name == "main" {
+        let (entry_point_annotation, args) = if name_str == "main" {
             match &arguments[..] {
                 [TypedArg {
                     names: ArgNames::Named { name, .. },
@@ -690,7 +700,7 @@ impl<'a> Generator<'a> {
             entry_point_annotation,
             "let ",
             self.map_publicity(&f.publicity),
-            name,
+            sanitized_name,
             " ",
             args,
             // ": ",
@@ -728,12 +738,13 @@ impl<'a> Generator<'a> {
         docvec![
             "fun",
             self.fun_args(args),
-            " -> begin ",
-            self.statements(body, None).nest(INDENT),
+            " -> begin",
             break_("", " "),
+            line()
+                .nest(INDENT)
+                .append(self.statements(body, None).nest(INDENT).append(line())),
             "end"
         ]
-        .group()
     }
 
     fn statement(&self, s: &'a TypedStatement) -> (Document<'a>, Option<Document<'a>>) {
@@ -834,7 +845,20 @@ impl<'a> Generator<'a> {
             }
         }
 
-        join(res, line()).group()
+        join(res, line())
+    }
+
+    fn sanitize_str(&self, value: &'a str) -> Document<'a> {
+        join(
+            value.split("/").map(|s| {
+                if is_reserved_word(s) {
+                    s.to_doc().surround("``", "``")
+                } else {
+                    s.to_doc()
+                }
+            }),
+            ".".to_doc(),
+        )
     }
 
     fn sanitize_name(&self, name: &'a EcoString) -> Document<'a> {
@@ -988,7 +1012,7 @@ impl<'a> Generator<'a> {
             TypedExpr::NegateBool { value, .. } => {
                 docvec!["not ", self.expression(value).surround("(", ")")]
             }
-            TypedExpr::BitArray { .. } => "// TODO: TypedExpr::BitArray".to_doc(),
+            TypedExpr::BitArray { .. } => "BitArray".to_doc(),
             TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
         }
     }
@@ -1079,16 +1103,16 @@ impl<'a> Generator<'a> {
         };
 
         let clauses = join(
-            clauses
-                .iter()
-                .map(|c| "| ".to_doc().append(self.clause(c).group())),
+            clauses.iter().map(|c| docvec!["| ", self.clause(c)]),
             line(),
-        )
-        .group();
+        );
+
         docvec![
-            docvec!["match ", subjects_doc, " with"].group(),
+            break_(" ", ""),
+            docvec!["match ", subjects_doc, " with"],
+            break_(" ", ""),
             line(),
-            clauses
+            clauses,
         ]
         .group()
     }
@@ -1101,7 +1125,6 @@ impl<'a> Generator<'a> {
             then,
             ..
         } = clause;
-        let mut then_doc = None;
 
         let additional_guards = vec![];
         let patterns_doc = join(
@@ -1120,17 +1143,14 @@ impl<'a> Generator<'a> {
             " | ".to_doc(),
         );
         let guard = self.optional_clause_guard(guard.as_ref(), additional_guards);
-        if then_doc.is_none() {
-            then_doc = Some(self.clause_consequence(then));
-        }
-        patterns_doc.append(
-            guard.append(" ->").append(
-                line()
-                    .append(then_doc.clone().to_doc())
-                    .nest(INDENT)
-                    .group(),
-            ),
-        )
+        docvec![
+            patterns_doc,
+            guard,
+            " ->",
+            line()
+                .nest(INDENT)
+                .append(self.clause_consequence(then).nest(INDENT))
+        ]
     }
 
     fn clause_consequence(&self, consequence: &'a TypedExpr) -> Document<'a> {
@@ -1465,14 +1485,30 @@ impl<'a> Generator<'a> {
 
             Pattern::Constructor {
                 constructor:
-                    Inferred::Known(PatternConstructor {
+                    pattern_constructor @ Inferred::Known(PatternConstructor {
+                        name,
                         field_map: Some(ref field_map),
                         ..
                     }),
                 spread,
                 arguments,
+                type_,
                 ..
             } if arguments.len() == field_map.fields.len() => {
+                let (_, type_name) = type_.named_type_name().expect("Expected a named type");
+                let constructor = self
+                    .module
+                    .type_info
+                    .types_value_constructors
+                    .get(&type_name);
+
+                // If there's more than one possible constructor, we can't print this like a record type
+                if let Some(c) = constructor {
+                    if c.variants.len() > 1 {
+                        return self.constructor_pattern(arguments, pattern_constructor, name);
+                    }
+                }
+
                 let field_map = invert_field_map(field_map);
 
                 let args = arguments.iter().enumerate().filter_map(|(i, arg)| {
@@ -1504,23 +1540,30 @@ impl<'a> Generator<'a> {
                 arguments,
                 constructor,
                 ..
-            } => {
-                let args = arguments.iter().map(|arg| self.pattern(&arg.value));
-                let args = if arguments.is_empty() {
-                    if let Inferred::Known(PatternConstructor {
-                        field_map: None, ..
-                    }) = constructor
-                    {
-                        nil()
-                    } else {
-                        "()".to_doc()
-                    }
-                } else {
-                    join(args, ", ".to_doc()).surround("(", ")")
-                };
-                docvec![name.to_doc(), args].surround("(", ")")
-            }
+            } => self.constructor_pattern(arguments, constructor, name),
         }
+    }
+
+    fn constructor_pattern(
+        &self,
+        arguments: &'a [CallArg<Pattern<Arc<Type>>>],
+        constructor: &'a Inferred<PatternConstructor>,
+        name: &'a EcoString,
+    ) -> Document<'a> {
+        let args = arguments.iter().map(|arg| self.pattern(&arg.value));
+        let args = if arguments.is_empty() {
+            if let Inferred::Known(PatternConstructor {
+                field_map: None, ..
+            }) = constructor
+            {
+                nil()
+            } else {
+                "()".to_doc()
+            }
+        } else {
+            join(args, ", ".to_doc()).surround("(", ")")
+        };
+        docvec![name.to_doc(), args].surround("(", ")")
     }
 
     fn type_to_fsharp(&self, t: &Type) -> Document<'a> {
@@ -1634,7 +1677,7 @@ impl<'a> Generator<'a> {
                 field_map,
                 ..
             } => {
-                if let Some(constructor) = self.module.ast.type_info.values.get(record_name) {
+                if let Some(constructor) = self.module.type_info.values.get(record_name) {
                     if let ValueConstructorVariant::Record {
                         name,
                         constructors_count,

@@ -6,6 +6,8 @@ module rec my.``mod``
 let foo (x: 'u10) = begin
     begin
         let _pipe = x
-        ((fun(x: 'u10) -> begin x end) (_pipe))
+        ((fun(x: 'u10) -> begin 
+            x
+        end) (_pipe))
     end
 end

@@ -10,6 +10,8 @@ let private apply (arg: 'u10) (``fun``: 'u10 -> 'u14) = begin
     ``fun`` (arg)
 end
 let go () = begin
-    apply (Box (1)) (fun(_use0: Box<int>) -> begin let (Box(x)) = _use0
-        x end)
+    apply (Box (1)) (fun(_use0: Box<int>) -> begin 
+        let (Box(x)) = _use0
+        x
+    end)
 end

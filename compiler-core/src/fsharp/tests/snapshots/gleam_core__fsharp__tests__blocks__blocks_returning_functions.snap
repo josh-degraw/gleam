@@ -5,10 +5,14 @@ expression: "\nfn b() {\n  {\n    fn(cb) { cb(1) }\n  }\n  {\n    fn(cb) { cb(2)
 module rec my.``mod``
 let private b () = begin
     begin
-        fun(cb: int -> 'u11) -> begin cb (1) end
+        fun(cb: int -> 'u11) -> begin 
+            cb (1)
+        end
     end
     begin
-        fun(cb: int -> 'u14) -> begin cb (2) end
+        fun(cb: int -> 'u14) -> begin 
+            cb (2)
+        end
     end
     3
 end

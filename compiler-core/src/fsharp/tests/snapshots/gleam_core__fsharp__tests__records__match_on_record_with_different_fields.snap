@@ -1,0 +1,22 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+expression: "\ntype Action(element) {\n  Stop\n  Continue(element, fn() -> Action(element))\n}\npub type Step(element, accumulator) {\n  Next(element: element, accumulator: accumulator)\n  Done\n}\nfn do_unfold(\n  initial: acc,\n  f: fn(acc) -> Step(element, acc),\n) -> fn() -> Action(element) {\n  fn() {\n    case f(initial) {\n      Next(x, acc) -> Continue(x, do_unfold(acc, f))\n      Done -> Stop\n    }\n  }\n}"
+---
+module rec my.``mod``
+type private Action<'t8> =
+| Continue of 't8 * (unit -> Action<'t8>)
+| Stop
+    
+type Step<'t9, 't10> =
+| Done
+| Next of element: 't9 * accumulator: 't10
+    
+let private do_unfold (initial: 't11) (f: 't11 -> Step<'t12, 't11>) = begin
+    fun() -> begin 
+        match f (initial) with
+        | (Next(x, acc)) ->
+            Continue (x) (do_unfold (acc) (f))
+        | (Done) ->
+            Stop
+    end
+end

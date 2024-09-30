@@ -9,9 +9,11 @@ end
 let foo () = begin
     begin
         let _pipe = 123
-        ((fun(_capture: int) -> begin two (begin
+        ((fun(_capture: int) -> begin 
+            two (begin
                 let _pipe = 1
                 (two (_pipe) (2))
-            end) (_capture) end) (_pipe))
+            end) (_capture)
+        end) (_pipe))
     end
 end

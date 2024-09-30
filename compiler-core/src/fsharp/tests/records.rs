@@ -298,6 +298,32 @@ pub fn foo() {
     );
 }
 
+#[test]
+fn match_on_record_with_different_fields() {
+    assert_fsharp!(
+        "
+type Action(element) {
+  Stop
+  Continue(element, fn() -> Action(element))
+}
+pub type Step(element, accumulator) {
+  Next(element: element, accumulator: accumulator)
+  Done
+}
+fn do_unfold(
+  initial: acc,
+  f: fn(acc) -> Step(element, acc),
+) -> fn() -> Action(element) {
+  fn() {
+    case f(initial) {
+      Next(x, acc) -> Continue(x, do_unfold(acc, f))
+      Done -> Stop
+    }
+  }
+}"
+    );
+}
+
 // // https://github.com/gleam-lang/gleam/issues/1981
 // #[test]
 // fn imported_qualified_constructor_as_fn_name_escape() {

@@ -442,15 +442,17 @@ where
 
         let fsharp_app = crate::codegen::FSharpApp::new(&input_dir, &output_dir);
 
+        let first_module = modules.first().expect("Must be at least one module");
         let mut generator = crate::fsharp::Generator::new(
             &self.config.name,
-            &modules.first().expect("Must be at least one module"),
+            &first_module.ast,
+            &first_module.input_path,
         );
         for module in modules {
-            let module_name = module.name.replace("/", ".");
-            let path = output_dir.join(format!("{}.fs", module_name));
+            let module_name: EcoString = module.name.replace("/", ".");
+            let path = output_dir.join(format!("{}.fs", module.name));
 
-            let output = generator.render_module(&module)?;
+            let output = generator.render_module(&module.ast, &module.input_path)?;
             self.io.write(&path, &output)?;
         }
 

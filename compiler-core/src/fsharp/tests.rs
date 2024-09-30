@@ -111,7 +111,7 @@ pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String 
     let mut ast = parsed.module;
     ast.name = "my/mod".into();
     let line_numbers = LineNumbers::new(src);
-    let ast = crate::analyse::ModuleAnalyzerConstructor::<()> {
+    let module = crate::analyse::ModuleAnalyzerConstructor::<()> {
         target: Target::FSharp,
         ids: &ids,
         origin: Origin::Src,
@@ -121,10 +121,9 @@ pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String 
         target_support: TargetSupport::NotEnforced,
         package_config: &config,
     }
-    .infer_module(ast, line_numbers, path)
+    .infer_module(ast, line_numbers, path.clone())
     .expect("should successfully infer root FSharp");
 
-    //println!("AST:{:#?}", &ast);
-    let mut generator = crate::fsharp::Generator::new(&config.name, &ast);
+    let mut generator = crate::fsharp::Generator::new(&config.name, &module, &path);
     generator.render().expect("should render FSharp")
 }

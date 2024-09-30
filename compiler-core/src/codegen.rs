@@ -183,10 +183,8 @@ impl<'a> FSharpApp<'a> {
 
         // Write individual module files
         for module in modules {
-            let module_file_path = self
-                .output_directory
-                .join(format!("{}.fs", module.name.replace("/", "\\")));
-            let module_content = generator.render_module(module)?;
+            let module_file_path = self.output_directory.join(format!("{}.fs", module.name));
+            let module_content = generator.render_module(&module.ast, &module.input_path)?;
             writer.write(&module_file_path, &module_content)?;
         }
 

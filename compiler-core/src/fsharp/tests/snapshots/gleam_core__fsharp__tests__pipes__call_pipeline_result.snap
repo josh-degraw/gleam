@@ -4,7 +4,9 @@ expression: "\npub fn foo() {\n  { 1 |> add }(1)\n}\n\npub fn add(x) {\n  fn(y) 
 ---
 module rec my.``mod``
 let add (x: int) = begin
-    fun(y: int) -> begin x + y end
+    fun(y: int) -> begin 
+        x + y
+    end
 end
 let foo () = begin
     begin
