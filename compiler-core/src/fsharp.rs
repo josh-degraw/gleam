@@ -11,6 +11,7 @@ use crate::{
         ValueConstructorVariant,
     },
 };
+use camino::Utf8PathBuf;
 use ecow::EcoString;
 use itertools::Itertools;
 use regex::{Captures, Regex};
@@ -26,8 +27,8 @@ pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 #[derive(Debug)]
 pub struct Generator<'a> {
     package_name: &'a EcoString,
-    pub external_files: HashSet<&'a EcoString>,
-    module: &'a TypedModule,
+    pub external_files: HashSet<Utf8PathBuf>,
+    module: &'a super::build::Module,
 }
 
 mod prelude_functions {
@@ -149,7 +150,7 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
 }
 
 impl<'a> Generator<'a> {
-    pub fn new(package_name: &'a EcoString, module: &'a TypedModule) -> Self {
+    pub fn new(package_name: &'a EcoString, module: &'a super::build::Module) -> Self {
         Self {
             package_name,
             external_files: HashSet::new(),
@@ -166,7 +167,7 @@ impl<'a> Generator<'a> {
     }
 
     /// Update the currently referenced module and render it
-    pub fn render_module(&mut self, new_module: &'a TypedModule) -> super::Result<String> {
+    pub fn render_module(&mut self, new_module: &'a super::build::Module) -> super::Result<String> {
         self.module = new_module;
         self.render()
     }
@@ -182,6 +183,7 @@ impl<'a> Generator<'a> {
     fn module_contents(&mut self) -> Document<'a> {
         join(
             self.module
+                .ast
                 .definitions
                 .iter()
                 .map(|def| match def {
@@ -618,7 +620,18 @@ impl<'a> Generator<'a> {
 
                 // If the "module" qualifier is a file path, assume that fn_name is fully qualified
                 let qualifier = if module_name.contains("/") || module_name.contains("\\") {
-                    _ = self.external_files.insert(module_name);
+                    let full_path = self
+                        .module
+                        .input_path
+                        .parent()
+                        .expect("must have a parent")
+                        .join(module_name.as_str());
+
+                    _ = self.external_files.insert(
+                        full_path
+                            .canonicalize_utf8()
+                            .expect("Failed to canonicalize path"),
+                    );
                     nil()
                 } else {
                     docvec![module_name, "."]
@@ -1621,7 +1634,7 @@ impl<'a> Generator<'a> {
                 field_map,
                 ..
             } => {
-                if let Some(constructor) = self.module.type_info.values.get(record_name) {
+                if let Some(constructor) = self.module.ast.type_info.values.get(record_name) {
                     if let ValueConstructorVariant::Record {
                         name,
                         constructors_count,

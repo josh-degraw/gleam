@@ -186,7 +186,7 @@ impl<'a> FSharpApp<'a> {
             let module_file_path = self
                 .output_directory
                 .join(format!("{}.fs", module.name.replace("/", "\\")));
-            let module_content = generator.render_module(&module.ast)?;
+            let module_content = generator.render_module(module)?;
             writer.write(&module_file_path, &module_content)?;
         }
 
@@ -229,7 +229,10 @@ impl<'a> FSharpApp<'a> {
             generator
                 .external_files
                 .iter()
-                .map(|file| format!("<Compile Include=\"{}\" />", file))
+                .map(|file| format!(
+                    "<Compile Include=\"./external/{}\" />",
+                    file.file_name().expect("Missing file name")
+                ))
                 .collect::<Vec<_>>()
                 .join("\n    "),
             modules

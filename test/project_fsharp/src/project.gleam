@@ -6,10 +6,10 @@ pub fn readline() -> String
 @external(fsharp, "System.Console", "WriteLine")
 pub fn println(format: String) -> Nil
 
-@external(fsharp, "./fsharp_custom_behavior.fs", "FSharpCustomBehavior.print_string_and_int")
+@external(fsharp, "./fsharp_custom_behavior.fsx", "FSharpCustomBehavior.print_string_and_int")
 pub fn print_string_and_int(s: String, i: Int) -> Nil
 
-@external(fsharp, "./fsharp_custom_behavior.fs", "FSharpCustomBehavior.print_result")
+@external(fsharp, "./fsharp_custom_behavior.fsx", "FSharpCustomBehavior.print_result")
 pub fn print_result(s: Result(a,b)) -> Nil
 
 

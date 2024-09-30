@@ -444,25 +444,25 @@ where
 
         let mut generator = crate::fsharp::Generator::new(
             &self.config.name,
-            &modules.first().expect("Must be at least one module").ast,
+            &modules.first().expect("Must be at least one module"),
         );
         for module in modules {
             let module_name = module.name.replace("/", ".");
             let path = output_dir.join(format!("{}.fs", module_name));
 
-            let output = generator.render_module(&module.ast)?;
+            let output = generator.render_module(&module)?;
             self.io.write(&path, &output)?;
         }
 
         fsharp_app.render(io, &self.config, modules, &mut generator)?;
         // Copy external files
         for file in generator.external_files {
-            let input_file_name = Utf8Path::new(file);
-            let input_file_path = input_dir.join(&input_file_name);
-            let output_file_path = output_dir.join(&input_file_name);
-            let file_contents = fs::read_to_string(&input_file_path).expect(&format!(
+            let file_name = file.file_name().expect("File name missing");
+            let output_file_path = output_dir.join("external").join(&file_name);
+
+            let file_contents = fs::read_to_string(&file).expect(&format!(
                 "Could not read external file: {}",
-                &input_file_path.clone().as_str()
+                &file.clone().as_str()
             ));
             self.io.write(&output_file_path, &file_contents)?;
         }

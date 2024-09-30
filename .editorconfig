@@ -24,3 +24,7 @@ indent_size = 4
 [Makefile]
 indent_style = tab
 indent_size = 4
+
+[*.{fsx,fs}]
+indent_size = 4
+multiline_bracket_style = stroustrup
