@@ -812,41 +812,15 @@ impl<'a> Generator<'a> {
     fn assignment(&self, name: Document<'a>, value: &'a TypedExpr) -> Document<'a> {
         let value_doc = self.expression(value);
 
-        match value {
-            TypedExpr::Case { .. } | TypedExpr::Fn { .. } => {
-                docvec![
-                    "let ",
-                    name,
-                    " = ",
-                    line().nest(INDENT).append(value_doc.nest(INDENT))
-                ]
-            }
-            a if self.is_iife(a) => {
-                docvec![
-                    "let ",
-                    name,
-                    " = ",
-                    line().nest(INDENT).append(value_doc.nest(INDENT))
-                ]
-            }
-            // TypedExpr::Call { fun, .. } => {
-            //     if let TypedExpr::Fn { body, .. } = fun.as_ref() {
-            //         if body.len() == 1 {
-            //             if let Statement::Expression(TypedExpr::Call { fun: inner_fun, .. }) =
-            //                 body.first()
-            //             {
-            //                 if let TypedExpr::Fn { .. } = inner_fun.as_ref() {
-            //                     println!("IIFE");
-            //                 }
-            //             }
-            //         }
-            //     }
-            //     docvec!["let ", name, " = ", value_doc]
-            // }
-            _ => {
-                // TODO: Always nest if the binding is an anonymous function? or at least IIFE
-                docvec!["let ", name, " = ", value_doc]
-            }
+        if matches!(value, TypedExpr::Case { .. } | TypedExpr::Fn { .. }) || self.is_iife(value) {
+            docvec![
+                "let ",
+                name,
+                " = ",
+                line().nest(INDENT).append(value_doc.nest(INDENT))
+            ]
+        } else {
+            docvec!["let ", name, " = ", value_doc]
         }
     }
 
@@ -1013,7 +987,6 @@ impl<'a> Generator<'a> {
             } => self.case(subjects, clauses),
 
             TypedExpr::Tuple { elems, .. } => {
-                println!("tuple: {:?}", elems);
                 let items = elems.iter().map(|e| self.expression(e)).collect_vec();
                 self.tuple(items)
             }
