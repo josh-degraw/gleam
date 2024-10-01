@@ -8,6 +8,6 @@ let private go (x: list<int>) (y: list<(int * 'u14)>) = begin
     let [a] = x
     let [1; 2] = x
     let [_; (3, b)] = y
-    let [head]::tail = y
-    [head]::tail
+    let head::tail = y
+    head::tail
 end

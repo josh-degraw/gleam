@@ -115,3 +115,20 @@ pub fn foo() {
 "#,
     );
 }
+
+#[test]
+fn nested_list_pattern() {
+    assert_fsharp!(
+        r#"
+fn match_sequences(
+  sequences: List(List(a))
+) {
+  case sequences {
+    [] -> []
+    [sequence] -> [sequence]
+    [ascending1, ascending2, ..rest] -> []
+  }
+}
+"#,
+    );
+}

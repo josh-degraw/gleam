@@ -63,6 +63,7 @@ macro_rules! assert_fsharp_with_multiple_imports {
     };
 }
 
+#[track_caller]
 pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String {
     let mut modules = im::HashMap::new();
     let ids = UniqueIdGenerator::new();
@@ -103,6 +104,8 @@ pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String 
         let _ = modules.insert(dep_name.into(), dep.type_info);
         let _ = direct_dependencies.insert(dep_package.into(), ());
     }
+    let calling_file = file!();
+
     let path = Utf8PathBuf::from("/root/project/test/my/mod.gleam");
     let parsed = crate::parse::parse_module(path.clone(), src, &WarningEmitter::null())
         .expect("syntax error");

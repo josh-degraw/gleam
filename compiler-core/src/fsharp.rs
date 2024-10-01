@@ -22,7 +22,7 @@ use std::{
 };
 
 const INDENT: isize = 4;
-pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
+pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fsx");
 
 #[derive(Debug)]
 pub struct Generator<'a> {
@@ -164,7 +164,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn render(&mut self) -> super::Result<String> {
+    pub fn render(&self) -> super::Result<String> {
         let document = join(
             vec![self.module_declaration(), self.module_contents()],
             line(),
@@ -183,7 +183,7 @@ impl<'a> Generator<'a> {
         self.render()
     }
 
-    fn module_declaration(&mut self) -> Document<'a> {
+    fn module_declaration(&self) -> Document<'a> {
         //println!("module: {:#?}", module);
         // Use module rec to not need to worry about initialization order
         "module rec "
@@ -191,7 +191,7 @@ impl<'a> Generator<'a> {
             .append(self.sanitize_name(&self.module.name))
     }
 
-    fn module_contents(&mut self) -> Document<'a> {
+    fn module_contents(&self) -> Document<'a> {
         join(
             self.module
                 .definitions
@@ -229,9 +229,7 @@ impl<'a> Generator<'a> {
                     &full_module_name
                 ]
             }
-            Some((AssignName::Discard(_), _)) => {
-                docvec![]
-            }
+            Some((AssignName::Discard(_), _)) => nil(),
             // If the imports are from the same package, don't need to open it
             None if unqualified_values.is_empty() && unqualified_types.is_empty() => {
                 // if package is empty, it's from a builtin
@@ -317,32 +315,33 @@ impl<'a> Generator<'a> {
     /// TODO: Is this safe or incorrect?
     /// We should probably emit a warning at least
     fn external_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
-        let name = &type_.name;
-        let values = if !type_.typed_parameters.is_empty() {
-            join(
-                type_
-                    .typed_parameters
-                    .iter()
-                    .map(|tp| self.type_to_fsharp(tp)),
-                " * ".to_doc(),
-            )
-        } else {
-            nil()
-        };
-        docvec![
-            "/// NOTE: This type has no clear definition so the compiler made a best guess at a way to represent it.", line(),
-            "/// Please report any issues", line(),
-            self.documentation(&type_.documentation),
-            self.deprecation(&type_.deprecation),
-            "type ",
-            self.map_publicity(&type_.publicity),
-            name,
-            self.type_params(type_),
-            " = ",
-            name,
-            " of ",
-            values
-        ]
+        return nil();
+        // let name = &type_.name;
+        // let values = if !type_.typed_parameters.is_empty() {
+        //     join(
+        //         type_
+        //             .typed_parameters
+        //             .iter()
+        //             .map(|tp| self.type_to_fsharp(tp)),
+        //         " * ".to_doc(),
+        //     )
+        // } else {
+        //     nil()
+        // };
+        // docvec![
+        //     "/// NOTE: This type has no clear definition so the compiler made a best guess at a way to represent it.", line(),
+        //     "/// Please report any issues", line(),
+        //     self.documentation(&type_.documentation),
+        //     self.deprecation(&type_.deprecation),
+        //     "type ",
+        //     self.map_publicity(&type_.publicity),
+        //     name,
+        //     self.type_params(type_),
+        //     " = ",
+        //     name,
+        //     " of ",
+        //     values
+        // ]
     }
 
     fn record_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
@@ -637,11 +636,11 @@ impl<'a> Generator<'a> {
                         .parent()
                         .expect("must have a parent")
                         .join(module_name.as_str());
-                    _ = self.external_files.insert(
-                        full_path
-                            .canonicalize_utf8()
-                            .expect("Failed to canonicalize path"),
-                    );
+                    _ =
+                        self.external_files
+                            .insert(full_path.canonicalize_utf8().unwrap_or_else(|_| {
+                                panic!("Failed to canonicalize path: {full_path}")
+                            }));
                     nil()
                 } else {
                     docvec![module_name, "."]
@@ -742,8 +741,8 @@ impl<'a> Generator<'a> {
             break_("", " "),
             line()
                 .nest(INDENT)
-                .append(self.statements(body, None).nest(INDENT).append(line())),
-            "end"
+                .append(self.statements(body, None).nest(INDENT).append(line()))
+                .append("end"),
         ]
     }
 
@@ -797,26 +796,77 @@ impl<'a> Generator<'a> {
             }
 
             Statement::Assignment(a) => {
-                let (name, value) = self.get_assignment_info(a);
+
+                let name = self.pattern(&a.pattern);
 
                 last_var = Some(name.clone());
-                match a.value.as_ref() {
-                    TypedExpr::Case { .. } => {
-                        docvec![
-                            "let ",
-                            name,
-                            " = ",
-                            line().nest(INDENT),
-                            value.group().nest(INDENT)
-                        ]
-                    }
-                    _ => docvec!["let ", name, " = ", value],
-                }
+                self.assignment(name, &a.value)
+
             }
             Statement::Use(_) => docvec!["// This should never be emitted, use statements are transformed into function calls"],
         };
 
         (statement_doc, last_var)
+    }
+
+    fn assignment(&self, name: Document<'a>, value: &'a TypedExpr) -> Document<'a> {
+        let value_doc = self.expression(value);
+
+        match value {
+            TypedExpr::Case { .. } | TypedExpr::Fn { .. } => {
+                docvec![
+                    "let ",
+                    name,
+                    " = ",
+                    line().nest(INDENT).append(value_doc.nest(INDENT))
+                ]
+            }
+            a if self.is_iife(a) => {
+                docvec![
+                    "let ",
+                    name,
+                    " = ",
+                    line().nest(INDENT).append(value_doc.nest(INDENT))
+                ]
+            }
+            // TypedExpr::Call { fun, .. } => {
+            //     if let TypedExpr::Fn { body, .. } = fun.as_ref() {
+            //         if body.len() == 1 {
+            //             if let Statement::Expression(TypedExpr::Call { fun: inner_fun, .. }) =
+            //                 body.first()
+            //             {
+            //                 if let TypedExpr::Fn { .. } = inner_fun.as_ref() {
+            //                     println!("IIFE");
+            //                 }
+            //             }
+            //         }
+            //     }
+            //     docvec!["let ", name, " = ", value_doc]
+            // }
+            _ => {
+                // TODO: Always nest if the binding is an anonymous function? or at least IIFE
+                docvec!["let ", name, " = ", value_doc]
+            }
+        }
+    }
+
+    /// If the expression is an immediately-invoked function expression (IIFE)
+    fn is_iife(&self, expr: &'a TypedExpr) -> bool {
+        if let TypedExpr::Call { fun, .. } = expr {
+            if let TypedExpr::Fn { body, .. } = fun.as_ref() {
+                if body.len() == 1 {
+                    if let Statement::Expression(TypedExpr::Call { fun: inner_fun, .. }) =
+                        body.first()
+                    {
+                        if let TypedExpr::Fn { .. } = inner_fun.as_ref() {
+                            return true;
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 
     fn statements(&self, s: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
@@ -896,9 +946,17 @@ impl<'a> Generator<'a> {
     fn string(&self, value: &str) -> Document<'a> {
         self.string_inner(value).surround("\"", "\"")
     }
+
+    /// When running on the Erlang virtual machine ints have no maximum and minimum size.
+    /// When running on JavaScript runtimes ints are represented using JavaScript's 64 bit floating point numbers,
+    /// For now we'll assume for maximum compatibility that we'll need to use 64 bits for ints
+    fn integer(&self, value: &'a EcoString) -> Document<'a> {
+        value.to_doc() //.append("L")
+    }
+
     fn expression(&self, expr: &'a TypedExpr) -> Document<'a> {
         match expr {
-            TypedExpr::Int { value, .. } => value.to_doc(),
+            TypedExpr::Int { value, .. } => self.integer(value),
             TypedExpr::Float { value, .. } => value.to_doc(),
             TypedExpr::String { value, .. } => self.string(value.as_str()),
             TypedExpr::Block { statements, .. } => self.block(statements),
@@ -954,7 +1012,11 @@ impl<'a> Generator<'a> {
                 subjects, clauses, ..
             } => self.case(subjects, clauses),
 
-            TypedExpr::Tuple { elems, .. } => self.tuple(elems.iter().map(|e| self.expression(e))),
+            TypedExpr::Tuple { elems, .. } => {
+                println!("tuple: {:?}", elems);
+                let items = elems.iter().map(|e| self.expression(e)).collect_vec();
+                self.tuple(items)
+            }
 
             // Special case for double negation
             TypedExpr::NegateInt { value, .. } => {
@@ -1066,8 +1128,7 @@ impl<'a> Generator<'a> {
 
     fn record_access(&self, record: &'a TypedExpr, label: &'a EcoString) -> Document<'a> {
         let record_expr = self.expression(record);
-        let label_expr = label.to_doc();
-        docvec![record_expr, ".", label_expr]
+        docvec![record_expr, ".", self.sanitize_name(label)]
     }
 
     fn todo(&self, message: &'a Option<Box<TypedExpr>>) -> Document<'a> {
@@ -1091,6 +1152,7 @@ impl<'a> Generator<'a> {
     fn tuple(&self, elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
         join(elements, ", ".to_doc()).surround("(", ")")
     }
+
     fn case(&self, subjects: &'a [TypedExpr], clauses: &'a [TypedClause]) -> Document<'a> {
         let subjects_doc = if subjects.len() == 1 {
             self.expression(
@@ -1099,7 +1161,8 @@ impl<'a> Generator<'a> {
                     .expect("f# case printing of single subject"),
             )
         } else {
-            self.tuple(subjects.iter().map(|s| self.expression(s)))
+            let items = subjects.iter().map(|s| self.expression(s)).collect_vec();
+            self.tuple(items)
         };
 
         let clauses = join(
@@ -1111,8 +1174,7 @@ impl<'a> Generator<'a> {
             break_(" ", ""),
             docvec!["match ", subjects_doc, " with"],
             break_(" ", ""),
-            line(),
-            clauses,
+            line().append(clauses),
         ]
         .group()
     }
@@ -1135,7 +1197,8 @@ impl<'a> Generator<'a> {
                         let p = patterns.first().expect("Single pattern clause printing");
                         self.pattern(p)
                     } else {
-                        self.tuple(patterns.iter().map(|p| self.pattern(p)))
+                        let items = patterns.iter().map(|p| self.pattern(p)).collect_vec();
+                        self.tuple(items)
                     };
 
                     patterns_doc
@@ -1319,7 +1382,10 @@ impl<'a> Generator<'a> {
             }
             ClauseGuard::FieldAccess {
                 container, label, ..
-            } => self.clause_guard(container).append(".").append(label),
+            } => self
+                .clause_guard(container)
+                .append(".")
+                .append(self.sanitize_name(label)),
             ClauseGuard::ModuleSelect {
                 module_alias,
                 label,
@@ -1368,9 +1434,9 @@ impl<'a> Generator<'a> {
         let mut documents = Vec::with_capacity((assignments.len() + 1) * 3);
 
         for a in assignments {
-            let (name, value) = self.get_assignment_info(a);
-
-            documents.push(docvec!["let ", name, " = ", value]);
+            let name = self.pattern(&a.pattern);
+            let assignment = self.assignment(name, &a.value);
+            documents.push(assignment);
             documents.push(line());
         }
 
@@ -1397,26 +1463,31 @@ impl<'a> Generator<'a> {
             .append(line().append("end"))
     }
 
-    fn get_assignment_info(&self, assignment: &'a TypedAssignment) -> (Document<'a>, Document<'a>) {
-        let name = self.pattern(&assignment.pattern);
-        let value = self.expression(&assignment.value);
-        (name, value)
-    }
-
     fn pattern(&self, p: &'a Pattern<Arc<Type>>) -> Document<'a> {
         match p {
-            Pattern::Int { value, .. } => value.to_doc(),
+            Pattern::Int { value, .. } => self.integer(value),
             Pattern::Float { value, .. } => value.to_doc(),
             Pattern::String { value, .. } => self.string(value.as_str()),
             Pattern::Variable { name, .. } => self.sanitize_name(name).to_doc(),
             Pattern::Discard { name, .. } => name.to_doc(),
             Pattern::List { elements, tail, .. } => {
-                let head = join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc())
-                    .surround("[", "]");
-
+                // let elements_doc = join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc());
+                // let head = if elements.len() == 1 {
+                //     elements_doc
+                // } else {
+                //     elements_doc.surround("[", "]")
+                // };
                 match tail {
-                    Some(tail) => head.append("::").append(self.pattern(tail)),
-                    None => head,
+                    Some(tail) => {
+                        let items = if elements.is_empty() {
+                            "[]".to_doc()
+                        } else {
+                            join(elements.iter().map(|e| self.pattern(e)), "::".to_doc())
+                        };
+                        items.append("::").append(self.pattern(tail))
+                    }
+                    None => join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc())
+                        .surround("[", "]"),
                 }
             }
             Pattern::Tuple { elems, .. } => {
@@ -1517,11 +1588,13 @@ impl<'a> Generator<'a> {
                     }
 
                     let label = match &arg.label {
-                        Some(label) => Some(label.to_doc()),
-                        None => field_map.get(&(i as u32)).map(|label| label.to_doc()),
+                        Some(label) => Some(self.sanitize_name(label)),
+                        None => field_map
+                            .get(&(i as u32))
+                            .map(|label| self.sanitize_name(label)),
                     };
 
-                    label.map(|label| docvec![label.to_doc(), " = ", self.pattern(&arg.value)])
+                    label.map(|label| docvec![label, " = ", self.pattern(&arg.value)])
                 });
                 join(args, "; ".to_doc()).group().surround("{ ", " }")
             }
@@ -1550,7 +1623,10 @@ impl<'a> Generator<'a> {
         constructor: &'a Inferred<PatternConstructor>,
         name: &'a EcoString,
     ) -> Document<'a> {
-        let args = arguments.iter().map(|arg| self.pattern(&arg.value));
+        let args = arguments
+            .iter()
+            .map(|arg| self.pattern(&arg.value))
+            .collect_vec();
         let args = if arguments.is_empty() {
             if let Inferred::Known(PatternConstructor {
                 field_map: None, ..
@@ -1627,13 +1703,13 @@ impl<'a> Generator<'a> {
     fn module_constant(&self, constant: &'a ModuleConstant<Arc<Type>, EcoString>) -> Document<'a> {
         let attr = match constant.value.deref() {
             Constant::Int { .. } | Constant::Float { .. } | Constant::String { .. } => {
-                docvec!["[<Literal>]", line(),]
+                docvec!["[<Literal>]", line()]
             }
             Constant::Record { type_, name, .. } if type_.is_bool() && name == "True" => {
-                docvec!["[<Literal>]", line(),]
+                docvec!["[<Literal>]", line()]
             }
             Constant::Record { type_, name, .. } if type_.is_bool() && name == "False" => {
-                docvec!["[<Literal>]", line(),]
+                docvec!["[<Literal>]", line()]
             }
 
             _ => nil(),
@@ -1650,15 +1726,23 @@ impl<'a> Generator<'a> {
 
     fn constant_expression(&self, expression: &'a TypedConstant) -> Document<'a> {
         match expression {
-            Constant::Int { value, .. } => value.to_doc(),
+            Constant::Int { value, .. } => self.integer(value),
             Constant::Float { value, .. } => value.to_doc(),
             Constant::String { value, .. } => self.string(value),
             Constant::Tuple { elements, .. } => {
-                self.tuple(elements.iter().map(|e| self.constant_expression(e)))
+                let items = elements
+                    .iter()
+                    .map(|e| self.constant_expression(e))
+                    .collect_vec();
+                self.tuple(items)
             }
 
             Constant::List { elements, .. } => {
-                self.list(elements.iter().map(|e| self.constant_expression(e)))
+                let items = elements
+                    .iter()
+                    .map(|e| self.constant_expression(e))
+                    .collect_vec();
+                self.list(items)
             }
 
             Constant::Record { type_, name, .. } if type_.is_bool() && name == "True" => {

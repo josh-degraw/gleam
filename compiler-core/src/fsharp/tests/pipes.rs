@@ -159,3 +159,35 @@ pub fn two(a, b) {
 "#
     );
 }
+
+/*
+  and(True, True)
+  |> is_true
+
+  and(False, True)
+  |> is_false
+
+  True
+  |> and(True)
+  |> is_true
+
+*/
+#[test]
+fn pipe_in_different_positions() {
+    assert_fsharp!(
+        r#"
+fn and(a, b) {
+  a && b
+}
+
+fn is_false(a) {a}
+
+pub fn something() {
+
+  False
+  |> and(True, _)
+  |> is_false
+}
+"#
+    )
+}

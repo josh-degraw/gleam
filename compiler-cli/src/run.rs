@@ -185,6 +185,13 @@ fn run_fsharp(
         args.push(arg);
     }
 
+    ProjectIO::new().exec(
+        "dotnet",
+        &["fantomas".to_string()],
+        &[],
+        None,
+        Stdio::Inherit,
+    );
     ProjectIO::new().exec("dotnet", &args, &[], None, Stdio::Inherit)
 }
 
