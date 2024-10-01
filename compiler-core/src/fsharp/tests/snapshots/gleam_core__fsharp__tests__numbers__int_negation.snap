@@ -4,8 +4,8 @@ expression: "\npub fn foo() {\n  let a = 3\n  let b = -a\n  let c = -8\n}\n"
 ---
 module rec my.``mod``
 let foo () = begin
-    let a = 3
+    let a = 3L
     let b = -a
-    let c = -8
+    let c = -8L
     c
 end

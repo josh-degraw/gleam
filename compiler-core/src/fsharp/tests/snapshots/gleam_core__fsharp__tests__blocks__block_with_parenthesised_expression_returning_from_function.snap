@@ -5,6 +5,6 @@ expression: "\nfn b() {\n  {\n    1 + 2\n  }\n}\n"
 module rec my.``mod``
 let private b () = begin
     begin
-        1 + 2
+        1L + 2L
     end
 end

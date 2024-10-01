@@ -3,11 +3,11 @@ source: compiler-core/src/fsharp/tests/lists.rs
 expression: "\nfn go(x, y) {\n  let assert [] = x\n  let assert [a] = x\n  let assert [1, 2] = x\n  let assert [_, #(3, b)] = y\n  let assert [head, ..tail] = y\n}\n"
 ---
 module rec my.``mod``
-let private go (x: list<int>) (y: list<(int * 'u14)>) = begin
+let private go (x: list<int64>) (y: list<(int64 * 'u14)>) = begin
     let [] = x
     let [a] = x
-    let [1; 2] = x
-    let [_; (3, b)] = y
+    let [1L; 2L] = x
+    let [_; (3L, b)] = y
     let head::tail = y
     head::tail
 end

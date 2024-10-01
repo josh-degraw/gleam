@@ -8,7 +8,7 @@ let private identity (a: 't8) = begin
 end
 let private id = identity
 let foo () = begin
-    let num = id (1)
+    let num = id (1L)
     let word = id ("Word")
     word
 end

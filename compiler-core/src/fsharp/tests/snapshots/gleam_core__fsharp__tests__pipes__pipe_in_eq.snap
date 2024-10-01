@@ -7,8 +7,8 @@ let private id (x: 'u8) = begin
     x
 end
 let foo () = begin
-    1 = begin
-        let _pipe = 1
+    1L = begin
+        let _pipe = 1L
         (id (_pipe))
     end
 end

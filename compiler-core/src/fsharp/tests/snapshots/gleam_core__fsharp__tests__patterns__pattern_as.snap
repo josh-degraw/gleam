@@ -3,10 +3,10 @@ source: compiler-core/src/fsharp/tests/patterns.rs
 expression: "pub fn a(x) {\n  case x {\n    Ok(1 as y) -> 1\n    _ -> 0\n  }\n}"
 ---
 module rec my.``mod``
-let a (x: Result<int, 'u12>) = begin
+let a (x: Result<int64, 'u12>) = begin
     match x with
-    | (Ok(1 as y)) ->
-        1
+    | (Ok(1L as y)) ->
+        1L
     | _ ->
-        0
+        0L
 end

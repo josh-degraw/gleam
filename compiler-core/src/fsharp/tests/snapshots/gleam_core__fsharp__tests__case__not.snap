@@ -6,7 +6,7 @@ module rec my.``mod``
 let foo (x: 'u8) (y: bool) = begin
     match x with
     | _ when not y ->
-        0
+        0L
     | _ ->
-        1
+        1L
 end

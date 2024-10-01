@@ -3,7 +3,7 @@ source: compiler-core/src/fsharp/tests/records.rs
 expression: "\npub type Person { Person(name: String, age: Int) }\npub fn get_age(person: Person) { person.age }\npub fn get_name(person: Person) { person.name }\n"
 ---
 module rec my.``mod``
-type Person = { name: string; age: int }
+type Person = { name: string; age: int64 }
 let get_age (person: Person) = begin
     person.age
 end

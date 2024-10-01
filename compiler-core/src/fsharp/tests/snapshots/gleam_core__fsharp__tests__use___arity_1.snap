@@ -9,6 +9,6 @@ let private pair (f: unit -> 'u11) = begin
 end
 let go () = begin
     pair (fun() -> begin 
-        123
+        123L
     end)
 end

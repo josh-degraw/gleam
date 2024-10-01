@@ -4,9 +4,9 @@ expression: "\npub fn foo() {\n  let x = 1\n  {\n    let x = 2\n  }\n  x\n}\n"
 ---
 module rec my.``mod``
 let foo () = begin
-    let x = 1
+    let x = 1L
     begin
-        let x = 2
+        let x = 2L
         x
     end
     x

@@ -4,5 +4,5 @@ expression: "\nfn go() {\n  #(1, 2).0\n}\n"
 ---
 module rec my.``mod``
 let private go () = begin
-    (1, 2).Item1
+    (1L, 2L).Item1
 end

@@ -6,7 +6,7 @@ module rec my.``mod``
 let go (x: 'u8) (xs: (bool * bool * bool)) = begin
     match x with
     | _ when xs.Item3 ->
-        1
+        1L
     | _ ->
-        0
+        0L
 end

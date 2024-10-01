@@ -3,18 +3,18 @@ source: compiler-core/src/fsharp/tests/variables.rs
 expression: "const int = 42\nconst int_alias = int\npub fn use_int_alias() { int_alias }\n\nfn int_identity(i: Int) { i }\nconst int_identity_alias: fn(Int) -> Int = int_identity\npub fn use_int_identity_alias() { int_identity_alias(42) }\n\nconst compound: #(Int, fn(Int) -> Int, fn(Int) -> Int) = #(int, int_identity, int_identity_alias)\npub fn use_compound() { compound.1(compound.0) }\n"
 ---
 module rec my.``mod``
-let private int_identity (i: int) = begin
+let private int_identity (i: int64) = begin
     i
 end
 [<Literal>]
-let private int = 42
+let private int = 42L
 let private int_alias = int
 let use_int_alias () = begin
     int_alias
 end
 let private int_identity_alias = int_identity
 let use_int_identity_alias () = begin
-    int_identity_alias (42)
+    int_identity_alias (42L)
 end
 let private compound = (int, int_identity, int_identity_alias)
 let use_compound () = begin

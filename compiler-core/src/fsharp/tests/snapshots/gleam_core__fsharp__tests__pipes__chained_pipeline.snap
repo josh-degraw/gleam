@@ -3,13 +3,13 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "\npub fn add(x, y) { x + y }\n\npub fn foo() {\n  1 |> add(2) |> add(3)\n}"
 ---
 module rec my.``mod``
-let add (x: int) (y: int) = begin
+let add (x: int64) (y: int64) = begin
     x + y
 end
 let foo () = begin
     begin
-        let _pipe = 1
-        let _pipe = add (_pipe) (2)
-        (add (_pipe) (3))
+        let _pipe = 1L
+        let _pipe = add (_pipe) (2L)
+        (add (_pipe) (3L))
     end
 end

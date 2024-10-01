@@ -4,6 +4,6 @@ expression: "\nfn go() {\n  [] == [1]\n  [] != [1]\n}\n"
 ---
 module rec my.``mod``
 let private go () = begin
-    [] = [1]
-    [] <> [1]
+    [] = [1L]
+    [] <> [1L]
 end

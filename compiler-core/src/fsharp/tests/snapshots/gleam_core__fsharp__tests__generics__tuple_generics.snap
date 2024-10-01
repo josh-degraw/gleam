@@ -4,5 +4,5 @@ expression: "pub fn make_tuple(x: t) -> #(Int, t, Int) {\n  #(0, x, 1)\n}\n"
 ---
 module rec my.``mod``
 let make_tuple (x: 't8) = begin
-    (0, x, 1)
+    (0L, x, 1L)
 end

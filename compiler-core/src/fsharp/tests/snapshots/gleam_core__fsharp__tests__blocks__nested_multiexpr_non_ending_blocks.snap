@@ -5,12 +5,12 @@ expression: "\nfn go() {\n  let x = {\n    1\n    {\n      2\n      3\n    }\n  
 module rec my.``mod``
 let private go () = begin
     let x = begin
-        1
+        1L
         begin
-            2
-            3
+            2L
+            3L
         end
-        4
+        4L
     end
     x
 end

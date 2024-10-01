@@ -9,7 +9,7 @@ type C = { d: bool }
 let a (a: A) = begin
     match a with
     | _ when a.b.c.d ->
-        1
+        1L
     | _ ->
-        0
+        0L
 end

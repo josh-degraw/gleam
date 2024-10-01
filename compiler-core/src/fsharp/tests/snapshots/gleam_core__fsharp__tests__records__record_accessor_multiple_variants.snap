@@ -4,7 +4,7 @@ expression: "\npub type Person {\n    Teacher(name: String, title: String)\n    
 ---
 module rec my.``mod``
 type Person =
-| Student of name: string * age: int
+| Student of name: string * age: int64
 | Teacher of name: string * title: string
     member this.name = 
         match this with

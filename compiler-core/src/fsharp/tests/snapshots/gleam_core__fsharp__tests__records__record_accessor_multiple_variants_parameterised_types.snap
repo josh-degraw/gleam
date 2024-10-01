@@ -4,8 +4,8 @@ expression: "\npub type Person {\n    Teacher(name: String, age: List(Int), titl
 ---
 module rec my.``mod``
 type Person =
-| Student of name: string * age: list<int>
-| Teacher of name: string * age: list<int> * title: string
+| Student of name: string * age: list<int64>
+| Teacher of name: string * age: list<int64> * title: string
     member this.age = 
         match this with
         | Person.Student (_, age) -> age

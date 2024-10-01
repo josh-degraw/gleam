@@ -3,25 +3,25 @@ source: compiler-core/src/fsharp/tests/custom_types.rs
 expression: "\ntype Cat {\n  Cat(name: String, cuteness: Int)\n}\n\ntype Box {\n  Box(occupant: Cat)\n}\n\nconst felix = Cat(\"Felix\", 12)\nconst tom = Cat(cuteness: 1, name: \"Tom\")\n\nfn go() {\n  Cat(\"Nubi\", 1)\n  Cat(2, name: \"Nubi\")\n  Cat(cuteness: 3, name: \"Nubi\")\n}\n\nfn update(cat) {\n  Cat(..cat, name: \"Sid\")\n  Cat(..cat, name: \"Bartholemew Wonder Puss the Fourth !!!!!!!!!!!!!!!!\")\n  Cat(..new_cat(), name: \"Molly\")\n  let box = Box(occupant: cat)\n  Cat(..box.occupant, cuteness: box.occupant.cuteness + 1)\n}\n\nfn access(cat: Cat) {\n  cat.cuteness\n}\n\nfn new_cat() {\n  Cat(name: \"Beau\", cuteness: 11)\n}\n"
 ---
 module rec my.``mod``
-type private Cat = { name: string; cuteness: int }
+type private Cat = { name: string; cuteness: int64 }
 type private Box = { occupant: Cat }
 let private go () = begin
-    { name = "Nubi"; cuteness = 1 }
-    { name = "Nubi"; cuteness = 2 }
-    { name = "Nubi"; cuteness = 3 }
+    { name = "Nubi"; cuteness = 1L }
+    { name = "Nubi"; cuteness = 2L }
+    { name = "Nubi"; cuteness = 3L }
 end
 let private access (cat: Cat) = begin
     cat.cuteness
 end
 let private new_cat () = begin
-    { name = "Beau"; cuteness = 11 }
+    { name = "Beau"; cuteness = 11L }
 end
 let private update (cat: Cat) = begin
     { cat with name = "Sid" }
     { cat with name = "Bartholemew Wonder Puss the Fourth !!!!!!!!!!!!!!!!" }
     { new_cat() with name = "Molly" }
     let box = { occupant = cat }
-    { box.occupant with cuteness = box.occupant.cuteness + 1 }
+    { box.occupant with cuteness = box.occupant.cuteness + 1L }
 end
-let private felix = { name = "Felix"; cuteness = 12 }
-let private tom = { name = "Tom"; cuteness = 1 }
+let private felix = { name = "Felix"; cuteness = 12L }
+let private tom = { name = "Tom"; cuteness = 1L }

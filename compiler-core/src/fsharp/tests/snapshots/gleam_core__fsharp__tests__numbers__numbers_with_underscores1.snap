@@ -4,7 +4,7 @@ expression: "\nconst i = 100_000\nconst f = 100_000.00101\npub fn foo() {\n  i\n
 ---
 module rec my.``mod``
 [<Literal>]
-let private i = 100_000
+let private i = 100_000L
 [<Literal>]
 let private f = 100_000.00101
 let foo () = begin

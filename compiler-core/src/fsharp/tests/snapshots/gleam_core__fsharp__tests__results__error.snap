@@ -4,5 +4,5 @@ expression: "pub fn go() { Error(1) }"
 ---
 module rec my.``mod``
 let go () = begin
-    Error (1)
+    Error (1L)
 end

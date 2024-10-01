@@ -6,5 +6,5 @@ module rec my.``mod``
 let private go (a: unit) = begin
     match a with
     | () ->
-        0
+        0L
 end

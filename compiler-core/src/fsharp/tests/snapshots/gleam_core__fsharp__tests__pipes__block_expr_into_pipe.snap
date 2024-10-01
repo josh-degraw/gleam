@@ -9,7 +9,7 @@ end
 let foo () = begin
     begin
         let _pipe = begin
-            let x = 1
+            let x = 1L
             x
         end
         (id (_pipe))

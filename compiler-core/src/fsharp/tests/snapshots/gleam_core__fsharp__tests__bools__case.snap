@@ -6,7 +6,7 @@ module rec my.``mod``
 let private go (a: bool) = begin
     match a with
     | true ->
-        1
+        1L
     | false ->
-        0
+        0L
 end

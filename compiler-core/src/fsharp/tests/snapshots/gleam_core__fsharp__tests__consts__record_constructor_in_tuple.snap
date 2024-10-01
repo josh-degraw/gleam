@@ -4,7 +4,7 @@ expression: "\npub type X {\n  X(Int)\n}\n\npub const z = #(X)\n\npub fn foo() {
 ---
 module rec my.``mod``
 type X =
-| X of int
+| X of int64
     
 let z = (X)
 let foo () = begin

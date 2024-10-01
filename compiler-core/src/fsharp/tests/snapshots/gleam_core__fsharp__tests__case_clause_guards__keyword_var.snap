@@ -4,23 +4,23 @@ expression: "\npub const function = 5\npub const do = 10\npub fn go() {\n  let c
 ---
 module rec my.``mod``
 [<Literal>]
-let ``function`` = 5
+let ``function`` = 5L
 [<Literal>]
-let ``do`` = 10
+let ``do`` = 10L
 let go () = begin
-    let ``class`` = 5
-    let ``while`` = 10
-    let var = 7
+    let ``class`` = 5L
+    let ``while`` = 10L
+    let var = 7L
     match var with
     | _ when ``class`` = ``while`` ->
         true
-    | _ when [``class``] = [5] ->
+    | _ when [``class``] = [5L] ->
         true
-    | ``function`` when (``function``) = (5) ->
+    | ``function`` when (``function``) = (5L) ->
         false
-    | _ when 10 = 5 ->
+    | _ when 10L = 5L ->
         true
-    | ``while`` when ``while`` > 5 ->
+    | ``while`` when ``while`` > 5L ->
         false
     | ``class`` ->
         false

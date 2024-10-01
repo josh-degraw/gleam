@@ -1,8 +1,7 @@
 ---
 source: compiler-core/src/fsharp/tests/variables.rs
-assertion_line: 125
 expression: "\nconst a = 3\n"
 ---
 module rec my.``mod``
 [<Literal>]
-let private a = 3
+let private a = 3L

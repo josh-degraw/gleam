@@ -5,8 +5,8 @@ expression: "\nfn go() {\n  let x = {\n    1\n    2\n  }\n  x\n}\n"
 module rec my.``mod``
 let private go () = begin
     let x = begin
-        1
-        2
+        1L
+        2L
     end
     x
 end

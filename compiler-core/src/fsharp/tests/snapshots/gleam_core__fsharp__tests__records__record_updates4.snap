@@ -4,9 +4,9 @@ expression: "\npub type Car { Car(make: String, model: String, driver: Person) }
 ---
 module rec my.``mod``
 type Car = { make: string; model: string; driver: Person }
-type Person = { name: string; age: int }
+type Person = { name: string; age: int64 }
 let private foo () = begin
-    let car = { make = "Amphicar"; model = "Model 770"; driver = { name = "John Doe"; age = 27 } }
-    let new_p = { car.driver with age = 28 }
+    let car = { make = "Amphicar"; model = "Model 770"; driver = { name = "John Doe"; age = 27L } }
+    let new_p = { car.driver with age = 28L }
     new_p
 end

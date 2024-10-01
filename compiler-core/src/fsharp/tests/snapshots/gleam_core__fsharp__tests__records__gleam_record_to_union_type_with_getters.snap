@@ -1,11 +1,10 @@
 ---
 source: compiler-core/src/fsharp/tests/records.rs
-assertion_line: 21
 expression: "\n    pub type Foo {\n        Bar(name: String, age: Int)\n        Quux(name: String)\n    }\n"
 ---
 module rec my.``mod``
 type Foo =
-| Bar of name: string * age: int
+| Bar of name: string * age: int64
 | Quux of name: string
     member this.name = 
         match this with

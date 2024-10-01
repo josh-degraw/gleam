@@ -3,10 +3,10 @@ source: compiler-core/src/fsharp/tests/case_clause_guards.rs
 expression: "pub fn go(xs) -> Int {\n  case xs {\n    [x] | [_, x] -> x\n    _ -> 1\n  }\n}\n"
 ---
 module rec my.``mod``
-let go (xs: list<int>) = begin
+let go (xs: list<int64>) = begin
     match xs with
     | [x] | [_; x] ->
         x
     | _ ->
-        1
+        1L
 end

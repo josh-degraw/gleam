@@ -3,10 +3,10 @@ source: compiler-core/src/fsharp/tests/records.rs
 expression: "pub type Thing {\n  Thing(a: Int, b: Int)\n}\n\npub fn foo() {\n  {\n    let thing = Thing(1, 2)\n    thing\n  }.a\n}"
 ---
 module rec my.``mod``
-type Thing = { a: int; b: int }
+type Thing = { a: int64; b: int64 }
 let foo () = begin
     begin
-        let thing = { a = 1; b = 2 }
+        let thing = { a = 1L; b = 2L }
         thing
     end.a
 end

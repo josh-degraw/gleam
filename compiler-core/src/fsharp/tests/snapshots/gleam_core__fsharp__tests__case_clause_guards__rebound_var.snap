@@ -8,7 +8,7 @@ let go () = begin
     let x = true
     match x with
     | _ when x ->
-        1
+        1L
     | _ ->
-        0
+        0L
 end

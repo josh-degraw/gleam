@@ -5,12 +5,12 @@ expression: "\nfn go() {\n  let x = {\n    1\n    {\n      2\n      case True {\
 module rec my.``mod``
 let private go () = begin
     let x = begin
-        1
+        1L
         begin
-            2
+            2L
             match true with
             | _ ->
-                3
+                3L
         end
     end
     x

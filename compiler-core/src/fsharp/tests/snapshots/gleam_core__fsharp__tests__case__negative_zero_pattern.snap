@@ -6,7 +6,7 @@ module rec my.``mod``
 let foo (x: float) = begin
     match x with
     | -0.0 ->
-        1
+        1L
     | _ ->
-        2
+        2L
 end

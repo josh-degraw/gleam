@@ -6,7 +6,7 @@ module rec my.``mod``
 let private go () = begin
     let x = begin
         begin
-            3
+            3L
         end
     end
     x

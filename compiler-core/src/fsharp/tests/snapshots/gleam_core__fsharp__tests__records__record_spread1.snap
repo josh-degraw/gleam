@@ -3,9 +3,9 @@ source: compiler-core/src/fsharp/tests/records.rs
 expression: "\ntype Triple {\n  Triple(a: Int, b: Int, c: Int)\n}\n\nfn foo() {\n  let triple = Triple(1,2,3)\n  let Triple(b: the_b, ..) = triple\n  the_b\n}\n"
 ---
 module rec my.``mod``
-type private Triple = { a: int; b: int; c: int }
+type private Triple = { a: int64; b: int64; c: int64 }
 let private foo () = begin
-    let triple = { a = 1; b = 2; c = 3 }
+    let triple = { a = 1L; b = 2L; c = 3L }
     let { b = the_b } = triple
     the_b
 end

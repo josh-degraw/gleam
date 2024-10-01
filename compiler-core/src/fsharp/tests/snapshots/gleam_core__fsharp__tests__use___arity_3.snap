@@ -9,6 +9,6 @@ let private trip (x: 'u9) (y: 'u10) (f: unit -> 'u13) = begin
 end
 let go () = begin
     trip (1.0) ("") (fun() -> begin 
-        123
+        123L
     end)
 end

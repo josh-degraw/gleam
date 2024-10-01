@@ -11,5 +11,5 @@ type Animal<'t8> =
         | Animal.Cat (type_) -> type_
         | Animal.Dog (type_) -> type_
 let go () = begin
-    Cat (6)
+    Cat (6L)
 end

@@ -4,7 +4,7 @@ expression: "\ntype Cat {\n  Cat(name: String, Int)\n}\n\nfn go(cat) {\n  let Ca
 ---
 module rec my.``mod``
 type private Cat =
-| Cat of name: string * int
+| Cat of name: string * int64
     member this.name = 
         match this with
         | Cat.Cat (name, _) -> name

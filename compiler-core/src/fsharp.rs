@@ -164,7 +164,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn render(&self) -> super::Result<String> {
+    pub fn render(&mut self) -> super::Result<String> {
         let document = join(
             vec![self.module_declaration(), self.module_contents()],
             line(),
@@ -191,7 +191,7 @@ impl<'a> Generator<'a> {
             .append(self.sanitize_name(&self.module.name))
     }
 
-    fn module_contents(&self) -> Document<'a> {
+    fn module_contents(&mut self) -> Document<'a> {
         join(
             self.module
                 .definitions
@@ -951,7 +951,7 @@ impl<'a> Generator<'a> {
     /// When running on JavaScript runtimes ints are represented using JavaScript's 64 bit floating point numbers,
     /// For now we'll assume for maximum compatibility that we'll need to use 64 bits for ints
     fn integer(&self, value: &'a EcoString) -> Document<'a> {
-        value.to_doc() //.append("L")
+        value.to_doc().append("L")
     }
 
     fn expression(&self, expr: &'a TypedExpr) -> Document<'a> {
@@ -1650,7 +1650,7 @@ impl<'a> Generator<'a> {
         match t {
             Type::Named { name, args, .. } => {
                 let name = match name.as_str() {
-                    "Int" | "int" => "int".to_doc(),
+                    "Int" | "int" => "int64".to_doc(),
                     "Float" | "float" => "float".to_doc(),
                     "String" | "string" => "string".to_doc(),
                     "Bool" | "bool" => "bool".to_doc(),
