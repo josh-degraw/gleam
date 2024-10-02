@@ -25,6 +25,10 @@ use vec1::Vec1;
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
+fn is_stdlib_package(package: &str) -> bool {
+    package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib"
+}
+
 #[derive(Debug)]
 pub struct Generator<'a> {
     package_name: &'a EcoString,
@@ -151,6 +155,53 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
     })
 }
 
+/// HACK: For builtins, if we're trying to write to the standard library,
+/// instead of printing out a full typedef, we'll just emit a type alias when possible
+fn builtin_typedef_alias(name: &str) -> Option<&'static str> {
+    match name {
+        // Aliases to .NET builtins
+        "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Prelude.Builtins.Dict<'key, 'value>"),
+        "Option" => Some("type Option<'a> = gleam.Prelude.Builtins.Option<'a>
+let Some a = Option.Some a
+let None = Option.None"),
+        "Result" => Some("type Result<'T, 'TErr> = gleam.Prelude.Builtins.Result<'T, 'TErr>
+let Ok a = Result.Ok a
+let Error e = Result.Error e
+"),
+        "StringBuilder" => Some("type StringBuilder = gleam.Prelude.Builtins.StringBuilder"),
+        "Regex" => Some("type Regex = gleam.Prelude.Builtins.Regex"),
+
+        // Gleam-specific types defined in the prelude
+        "BitArray" => Some("type BitArray = gleam.Prelude.Builtins.BitArray"),
+        "UtfCodepoint" => Some("type UtfCodepoint = gleam.Prelude.Builtins.UtfCodepoint"),
+        "Dynamic" => Some("type Dynamic = gleam.Prelude.Builtins.Dynamic"),
+        "DecodeError" => Some("type DecodeError = gleam.Prelude.Builtins.DecodeError"),
+        "DecodeErrors" => Some("type DecodeErrors = gleam.Prelude.Builtins.DecodeErrors"),
+        "UnknownTuple" => Some("type UnknownTuple = gleam.Prelude.Builtins.UnknownTuple"),
+        "Order" => Some("type Order = gleam.Prelude.Builtins.Order
+let Lt = Order.Lt
+let Eq = Order.Eq
+let Gt = Order.Gt"),
+        "Match" => Some("type Match = gleam.Prelude.Builtins.Match"),
+        "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
+        "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri"),
+
+        _ => None,
+    }
+}
+
+fn map_builtin_type_name_to_fsharp(name: &EcoString) -> EcoString {
+    match name.as_str() {
+        "Int" | "int" => EcoString::from("int64"),
+        "Float" | "float" => EcoString::from("float"),
+        "String" | "string" => EcoString::from("string"),
+        "Bool" | "bool" => EcoString::from("bool"),
+        "Nil" => EcoString::from("unit"),
+        "List" => EcoString::from("list"),
+        _ => name.clone(),
+    }
+}
+
 impl<'a> Generator<'a> {
     pub fn new(
         package_name: &'a EcoString,
@@ -189,7 +240,6 @@ impl<'a> Generator<'a> {
     }
 
     fn module_declaration(&self) -> Document<'a> {
-        //println!("module: {:#?}", module);
         // Use module rec to not need to worry about initialization order
         "module rec "
             .to_doc()
@@ -231,7 +281,7 @@ impl<'a> Generator<'a> {
                     Definition::TypeAlias(t) => self.type_alias(t),
                     Definition::ModuleConstant(c) => self.module_constant(c),
                     Definition::Function(f) => self.function(f),
-                    Definition::Import(i) => nil(), // handled before this part to ensure order
+                    Definition::Import(_) => nil(), // handled before this part to ensure order
                 })
                 .collect::<Vec<Document<'a>>>(),
             line(),
@@ -268,11 +318,12 @@ impl<'a> Generator<'a> {
             Some((AssignName::Discard(_), _)) => {}
             // If the imports are from the same package, don't need to open it
             None if unqualified_values.is_empty() && unqualified_types.is_empty() => {
+                println!("package: {:?}", package);
+                println!("full_module_name: {:?}", full_module_name);
                 // if package is empty, it's from a builtin
                 if package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib" {
                     open_statements.push(docvec!["open ", &full_module_name]);
-                } else if self.package_name == package {
-                } else {
+                } else if self.package_name != package {
                     open_statements.push(docvec!["open ", self.sanitize_name(package)]);
                 }
             }
@@ -360,6 +411,11 @@ impl<'a> Generator<'a> {
     /// ```fsharp
     /// type Person = { name: string; age: int }
     fn custom_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+        if self.is_building_stdlib() && type_.publicity == Publicity::Public {
+            if let Some(s) = builtin_typedef_alias(&type_.name) {
+                return s.to_doc();
+            }
+        }
         if type_.constructors.is_empty() {
             self.external_type(type_)
         } else if self.is_fsharp_union_type(type_) {
@@ -369,9 +425,13 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn is_building_stdlib(&self) -> bool {
+        is_stdlib_package(self.package_name.as_str())
+    }
+
     /// TODO: Is this safe or incorrect?
     /// We should probably emit a warning at least
-    fn external_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    fn external_type(&self, _type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
         return nil();
         // let name = &type_.name;
         // let values = if !type_.typed_parameters.is_empty() {
@@ -434,7 +494,7 @@ impl<'a> Generator<'a> {
             "type ",
             self.map_publicity(&type_.publicity),
             name,
-            self.type_params(type_),
+            self.type_params(&type_.typed_parameters),
             " = ",
             opacity,
             join(fields, "; ".to_doc())
@@ -444,10 +504,10 @@ impl<'a> Generator<'a> {
         ]
     }
 
-    fn type_params(&self, t: &CustomType<Arc<Type>>) -> Document<'a> {
-        if !t.typed_parameters.is_empty() {
+    fn type_params(&self, parameter_types: &[Arc<Type>]) -> Document<'a> {
+        if !parameter_types.is_empty() {
             join(
-                t.typed_parameters.iter().map(|tp| self.type_to_fsharp(tp)),
+                parameter_types.iter().map(|tp| self.type_to_fsharp(tp)),
                 ", ".to_doc(),
             )
             .surround("<", ">")
@@ -592,7 +652,7 @@ impl<'a> Generator<'a> {
             "type ",
             self.map_publicity(&t.publicity),
             type_name,
-            self.type_params(t),
+            self.type_params(&t.typed_parameters),
             " =",
             opacity,
             join(
@@ -640,14 +700,25 @@ impl<'a> Generator<'a> {
     fn type_alias(&self, t: &'a TypeAlias<Arc<Type>>) -> Document<'a> {
         let TypeAlias {
             alias,
-            type_,
             publicity,
             documentation,
             deprecation,
-            // parameters,
-            // type_ast,
+            parameters,
+            type_ast,
             ..
         } = t;
+
+        let type_params = if parameters.is_empty() {
+            nil()
+        } else {
+            join(
+                parameters
+                    .iter()
+                    .map(|(_, p)| docvec!["'", self.sanitize_name(p)]),
+                ", ".to_doc(),
+            )
+            .surround("<", ">")
+        };
 
         docvec![
             self.documentation(documentation),
@@ -655,10 +726,87 @@ impl<'a> Generator<'a> {
             "type ",
             self.map_publicity(publicity),
             alias.clone(),
+            type_params,
             " = ",
-            self.type_to_fsharp(type_)
+            self.type_ast_to_fsharp(type_ast)
         ]
     }
+
+    /// Needed in addition to type_to_fsharp because type aliases have a different AST structure
+    fn type_ast_to_fsharp(&self, ast: &TypeAst) -> Document<'a> {
+        match ast {
+            TypeAst::Constructor(TypeAstConstructor {
+                name, arguments, ..
+            }) => {
+                let name = map_builtin_type_name_to_fsharp(name);
+                if arguments.is_empty() {
+                    name.to_doc()
+                } else {
+                    docvec![
+                        name,
+                        join(
+                            arguments.iter().map(|arg| self.type_ast_to_fsharp(arg)),
+                            ", ".to_doc()
+                        )
+                        .surround("<", ">")
+                    ]
+                }
+            }
+            TypeAst::Fn(TypeAstFn {
+                arguments, return_, ..
+            }) => {
+                let arg_types = arguments
+                    .iter()
+                    .map(|arg| self.type_ast_to_fsharp(arg))
+                    .collect::<Vec<Document<'a>>>();
+
+                let return_type = self.type_ast_to_fsharp(return_);
+                docvec![arg_types, " -> ", return_type]
+            }
+            TypeAst::Var(TypeAstVar { name, .. }) => docvec!["'", self.sanitize_name(name)],
+            TypeAst::Tuple(TypeAstTuple { elems, .. }) => {
+                let items = join(
+                    elems.iter().map(|arg| self.type_ast_to_fsharp(arg)),
+                    " * ".to_doc(),
+                );
+                if elems.len() == 1 {
+                    items
+                } else {
+                    items.surround("(", ")")
+                }
+            }
+            TypeAst::Hole(TypeAstHole { name, .. }) => self.sanitize_name(name),
+        }
+    }
+
+    // fn function_alias_type(&self, ast: &TypeAst) -> Document<'a> {
+    //     match ast {
+    //         TypeAst::Fn(TypeAstFn {
+    //             arguments, return_, ..
+    //         }) => {
+    //             let arg_types = arguments
+    //                 .iter()
+    //                 .map(|arg| self.type_to_fsharp(arg))
+    //                 .collect::<Vec<Document<'a>>>();
+
+    //             let return_type = self.type_to_fsharp(return_);
+    //             docvec![arg_types, " -> ", return_type]
+    //         }
+    //     }
+    //     let arg_types = args
+    //         .iter()
+    //         .map(|arg| self.type_to_fsharp(arg))
+    //         .collect::<Vec<Document<'a>>>();
+
+    //     let arg_types = if arg_types.is_empty() {
+    //         "unit".to_doc()
+    //     } else {
+    //         join(arg_types, " -> ".to_doc())
+    //     };
+
+    //     let return_type = self.type_to_fsharp(retrn);
+    //     docvec![arg_types, " -> ", return_type]
+    // }
 
     fn function(&mut self, f: &'a TypedFunction) -> Document<'a> {
         let Function {
@@ -1044,7 +1192,7 @@ impl<'a> Generator<'a> {
         EcoString::from(mapped)
     }
 
-    fn sanitize_name(&self, name: &'a EcoString) -> Document<'a> {
+    fn sanitize_name(&self, name: &EcoString) -> Document<'a> {
         self.sanitize_str(name.as_str()).to_doc()
     }
     fn string_inner(&self, value: &str) -> Document<'a> {
@@ -1205,7 +1353,7 @@ impl<'a> Generator<'a> {
             TypedExpr::NegateBool { value, .. } => {
                 docvec!["not ", self.expression(value).surround("(", ")")]
             }
-            TypedExpr::BitArray { .. } => "BitArray".to_doc(),
+            TypedExpr::BitArray { .. } => "(BitArray(0))".to_doc(),
             TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
         }
     }
@@ -1922,15 +2070,7 @@ impl<'a> Generator<'a> {
 
         match t {
             Type::Named { name, args, .. } => {
-                let name = match name.as_str() {
-                    "Int" | "int" => "int64".to_doc(),
-                    "Float" | "float" => "float".to_doc(),
-                    "String" | "string" => "string".to_doc(),
-                    "Bool" | "bool" => "bool".to_doc(),
-                    "Nil" => "unit".to_doc(),
-                    "List" => "list".to_doc(),
-                    _ => name.to_doc(),
-                };
+                let name = map_builtin_type_name_to_fsharp(name);
                 if args.is_empty() {
                     name.to_doc()
                 } else {
@@ -1943,21 +2083,7 @@ impl<'a> Generator<'a> {
                         .append(">")
                 }
             }
-            Type::Fn { args, retrn, .. } => {
-                let arg_types = args
-                    .iter()
-                    .map(|arg| self.type_to_fsharp(arg))
-                    .collect::<Vec<Document<'a>>>();
-
-                let arg_types = if arg_types.is_empty() {
-                    "unit".to_doc()
-                } else {
-                    join(arg_types, " -> ".to_doc())
-                };
-
-                let return_type = self.type_to_fsharp(retrn);
-                docvec![arg_types, " -> ", return_type]
-            }
+            Type::Fn { args, retrn } => self.function_type(args, retrn),
             Type::Tuple { elems } => {
                 join(elems.iter().map(|t| self.type_to_fsharp(t)), " * ".to_doc())
                     .surround("(", ")")
@@ -1971,6 +2097,22 @@ impl<'a> Generator<'a> {
                 }
             }
         }
+    }
+
+    fn function_type(&self, args: &[Arc<Type>], retrn: &Arc<Type>) -> Document<'a> {
+        let arg_types = args
+            .iter()
+            .map(|arg| self.type_to_fsharp(arg))
+            .collect::<Vec<Document<'a>>>();
+
+        let arg_types = if arg_types.is_empty() {
+            "unit".to_doc()
+        } else {
+            join(arg_types, " -> ".to_doc())
+        };
+
+        let return_type = self.type_to_fsharp(retrn);
+        docvec![arg_types, " -> ", return_type]
     }
 
     fn module_constant(&self, constant: &'a ModuleConstant<Arc<Type>, EcoString>) -> Document<'a> {
