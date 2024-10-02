@@ -363,7 +363,7 @@ impl<'a> Generator<'a> {
         if type_.constructors.is_empty() {
             self.external_type(type_)
         } else if self.is_fsharp_union_type(type_) {
-            self.discriminated_union(type_)
+            self.discriminated_union_type(type_)
         } else {
             self.record_type(type_)
         }
@@ -456,7 +456,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn discriminated_union(&self, t: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    fn discriminated_union_type(&self, t: &'a CustomType<Arc<Type>>) -> Document<'a> {
         // need to track which named fields have the same name and position and generate method accessors for them
 
         let mut named_fields = HashMap::new();
@@ -1125,7 +1125,15 @@ impl<'a> Generator<'a> {
                     // Every constructor field must have a label to be a record type
                     self.record_instantiation(field_map, args)
                 }
-                _ => self.function_call(fun, args),
+                TypedExpr::Var {
+                    constructor:
+                        ValueConstructor {
+                            variant: ValueConstructorVariant::Record { .. },
+                            ..
+                        },
+                    ..
+                } => self.function_call(false, fun, args),
+                _ => self.function_call(true, fun, args),
             },
 
             TypedExpr::BinOp {
@@ -1208,6 +1216,63 @@ impl<'a> Generator<'a> {
         docvec![self.expression(tuple), ".Item", index + 1]
     }
 
+    // fn union_instantiation(&self, args: &'a [CallArg<TypedExpr>]) -> Document<'a> {
+    //     let args = args.iter().enumerate().map(|(i, arg)| {
+    //         let label = field_map.get(&(i as u32)).expect("Index out of bounds");
+    //         docvec![
+    //             self.sanitize_name(label).to_doc(),
+    //             " = ",
+    //             self.expression(&arg.value)
+    //         ]
+    //     });
+    // }
+
+    // fn constant_union_constructor(
+    //     &self,
+    //     type_: &'a Arc<Type>,
+    //     record_name: &'a EcoString,
+    //     module: &'a Option<(EcoString, SrcSpan)>,
+    //     field_map: &'a Option<FieldMap>,
+    //     args: &'a [CallArg<TypedConstant>],
+    // ) -> Document<'a> {
+    //     // If there's no arguments and the type is a function that takes
+    //     // arguments then this is the constructor being referenced, not the
+    //     // function being called.
+    //     if let Some(arity) = type_.fn_arity() {
+    //         if type_.is_bool() && record_name == "True" {
+    //             return "true".to_doc();
+    //         } else if type_.is_bool() {
+    //             return "false".to_doc();
+    //         } else if type_.is_nil() {
+    //             return "undefined".to_doc();
+    //         } else if arity == 0 {
+    //             return match module {
+    //                 Some((module, _)) => docvec![module, ".", record_name, "()"],
+    //                 None => docvec![record_name, "()"],
+    //             };
+    //         } else if let Some((module, _)) = module {
+    //             return docvec![module, ".", self.sanitize_name(record_name)];
+    //         } else {
+    //             return self.sanitize_name(record_name).to_doc();
+    //         }
+    //     }
+
+    //     if field_map.is_none() && args.is_empty() {
+    //         return self.sanitize_name(record_name).to_doc();
+    //     }
+
+    //     let field_values: Vec<_> = args
+    //         .iter()
+    //         .map(|arg| self.constant_expression(&arg.value))
+    //         .collect();
+
+    //     self.construct_type(
+    //         module.as_ref().map(|(module, _)| module.as_str()),
+    //         record_name,
+    //         field_values,
+    //     )
+    // }
+
     fn record_instantiation(
         &self,
         field_map: &'a FieldMap,
@@ -1254,37 +1319,48 @@ impl<'a> Generator<'a> {
         args.iter().any(|arg| self.must_be_multiline(&arg.value))
     }
 
-    fn function_call(&self, fun: &'a TypedExpr, args: &'a [TypedCallArg]) -> Document<'a> {
+    fn function_call(
+        &self,
+        curried: bool,
+        fun: &'a TypedExpr,
+        args: &'a [TypedCallArg],
+    ) -> Document<'a> {
         let must_be_multiline = self.any_arg_must_be_multiline(args);
 
         let args = if args.is_empty() {
             "()".to_doc()
         } else {
-            let sep: Document<'_> = if must_be_multiline {
+            let start: Document<'_> = if must_be_multiline {
                 line()
-            } else {
+            } else if curried {
                 " ".to_doc()
+            } else {
+                nil()
             };
 
-            let start = if must_be_multiline {
-                line()
+            let sep = if !curried {
+                ", ".to_doc().append(start.clone())
             } else {
-                " ".to_doc()
+                start.clone()
             };
-            start
-                .append(join(
-                    args.iter()
-                        .map(|a| self.expression(&a.value).surround("(", ")")),
-                    sep,
-                ))
-                .nest(INDENT)
-                .group()
+
+            let args = args
+                .iter()
+                .map(|a| self.expression(&a.value).surround("(", ")"));
+
+            let args = start.append(join(args, sep)).nest(INDENT).group();
+
+            if curried {
+                args
+            } else {
+                args.surround("(", ")")
+            }
         };
-        let fun_expr = self.expression(fun);
         // If for some reason we're doing an IIFE, we need to wrap it in parens
-        let fun_expr = match fun {
-            TypedExpr::Fn { .. } => fun_expr.surround("(", ")"),
-            _ => fun_expr,
+        let fun_expr = if matches!(fun, TypedExpr::Fn { .. }) {
+            self.expression(fun).surround("(", ")")
+        } else {
+            self.expression(fun)
         };
         fun_expr.append(args).group()
     }
@@ -1923,75 +1999,7 @@ impl<'a> Generator<'a> {
                 type_,
                 field_map,
                 ..
-            } => {
-                if let Some(constructor) = self.module.type_info.values.get(record_name) {
-                    if let ValueConstructorVariant::Record {
-                        name,
-                        constructors_count,
-                        field_map: Some(field_map),
-                        arity,
-                        ..
-                    } = &constructor.variant
-                    {
-                        // Is a genuine record constructor if:
-                        // only one constructor exists
-                        // constructor name is the same as the type name
-                        // All fields have labels
-
-                        if *constructors_count == 1u16
-                            && name == record_name
-                            && *arity == field_map.fields.len() as u16
-                        {
-                            let field_map = invert_field_map(field_map);
-
-                            let args = args.iter().enumerate().map(|(i, arg)| {
-                                let label =
-                                    field_map.get(&(i as u32)).expect("Index out of bounds");
-                                docvec![label.to_doc(), " = ", self.constant_expression(&arg.value)]
-                            });
-
-                            return join(args, "; ".to_doc()).group().surround("{ ", " }");
-                        }
-                    }
-                }
-
-                // If there's no arguments and the type is a function that takes
-                // arguments then this is the constructor being referenced, not the
-                // function being called.
-                if let Some(arity) = type_.fn_arity() {
-                    if type_.is_bool() && record_name == "True" {
-                        return "true".to_doc();
-                    } else if type_.is_bool() {
-                        return "false".to_doc();
-                    } else if type_.is_nil() {
-                        return "undefined".to_doc();
-                    } else if arity == 0 {
-                        return match module {
-                            Some((module, _)) => docvec![module, ".", record_name, "()"],
-                            None => docvec![record_name, "()"],
-                        };
-                    } else if let Some((module, _)) = module {
-                        return docvec![module, ".", self.sanitize_name(record_name)];
-                    } else {
-                        return self.sanitize_name(record_name).to_doc();
-                    }
-                }
-
-                if field_map.is_none() && args.is_empty() {
-                    return self.sanitize_name(record_name).to_doc();
-                }
-
-                let field_values: Vec<_> = args
-                    .iter()
-                    .map(|arg| self.constant_expression(&arg.value))
-                    .collect();
-
-                self.construct_type(
-                    module.as_ref().map(|(module, _)| module.as_str()),
-                    record_name,
-                    field_values,
-                )
-            }
+            } => self.constant_record_expression(record_name, args, type_, module, field_map),
 
             Constant::BitArray { .. } => "//TODO: Constant::BitArray".to_doc(),
 
@@ -2019,6 +2027,93 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn constant_record_expression(
+        &self,
+        record_name: &'a EcoString,
+        args: &'a [CallArg<TypedConstant>],
+        type_: &'a Arc<Type>,
+        module: &'a Option<(EcoString, SrcSpan)>,
+        field_map: &'a Option<FieldMap>,
+    ) -> Document<'a> {
+        if let Some(constructor) = self.module.type_info.values.get(record_name) {
+            if let ValueConstructorVariant::Record {
+                name,
+                constructors_count,
+                field_map: Some(field_map),
+                arity,
+                ..
+            } = &constructor.variant
+            {
+                // Is a genuine record constructor if:
+                // only one constructor exists
+                // constructor name is the same as the type name
+                // All fields have labels
+
+                if *constructors_count == 1u16
+                    && name == record_name
+                    && *arity == field_map.fields.len() as u16
+                {
+                    let field_map = invert_field_map(field_map);
+
+                    let args = args.iter().enumerate().map(|(i, arg)| {
+                        let label = field_map.get(&(i as u32)).expect("Index out of bounds");
+                        docvec![label.to_doc(), " = ", self.constant_expression(&arg.value)]
+                    });
+
+                    return join(args, "; ".to_doc()).group().surround("{ ", " }");
+                }
+            }
+        }
+
+        self.constant_union_constructor(type_, record_name, module, field_map, args)
+    }
+
+    fn constant_union_constructor(
+        &self,
+        type_: &'a Arc<Type>,
+        record_name: &'a EcoString,
+        module: &'a Option<(EcoString, SrcSpan)>,
+        field_map: &'a Option<FieldMap>,
+        args: &'a [CallArg<TypedConstant>],
+    ) -> Document<'a> {
+        // If there's no arguments and the type is a function that takes
+        // arguments then this is the constructor being referenced, not the
+        // function being called.
+        if let Some(arity) = type_.fn_arity() {
+            if type_.is_bool() && record_name == "True" {
+                return "true".to_doc();
+            } else if type_.is_bool() {
+                return "false".to_doc();
+            } else if type_.is_nil() {
+                return "undefined".to_doc();
+            } else if arity == 0 {
+                return match module {
+                    Some((module, _)) => docvec![module, ".", record_name, "()"],
+                    None => docvec![record_name, "()"],
+                };
+            } else if let Some((module, _)) = module {
+                return docvec![module, ".", self.sanitize_name(record_name)];
+            } else {
+                return self.sanitize_name(record_name).to_doc();
+            }
+        }
+
+        if field_map.is_none() && args.is_empty() {
+            return self.sanitize_name(record_name).to_doc();
+        }
+
+        let field_values: Vec<_> = args
+            .iter()
+            .map(|arg| self.constant_expression(&arg.value))
+            .collect();
+
+        self.construct_type(
+            module.as_ref().map(|(module, _)| module.as_str()),
+            record_name,
+            field_values,
+        )
+    }
+
     fn construct_type(
         &self,
         module: Option<&'a str>,
@@ -2030,16 +2125,16 @@ impl<'a> Generator<'a> {
             arguments.into_iter().inspect(|_| {
                 any_arguments = true;
             }),
-            break_(",", ", "),
+            ", ".to_doc(),
         );
-        let arguments = docvec![break_("", ""), arguments].nest(INDENT);
+        let arguments = arguments.nest(INDENT);
         let name = if let Some(module) = module {
             docvec![module, ".", name]
         } else {
             name.to_doc()
         };
         if any_arguments {
-            docvec![name, "(", arguments, break_(",", ""), ")"].group()
+            docvec![name, "(", arguments, ")"].group()
         } else {
             docvec![name, "()"]
         }
