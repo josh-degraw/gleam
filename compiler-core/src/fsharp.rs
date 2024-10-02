@@ -253,7 +253,7 @@ impl<'a> Generator<'a> {
         let mut open_statements = Vec::new();
         let mut module_aliases = Vec::new();
         let mut other_aliases = Vec::new();
-        let full_module_name = EcoString::from(module.split('/').join("."));
+        let full_module_name = self.sanitize_str(module);
 
         match as_name {
             Some((AssignName::Variable(name), _)) => {
@@ -928,30 +928,23 @@ impl<'a> Generator<'a> {
         join(res, line())
     }
 
-    fn sanitize_str(&self, value: &'a str) -> Document<'a> {
-        join(
-            value.split("/").map(|s| {
+    fn sanitize_str(&self, value: &'a str) -> EcoString {
+        let mapped = value
+            .split("/")
+            .map(|s| {
                 if is_reserved_word(s) {
-                    s.to_doc().surround("``", "``")
+                    format!("``{s}``")
                 } else {
-                    s.to_doc()
+                    String::from(s)
                 }
-            }),
-            ".".to_doc(),
-        )
+            })
+            .join(".");
+
+        EcoString::from(mapped)
     }
 
     fn sanitize_name(&self, name: &'a EcoString) -> Document<'a> {
-        join(
-            name.split("/").map(|s| {
-                if is_reserved_word(s) {
-                    s.to_doc().surround("``", "``")
-                } else {
-                    s.to_doc()
-                }
-            }),
-            ".".to_doc(),
-        )
+        self.sanitize_str(name.as_str()).to_doc()
     }
     fn string_inner(&self, value: &str) -> Document<'a> {
         let content = unicode_escape_sequence_pattern()
