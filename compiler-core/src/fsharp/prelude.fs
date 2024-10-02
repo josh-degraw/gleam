@@ -20,7 +20,21 @@ module Prelude =
 
         type UtfCodepoint = UtfCodepoint of int64
 
-        type Dynamic = Dynamic of obj
+        [<CustomEquality; CustomComparison>]
+        type Dynamic =
+            | Dynamic of obj
+
+            interface System.IComparable with
+                member this.CompareTo(obj) =
+                    System.StringComparer.InvariantCulture.Compare($"%A{this}", $"%A{obj}")
+
+            override this.Equals(obj) =
+                match obj with
+                | :? Dynamic as dynamic -> System.StringComparer.InvariantCulture.Equals($"%A{this}", $"%A{dynamic}")
+                | _ -> false
+
+            override this.GetHashCode() =
+                System.StringComparer.InvariantCulture.GetHashCode($"%A{this}")
 
         type DecodeError =
             { expected: string
