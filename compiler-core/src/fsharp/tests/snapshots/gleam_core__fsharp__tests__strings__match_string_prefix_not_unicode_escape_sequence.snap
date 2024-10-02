@@ -5,7 +5,7 @@ expression: "\npub fn go(x) {\n  let _ = case x {\n    \"\\\\u{9}\" <> rest -> \
 module rec my.``mod``
 
 let go (x: string) = begin
-    let _ = 
+    let _ =
         match x with
         | Gleam__codegen__prefix "\\u{9}" rest ->
             "test"

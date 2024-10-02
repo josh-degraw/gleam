@@ -15,6 +15,6 @@ let go () = begin
         (Box (1L))
         (fun(_use0: Box<int64>) -> begin
             let (Box(x)) = _use0
-        x
+            x
         end)
 end

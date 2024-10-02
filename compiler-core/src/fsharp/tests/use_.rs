@@ -82,3 +82,39 @@ fn apply(arg, fun) {
 "#
     );
 }
+
+#[test]
+fn case_inside_use_statement() {
+    assert_fsharp!(
+        r#"
+pub fn go(index, size) {
+    use data <- try(case index >= 0 {
+        True ->
+            case index < size {
+              True -> Some(Some("a"))
+              False -> None
+            }
+        False ->
+            case 2 <= size {
+              True -> Some(Some("c"))
+              False -> None
+            }
+        })
+    data
+}
+pub type Option(a) {
+  Some(a)
+  None
+}
+pub fn try(
+  option: Option(a),
+  apply fun: fn(a) -> Option(b),
+) -> Option(b) {
+  case option {
+    Some(x) -> fun(x)
+    None -> None
+  }
+}
+"#,
+    )
+}

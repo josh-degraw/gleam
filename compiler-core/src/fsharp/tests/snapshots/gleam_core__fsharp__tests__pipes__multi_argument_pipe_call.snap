@@ -10,8 +10,6 @@ end
 let private go (dict: 'u8) (key: 'u9) = begin
     begin
         let _pipe = "something"
-        ((fun(_capture: string) -> begin
-            insert (dict) (key) (_capture)
-        end) (_pipe))
+        ((fun(_capture: string) -> insert (dict) (key) (_capture)) (_pipe))
     end
 end

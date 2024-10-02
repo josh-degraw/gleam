@@ -11,7 +11,5 @@ end
 let go () = begin
     pair
         (1.0)
-        (fun() -> begin
-            123L
-        end)
+        (fun() -> 123L)
 end

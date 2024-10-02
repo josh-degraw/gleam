@@ -1,6 +1,5 @@
 ---
 source: compiler-core/src/fsharp/tests/use_.rs
-assertion_line: 39
 expression: "\npub fn go() {\n  use <- trip(1.0, \"\")\n  123\n}\n\nfn trip(x, y, f) {\n  let z = f()\n  #(x, y, z)\n}\n"
 ---
 module rec my.``mod``
@@ -13,7 +12,5 @@ let go () = begin
     trip
         (1.0)
         ("")
-        (fun() -> begin
-            123L
-        end)
+        (fun() -> 123L)
 end

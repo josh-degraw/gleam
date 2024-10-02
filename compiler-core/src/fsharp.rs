@@ -7,7 +7,7 @@ use crate::{
     docvec,
     pretty::*,
     type_::{
-        Deprecation, FieldMap, PatternConstructor, Type, TypeVar, ValueConstructor,
+        Deprecation, FieldMap, PatternConstructor, Type, TypeVar, TypedCallArg, ValueConstructor,
         ValueConstructorVariant,
     },
 };
@@ -789,7 +789,10 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn body_must_be_multiline(&self, body: &'a Vec1<TypedStatement>) -> bool {
+    fn body_must_be_multiline(&self, body: &'a [TypedStatement]) -> bool {
+        if body.len() > 1 {
+            return true;
+        }
         body.iter().any(|s| match s {
             Statement::Expression(e) => self.must_be_multiline(e),
             _ => true,
@@ -797,18 +800,48 @@ impl<'a> Generator<'a> {
     }
 
     /// Anonymous functions
-    fn fun(&self, args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
+    fn fun(&self, args: &'a [TypedArg], body: &'a Vec1<TypedStatement>) -> Document<'a> {
+        if !self.body_must_be_multiline(body) {
+            return docvec![
+                "fun",
+                self.fun_args(args),
+                " -> ",
+                self.statement(body.first()).0
+            ];
+        }
+
         docvec![
             "fun",
             self.fun_args(args),
             " -> begin",
-            break_("", " "),
             line()
                 .nest(INDENT)
                 .append(self.statements(body, None).nest(INDENT).append(line()))
                 .append("end"),
         ]
     }
+    // /// Anonymous functions
+    // fn fun(&self, args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
+    //     let output = docvec![
+    //         "fun",
+    //         self.fun_args(args),
+    //         " ->",
+    //         break_(" begin\n", " ")
+    //             .nest_if_broken(INDENT)
+    //             .append(
+    //                 self.statements(body, None)
+    //                     .nest_if_broken(INDENT)
+    //                     //.append(line())
+    //             )
+    //             .append(break_("\nend", "")),
+    //     ];
+
+    //     if self.body_must_be_multiline(body) {
+    //         output.force_break() //.nest(INDENT)
+    //     } else {
+    //         output
+    //     }
+    // }
 
     fn statement(&self, s: &'a TypedStatement) -> (Document<'a>, Option<Document<'a>>) {
         let mut last_var = None;
@@ -876,16 +909,28 @@ impl<'a> Generator<'a> {
     fn assignment(&self, name: Document<'a>, value: &'a TypedExpr) -> Document<'a> {
         let value_doc = self.expression(value);
 
-        if matches!(value, TypedExpr::Case { .. } | TypedExpr::Fn { .. }) || self.is_iife(value) {
+        if self.must_start_assignment_value_on_newline(value) {
             docvec![
                 "let ",
                 name,
-                " = ",
+                " =",
                 line().nest(INDENT).append(value_doc.nest(INDENT))
             ]
         } else {
             docvec!["let ", name, " = ", value_doc]
         }
+    }
+
+    fn must_start_assignment_value_on_newline(&self, value: &'a TypedExpr) -> bool {
+        if matches!(value, TypedExpr::Case { .. } | TypedExpr::Fn { .. }) || self.is_iife(value) {
+            return true;
+        }
+
+        if let TypedExpr::Call { args, .. } = value {
+            return self.any_arg_must_be_multiline(args);
+        }
+
+        false
     }
 
     /// If the expression is an immediately-invoked function expression (IIFE)
@@ -1136,36 +1181,56 @@ impl<'a> Generator<'a> {
 
     // If an expression is one of these types, it must take up multiple lines, regardless of how long it is
     fn must_be_multiline(&self, expr: &'a TypedExpr) -> bool {
-        matches!(
+        if matches!(
             expr,
             TypedExpr::Pipeline { .. } | TypedExpr::Fn { .. } | TypedExpr::Case { .. }
-        )
+        ) {
+            return true;
+        }
+
+        if let TypedExpr::Call { args, .. } = expr {
+            return self.any_arg_must_be_multiline(args);
+        }
+
+        if let TypedExpr::List { elements, .. } = expr {
+            return elements.iter().any(|e| self.must_be_multiline(e));
+        }
+        if let TypedExpr::Tuple { elems, .. } = expr {
+            return elems.iter().any(|e| self.must_be_multiline(e));
+        }
+
+        false
     }
 
-    fn any_arg_must_be_multiline(&self, args: &'a [CallArg<TypedExpr>]) -> bool {
+    fn any_arg_must_be_multiline(&self, args: &'a [TypedCallArg]) -> bool {
         args.iter().any(|arg| self.must_be_multiline(&arg.value))
     }
 
-    fn function_call(&self, fun: &'a TypedExpr, args: &'a [CallArg<TypedExpr>]) -> Document<'a> {
+    fn function_call(&self, fun: &'a TypedExpr, args: &'a [TypedCallArg]) -> Document<'a> {
         let must_be_multiline = self.any_arg_must_be_multiline(args);
 
         let args = if args.is_empty() {
             "()".to_doc()
         } else {
-            let sep = if must_be_multiline {
-                line().nest(INDENT)
+            let sep: Document<'_> = if must_be_multiline {
+                line()
             } else {
                 " ".to_doc()
             };
 
-            docvec![
-                sep.clone(),
-                join(
+            let start = if must_be_multiline {
+                line()
+            } else {
+                " ".to_doc()
+            };
+            start
+                .append(join(
                     args.iter()
                         .map(|a| self.expression(&a.value).surround("(", ")")),
                     sep,
-                )
-            ]
+                ))
+                .nest(INDENT)
+                .group()
         };
         let fun_expr = self.expression(fun);
         // If for some reason we're doing an IIFE, we need to wrap it in parens

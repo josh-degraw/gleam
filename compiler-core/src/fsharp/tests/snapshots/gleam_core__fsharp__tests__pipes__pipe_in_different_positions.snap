@@ -13,7 +13,7 @@ end
 let something () = begin
     begin
         let _pipe = false
-        let _pipe = 
+        let _pipe =
             (fun(_capture: bool) -> ``and`` (true) (_capture)) (_pipe)
         (is_false (_pipe))
     end

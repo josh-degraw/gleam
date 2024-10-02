@@ -1,0 +1,35 @@
+---
+source: compiler-core/src/fsharp/tests/use_.rs
+assertion_line: 88
+expression: "\npub fn go(index, size) {\n    use data <- try(case index >= 0 {\n        True ->\n            case index < size {\n              True -> Some(Some(\"a\"))\n              False -> None\n            }\n        False ->\n            case 2 <= size {\n              True -> Some(Some(\"c\"))\n              False -> None\n            }\n        })\n    data\n}\npub type Option(a) {\n  Some(a)\n  None\n}\npub fn try(\n  option: Option(a),\n  apply fun: fn(a) -> Option(b),\n) -> Option(b) {\n  case option {\n    Some(x) -> fun(x)\n    None -> None\n  }\n}\n"
+---
+module rec my.``mod``
+
+type Option<'t8> =
+| None
+| Some of 't8
+    
+let ``try`` (option: Option<'t12>) (``fun``: 't12 -> Option<'t14>) = begin
+    match option with
+    | (Some(x)) ->
+        ``fun`` (x)
+    | (None) ->
+        None
+end
+let go (index: int64) (size: int64) = begin
+    ``try``
+        (match index >= 0L with
+        | true ->
+            match index < size with
+            | true ->
+                Some (Some ("a"))
+            | false ->
+                None
+        | false ->
+            match 2L <= size with
+            | true ->
+                Some (Some ("c"))
+            | false ->
+                None)
+        (fun(data: Option<string>) -> data)
+end
