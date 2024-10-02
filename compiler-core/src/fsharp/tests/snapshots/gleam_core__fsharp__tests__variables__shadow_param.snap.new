@@ -1,12 +1,11 @@
 ---
 source: compiler-core/src/fsharp/tests/variables.rs
+assertion_line: 22
 expression: "pub fn foo(board) {\nfn(board) { board }\n  board\n}"
 ---
 module rec my.``mod``
 
 let foo (board: 'u8) = begin
-    fun(board: 'u10) -> begin
-            board
-        end
+    fun(board: 'u10) -> board
     board
 end

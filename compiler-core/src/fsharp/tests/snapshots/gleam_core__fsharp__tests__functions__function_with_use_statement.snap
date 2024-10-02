@@ -8,7 +8,6 @@ let private something (cba: int64 -> 'u12) = begin
     cba (1L)
 end
 let private go () = begin
-    something (fun(a: int64) -> begin 
-        a + 1L
-    end)
+    something
+        (fun(a: int64) -> a + 1L)
 end

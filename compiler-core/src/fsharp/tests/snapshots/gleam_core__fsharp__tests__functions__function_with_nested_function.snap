@@ -7,10 +7,10 @@ module rec my.``mod``
 type private Option<'t8> =
 | None
 | Some of 't8
-    
+
 let private go (a: Option<int64>) = begin
-    let inc_or_zero = 
-        fun(x: Option<int64>) -> begin 
+    let inc_or_zero =
+        fun(x: Option<int64>) -> begin
             match x with
             | (Some(i)) ->
                 i + 1L

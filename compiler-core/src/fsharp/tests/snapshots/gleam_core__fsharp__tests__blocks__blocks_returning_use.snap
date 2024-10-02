@@ -6,18 +6,12 @@ module rec my.``mod``
 
 let private b () = begin
     begin
-        (fun(cb: int64 -> int64) -> begin 
-            cb (1L)
-        end) (fun(a: int64) -> begin 
-            a
-        end)
+        (fun(cb: int64 -> int64) -> cb (1L))
+            (fun(a: int64) -> a)
     end
     begin
-        (fun(cb: int64 -> int64) -> begin 
-            cb (2L)
-        end) (fun(b: int64) -> begin 
-            b
-        end)
+        (fun(cb: int64 -> int64) -> cb (2L))
+            (fun(b: int64) -> b)
     end
     3L
 end

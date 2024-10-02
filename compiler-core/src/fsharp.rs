@@ -20,6 +20,7 @@ use std::{
     ops::Deref,
     sync::{Arc, OnceLock},
 };
+use vec1::Vec1;
 
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
@@ -788,6 +789,13 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn body_must_be_multiline(&self, body: &'a Vec1<TypedStatement>) -> bool {
+        body.iter().any(|s| match s {
+            Statement::Expression(e) => self.must_be_multiline(e),
+            _ => true,
+        })
+    }
+
     /// Anonymous functions
     fn fun(&self, args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
         docvec![
@@ -1126,18 +1134,38 @@ impl<'a> Generator<'a> {
         join(args, "; ".to_doc()).group().surround("{ ", " }")
     }
 
+    // If an expression is one of these types, it must take up multiple lines, regardless of how long it is
+    fn must_be_multiline(&self, expr: &'a TypedExpr) -> bool {
+        matches!(
+            expr,
+            TypedExpr::Pipeline { .. } | TypedExpr::Fn { .. } | TypedExpr::Case { .. }
+        )
+    }
+
+    fn any_arg_must_be_multiline(&self, args: &'a [CallArg<TypedExpr>]) -> bool {
+        args.iter().any(|arg| self.must_be_multiline(&arg.value))
+    }
+
     fn function_call(&self, fun: &'a TypedExpr, args: &'a [CallArg<TypedExpr>]) -> Document<'a> {
+        let must_be_multiline = self.any_arg_must_be_multiline(args);
+
         let args = if args.is_empty() {
             "()".to_doc()
         } else {
-            " ".to_doc().append(
+            let sep = if must_be_multiline {
+                line().nest(INDENT)
+            } else {
+                " ".to_doc()
+            };
+
+            docvec![
+                sep.clone(),
                 join(
                     args.iter()
                         .map(|a| self.expression(&a.value).surround("(", ")")),
-                    " ".to_doc(),
+                    sep,
                 )
-                .group(),
-            )
+            ]
         };
         let fun_expr = self.expression(fun);
         // If for some reason we're doing an IIFE, we need to wrap it in parens

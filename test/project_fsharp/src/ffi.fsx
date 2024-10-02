@@ -1,10 +1,7 @@
 module rec my.``mod``
 
-let go (a: int) : int =
-  begin
-    match a with
-    | 99 ->
-      let a = a
-      1
-    | _ -> a
-  end
+let go () =
+    begin
+        let thingy = fun (f: unit -> 'u11) -> begin f () end
+        thingy (fun () -> begin failwith "Not implemented" end)
+    end

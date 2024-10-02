@@ -1,5 +1,6 @@
 ---
 source: compiler-core/src/fsharp/tests/use_.rs
+assertion_line: 68
 expression: "\npub fn go() {\n  use Box(x) <- apply(Box(1))\n  x\n}\n\ntype Box(a) {\n  Box(a)\n}\n\nfn apply(arg, fun) {\n  fun(arg)\n}\n"
 ---
 module rec my.``mod``
@@ -14,7 +15,7 @@ let go () = begin
     apply
         (Box (1L))
         (fun(_use0: Box<int64>) -> begin
-            let (Box(x)) = _use0
+        let (Box(x)) = _use0
         x
         end)
 end

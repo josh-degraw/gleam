@@ -14,9 +14,7 @@ let something () = begin
     begin
         let _pipe = false
         let _pipe = 
-            (fun(_capture: bool) -> begin 
-                ``and`` (true) (_capture)
-            end) (_pipe)
+            (fun(_capture: bool) -> ``and`` (true) (_capture)) (_pipe)
         (is_false (_pipe))
     end
 end

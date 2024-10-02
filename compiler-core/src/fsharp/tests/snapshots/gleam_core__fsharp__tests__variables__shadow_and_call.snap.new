@@ -1,11 +1,10 @@
 ---
 source: compiler-core/src/fsharp/tests/variables.rs
+assertion_line: 33
 expression: "\npub fn foo(x) {\n  fn(x) { x }(x)\n}\n"
 ---
 module rec my.``mod``
 
 let foo (x: 'u10) = begin
-    (fun(x: 'u10) -> begin
-            x
-        end) (x)
+    (fun(x: 'u10) -> x) (x)
 end
