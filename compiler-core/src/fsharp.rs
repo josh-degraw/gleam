@@ -318,8 +318,6 @@ impl<'a> Generator<'a> {
             Some((AssignName::Discard(_), _)) => {}
             // If the imports are from the same package, don't need to open it
             None if unqualified_values.is_empty() && unqualified_types.is_empty() => {
-                println!("package: {:?}", package);
-                println!("full_module_name: {:?}", full_module_name);
                 // if package is empty, it's from a builtin
                 if package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib" {
                     open_statements.push(docvec!["open ", &full_module_name]);
@@ -1057,7 +1055,7 @@ impl<'a> Generator<'a> {
 
     fn get_assignment_binding(&self, pattern: &'a TypedPattern) -> (Document<'a>, bool) {
         let name = self.pattern(pattern);
-        // Need to disallow a case where the matches in a record constructor pattern only include discards
+        // TODO: Need to disallow a case where the matches in a record constructor pattern only include discards
         (name, true)
         // match pattern {
         //     TypedPattern::Int { .. } | TypedPattern::Float { .. } | TypedPattern::String { .. } => {
@@ -1068,7 +1066,6 @@ impl<'a> Generator<'a> {
         //     TypedPattern::Constructor { type_, .. } if type_.is_bool() => (name.to_doc(), true),
         //     // Need to disallow a case where the matches in a record constructor pattern only include discards
         //     TypedPattern::Constructor { constructor, .. } => {
-        //         println!("constructor: {:?}", constructor);
         //         (name, false)
         //     }
         //     _ => (name, true),
