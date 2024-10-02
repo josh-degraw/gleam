@@ -6,5 +6,5 @@ module rec my.``mod``
 open gleam
 
 let go () = begin
-    gleam.Ok (1L)
+    gleam.Ok 1L
 end

@@ -9,7 +9,7 @@ type Result<'t8, 't9> =
 | Ok of 't8
     
 let go () = begin
-    let (Error(b)) = Error (1L)
+    let (Error(b)) = Error(1L)
     (Error(b))
 end
 let private int_bind (x: int64) = begin

@@ -11,6 +11,6 @@ end
 let foo (x: X) = begin
     { x with a = begin
          let _pipe = 1L
-         (id (_pipe))
+         (id _pipe)
      end }
 end

@@ -10,6 +10,6 @@ end
 let foo () = begin
     1L = begin
         let _pipe = 1L
-        (id (_pipe))
+        (id _pipe)
     end
 end

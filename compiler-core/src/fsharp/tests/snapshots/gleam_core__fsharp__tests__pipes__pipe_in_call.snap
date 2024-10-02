@@ -14,9 +14,9 @@ let foo () = begin
             two
                 (begin
                     let _pipe = 1L
-                    (two (_pipe) (2L))
+                    (two _pipe 2L)
                 end)
-                (_capture)
-        end) (_pipe))
+                _capture
+        end) _pipe)
     end
 end

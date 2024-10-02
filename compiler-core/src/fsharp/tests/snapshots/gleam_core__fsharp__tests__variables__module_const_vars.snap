@@ -15,9 +15,9 @@ let use_int_alias () = begin
 end
 let private int_identity_alias = int_identity
 let use_int_identity_alias () = begin
-    int_identity_alias (42L)
+    int_identity_alias 42L
 end
 let private compound = (int, int_identity, int_identity_alias)
 let use_compound () = begin
-    compound.Item2 (compound.Item1)
+    compound.Item2 compound.Item1
 end

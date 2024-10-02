@@ -9,10 +9,10 @@ let myfun (mt: int64) = begin
     | 1L | _ ->
         begin
             let _pipe = 1L
-            (Ok (_pipe))
+            (Ok(_pipe))
         end
     begin
         let _pipe = 1L
-        (Ok (_pipe))
+        (Ok(_pipe))
     end
 end

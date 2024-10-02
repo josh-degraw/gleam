@@ -7,7 +7,7 @@ module rec my.``mod``
 let foo () = begin
     begin
         let _pipe = "lets"
-        let _pipe = failwith ("pipe") (_pipe)
-        (failwith ("other panic") (_pipe))
+        let _pipe = failwith ("pipe") _pipe
+        (failwith ("other panic") _pipe)
     end
 end

@@ -6,5 +6,5 @@ module rec my.``mod``
 let Thing = gleam.Ok
 
 let go () = begin
-    Thing (1L)
+    Thing(1L)
 end

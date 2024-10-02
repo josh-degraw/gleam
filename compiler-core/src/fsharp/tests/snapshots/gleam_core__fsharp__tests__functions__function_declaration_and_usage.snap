@@ -8,5 +8,5 @@ let private add (a: int64) (b: int64) = begin
     a + b
 end
 let foo () = begin
-    add (1L) (2L)
+    add 1L 2L
 end

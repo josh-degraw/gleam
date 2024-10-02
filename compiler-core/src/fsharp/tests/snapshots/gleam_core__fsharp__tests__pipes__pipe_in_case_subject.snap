@@ -7,7 +7,7 @@ module rec my.``mod``
 let x (f: int64 -> 'u11) = begin
     match begin
         let _pipe = 1L
-        (f (_pipe))
+        (f _pipe)
     end with
     | x ->
         x

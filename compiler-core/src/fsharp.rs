@@ -1325,6 +1325,7 @@ impl<'a> Generator<'a> {
         fun: &'a TypedExpr,
         args: &'a [TypedCallArg],
     ) -> Document<'a> {
+        let arg_len = args.len();
         let must_be_multiline = self.any_arg_must_be_multiline(args);
 
         let args = if args.is_empty() {
@@ -1344,16 +1345,25 @@ impl<'a> Generator<'a> {
                 start.clone()
             };
 
-            let args = args
-                .iter()
-                .map(|a| self.expression(&a.value).surround("(", ")"));
+            let mut has_paren_arg_already = false;
+
+            let args = args.iter().map(|a| {
+                if self.must_be_parenthesized_arg(a) {
+                    has_paren_arg_already = true;
+                    self.expression(&a.value).surround("(", ")")
+                } else {
+                    self.expression(&a.value)
+                }
+            });
 
             let args = start.append(join(args, sep)).nest(INDENT).group();
 
             if curried {
                 args
-            } else {
+            } else if arg_len > 1 || !has_paren_arg_already {
                 args.surround("(", ")")
+            } else {
+                args
             }
         };
         // If for some reason we're doing an IIFE, we need to wrap it in parens
@@ -1368,6 +1378,30 @@ impl<'a> Generator<'a> {
     fn record_access(&self, record: &'a TypedExpr, label: &'a EcoString) -> Document<'a> {
         let record_expr = self.expression(record);
         docvec![record_expr, ".", self.sanitize_name(label)]
+    }
+
+    /// Not all function arguments need to have parentheses
+    /// We can omit them in many cases when they are simple values
+    fn must_be_parenthesized_arg(&self, expr: &'a TypedCallArg) -> bool {
+        if self.must_be_multiline(&expr.value) {
+            return true;
+        }
+        match expr.value {
+            TypedExpr::Var { .. }
+            | TypedExpr::ModuleSelect { .. }
+            | TypedExpr::Int { .. }
+            | TypedExpr::Float { .. }
+            | TypedExpr::String { .. }
+            | TypedExpr::Fn { .. }
+            | TypedExpr::Tuple { .. }
+            | TypedExpr::TupleIndex { .. }
+            | TypedExpr::NegateBool { .. }
+            | TypedExpr::NegateInt { .. }
+            | TypedExpr::RecordAccess { .. }
+            | TypedExpr::BitArray { .. } => false,
+
+            _ => true,
+        }
     }
 
     fn todo(&self, message: &'a Option<Box<TypedExpr>>) -> Document<'a> {

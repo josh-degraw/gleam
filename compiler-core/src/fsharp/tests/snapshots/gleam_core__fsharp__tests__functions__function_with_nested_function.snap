@@ -17,5 +17,5 @@ let private go (a: Option<int64>) = begin
             | (None) ->
                 0L
         end
-    inc_or_zero (a)
+    inc_or_zero a
 end

@@ -11,12 +11,12 @@ let foo () = begin
     begin
         begin
             let _pipe = ""
-            (id (_pipe))
+            (id _pipe)
         end
     end + begin
         begin
             let _pipe = ""
-            (id (_pipe))
+            (id _pipe)
         end
     end
 end

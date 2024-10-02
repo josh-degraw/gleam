@@ -5,7 +5,7 @@ expression: "\npub fn foo() {\n  case Ok(1) {\n    Ok(duplicate_name) | Error(du
 module rec my.``mod``
 
 let foo () = begin
-    match Ok (1L) with
+    match Ok(1L) with
     | (Ok(duplicate_name)) | (Error(duplicate_name)) ->
         duplicate_name
 end

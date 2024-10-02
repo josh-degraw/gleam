@@ -11,7 +11,7 @@ let foo () = begin
     begin
         begin
             let _pipe = 1L
-            (add (_pipe))
+            (add _pipe)
         end
-    end (1L)
+    end 1L
 end

@@ -15,10 +15,10 @@ let private go () = begin
                 2L
                 begin
                     let _pipe = 3L
-                    (add1 (_pipe))
+                    (add1 _pipe)
                 end
             end
-            (add1 (_pipe))
+            (add1 _pipe)
         end
     end
     x

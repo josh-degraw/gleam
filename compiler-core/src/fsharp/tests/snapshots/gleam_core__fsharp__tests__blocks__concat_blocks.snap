@@ -8,12 +8,12 @@ let private foo (f: 'u10 -> string) (a: 'u10) (b: 'u10) = begin
     begin
         begin
             let _pipe = a
-            (f (_pipe))
+            (f _pipe)
         end
     end + begin
         begin
             let _pipe = b
-            (f (_pipe))
+            (f _pipe)
         end
     end
 end
