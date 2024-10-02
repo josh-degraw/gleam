@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/use_.rs
 expression: "\npub fn go() {\n  use <- pair()\n  123\n}\n\nfn pair(f) {\n  let x = f()\n  #(x, x)\n}\n"
 ---
 module rec my.``mod``
+
 let private pair (f: unit -> 'u11) = begin
     let x = f()
     (x, x)

@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/blocks.rs
 expression: "\nfn foo(f, a, b) {\n  {\n    a\n    |> f\n  } <> {\n    b\n    |> f\n  }\n}\n"
 ---
 module rec my.``mod``
+
 let private foo (f: 'u10 -> string) (a: 'u10) (b: 'u10) = begin
     begin
         begin

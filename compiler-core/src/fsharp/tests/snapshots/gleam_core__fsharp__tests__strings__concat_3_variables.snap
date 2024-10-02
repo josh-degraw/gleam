@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\npub fn go(x, y, z) {\n  x <> y <> z\n}\n"
 ---
 module rec my.``mod``
+
 let go (x: string) (y: string) (z: string) = begin
     x + y + z
 end

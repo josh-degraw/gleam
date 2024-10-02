@@ -22,7 +22,7 @@ use std::{
 };
 
 const INDENT: isize = 4;
-pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fsx");
+pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 
 #[derive(Debug)]
 pub struct Generator<'a> {
@@ -166,7 +166,11 @@ impl<'a> Generator<'a> {
 
     pub fn render(&mut self) -> super::Result<String> {
         let document = join(
-            vec![self.module_declaration(), self.module_contents()],
+            vec![
+                self.module_declaration(),
+                self.render_imports(),
+                self.module_contents(),
+            ],
             line(),
         );
         Ok(document.to_pretty_string(120))
@@ -191,6 +195,31 @@ impl<'a> Generator<'a> {
             .append(self.sanitize_name(&self.module.name))
     }
 
+    fn render_imports(&self) -> Document<'a> {
+        let all_imports = self
+            .module
+            .definitions
+            .iter()
+            .filter_map(|def| match def {
+                Definition::Import(i) => Some(self.import(i)), // handled before this part to ensure order
+                _ => None,
+            })
+            .reduce(|(mut a, mut b, mut c), (a1, b1, c1)| {
+                a.extend(a1);
+                b.extend(b1);
+                c.extend(c1);
+                (a, b, c)
+            });
+
+        match all_imports {
+            Some((open_statements, module_aliases, other_aliases)) => join(
+                [open_statements, module_aliases, other_aliases].concat(),
+                line(),
+            ),
+            None => nil(),
+        }
+    }
+
     fn module_contents(&mut self) -> Document<'a> {
         join(
             self.module
@@ -201,14 +230,17 @@ impl<'a> Generator<'a> {
                     Definition::TypeAlias(t) => self.type_alias(t),
                     Definition::ModuleConstant(c) => self.module_constant(c),
                     Definition::Function(f) => self.function(f),
-                    Definition::Import(i) => self.import(i),
+                    Definition::Import(i) => nil(), // handled before this part to ensure order
                 })
                 .collect::<Vec<Document<'a>>>(),
             line(),
         )
     }
 
-    fn import(&self, i: &'a Import<EcoString>) -> Document<'a> {
+    fn import(
+        &self,
+        i: &'a Import<EcoString>,
+    ) -> (Vec<Document<'a>>, Vec<Document<'a>>, Vec<Document<'a>>) {
         let Import {
             module,
             as_name,
@@ -218,44 +250,68 @@ impl<'a> Generator<'a> {
             ..
         } = i;
 
+        let mut open_statements = Vec::new();
+        let mut module_aliases = Vec::new();
+        let mut other_aliases = Vec::new();
         let full_module_name = EcoString::from(module.split('/').join("."));
 
-        let module_ref = match as_name {
+        match as_name {
             Some((AssignName::Variable(name), _)) => {
-                docvec![
+                module_aliases.push(docvec![
                     "module ",
                     self.sanitize_name(name),
                     " = ",
                     &full_module_name
-                ]
+                ]);
             }
-            Some((AssignName::Discard(_), _)) => nil(),
+            Some((AssignName::Discard(_), _)) => {}
             // If the imports are from the same package, don't need to open it
             None if unqualified_values.is_empty() && unqualified_types.is_empty() => {
                 // if package is empty, it's from a builtin
-                if self.package_name == package || package.is_empty() {
-                    nil()
+                if package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib" {
+                    open_statements.push(docvec!["open ", &full_module_name]);
+                } else if self.package_name == package {
                 } else {
-                    docvec!["open ", self.sanitize_name(package)]
+                    open_statements.push(docvec!["open ", self.sanitize_name(package)]);
                 }
             }
-            None => nil(),
+            None => {}
         };
 
-        let values = unqualified_values.iter().map(|v| {
+        unqualified_values.iter().for_each(|v| {
             let name = &v.name;
             let label = v.as_name.as_ref().unwrap_or(name);
-            docvec![
+            other_aliases.push(docvec![
                 "let ",
                 self.sanitize_name(label),
                 " = ",
                 &full_module_name,
                 ".",
                 self.sanitize_name(name)
-            ]
+            ]);
         });
+        // unqualified_types.iter().for_each(|v| {
+        //     let name = &v.name;
+        //     let label = v.as_name.as_ref().unwrap_or(name);
+        //     other_aliases.push(docvec![
+        //         "let ",
+        //         self.sanitize_name(label),
+        //         " = ",
+        //         &full_module_name,
+        //         ".",
+        //         self.sanitize_name(name)
+        //     ]);
+        // });
 
-        docvec![module_ref, line(), join(values, line())]
+        // let mut values = Vec::new();
+        // values.push(module_ref);
+        // values.extend(open_statements);
+        // values.extend(other_aliases);
+        // values.extend(module_aliases);
+
+        // join(values, line())
+
+        (open_statements, module_aliases, other_aliases)
     }
 
     fn map_publicity(&self, publicity: &'a Publicity) -> Document<'a> {
@@ -1312,7 +1368,7 @@ impl<'a> Generator<'a> {
             ClauseGuard::LtEqInt { left, right, .. }
             | ClauseGuard::LtEqFloat { left, right, .. } => self
                 .clause_guard(left)
-                .append(" =< ")
+                .append(" <= ")
                 .append(self.clause_guard(right)),
 
             ClauseGuard::AddInt { left, right, .. } | ClauseGuard::AddFloat { left, right, .. } => {

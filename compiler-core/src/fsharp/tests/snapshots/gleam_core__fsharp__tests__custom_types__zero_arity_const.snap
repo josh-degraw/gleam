@@ -1,9 +1,9 @@
 ---
 source: compiler-core/src/fsharp/tests/custom_types.rs
-assertion_line: 22
 expression: "\ntype Mine {\n    This\n    ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant\n}\n\nconst this = This\nconst that = ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant\n"
 ---
 module rec my.``mod``
+
 type private Mine =
 | ThatOneIsAMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchMuchLongerVariant
 | This

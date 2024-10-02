@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\nconst a = \"Hello, \"\nconst b = \"Joe!\"\n\npub fn go() {\n  a <> b\n}\n"
 ---
 module rec my.``mod``
+
 [<Literal>]
 let private a = "Hello, "
 [<Literal>]

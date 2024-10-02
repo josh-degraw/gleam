@@ -3,4 +3,5 @@ source: compiler-core/src/fsharp/tests/type_alias.rs
 expression: "\npub type Headers = List(#(String, String))\n"
 ---
 module rec my.``mod``
+
 type Headers = list<(string * string)>

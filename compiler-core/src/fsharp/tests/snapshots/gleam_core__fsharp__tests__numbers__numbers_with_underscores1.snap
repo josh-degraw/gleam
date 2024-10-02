@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/numbers.rs
 expression: "\nconst i = 100_000\nconst f = 100_000.00101\npub fn foo() {\n  i\n  f\n}\n"
 ---
 module rec my.``mod``
+
 [<Literal>]
 let private i = 100_000L
 [<Literal>]

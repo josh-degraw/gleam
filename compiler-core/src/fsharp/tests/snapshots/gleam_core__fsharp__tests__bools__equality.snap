@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/bools.rs
 expression: "\nfn go(a, b) {\n  a == True\n  a != True\n  a == False\n  a != False\n  a == a\n  a != a\n  b == Nil\n  b != Nil\n  b == b\n}\n"
 ---
 module rec my.``mod``
+
 let private go (a: bool) (b: unit) = begin
     a = true
     a <> true

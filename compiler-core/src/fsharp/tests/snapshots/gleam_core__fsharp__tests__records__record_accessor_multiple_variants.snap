@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/records.rs
 expression: "\npub type Person {\n    Teacher(name: String, title: String)\n    Student(name: String, age: Int)\n}\npub fn get_name(person: Person) { person.name }"
 ---
 module rec my.``mod``
+
 type Person =
 | Student of name: string * age: int64
 | Teacher of name: string * title: string

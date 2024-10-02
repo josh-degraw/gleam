@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\nconst cute_bee = \"cute\" <> \"bee\"\nconst cute_cute_bee_buzz = cute_bee <> \"buzz\"\n\npub fn foo() {\n  cute_cute_bee_buzz\n}\n"
 ---
 module rec my.``mod``
+
 let private cute_bee = "cute" + "bee"
 let private cute_cute_bee_buzz = cute_bee + "buzz"
 let foo () = begin

@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case.rs
 expression: "\npub fn myfun(mt) {\n  case mt {\n    1 | _ ->\n      1\n      |> Ok\n  }\n  1\n  |> Ok\n}\n"
 ---
 module rec my.``mod``
+
 let myfun (mt: int64) = begin
     match mt with
     | 1L | _ ->

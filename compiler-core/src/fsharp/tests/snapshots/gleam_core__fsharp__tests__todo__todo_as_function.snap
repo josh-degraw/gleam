@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/todo.rs
 expression: "\npub fn retstring() {\n  \"wibble\"\n}\npub fn foo() {\n  todo as { retstring() <> \"wobble\" }\n}\n"
 ---
 module rec my.``mod``
+
 let retstring () = begin
     "wibble"
 end

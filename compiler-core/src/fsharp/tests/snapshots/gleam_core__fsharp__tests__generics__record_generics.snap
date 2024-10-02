@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/generics.rs
 expression: "pub type Animal(t) {\n  Cat(type_: t)\n  Dog(type_: t)\n}\n\npub fn go() {\n  Cat(type_: 6)\n}\n"
 ---
 module rec my.``mod``
+
 type Animal<'t8> =
 | Cat of type_: 't8
 | Dog of type_: 't8

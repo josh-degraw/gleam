@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/custom_types.rs
 expression: "\ntype Mine {\n  Mine(a: Int, b: Int)\n}\n\nconst labels = Mine(b: 2, a: 1)\nconst no_labels = Mine(3, 4)\n"
 ---
 module rec my.``mod``
+
 type private Mine = { a: int64; b: int64 }
 let private labels = { a = 1L; b = 2L }
 let private no_labels = { a = 3L; b = 4L }

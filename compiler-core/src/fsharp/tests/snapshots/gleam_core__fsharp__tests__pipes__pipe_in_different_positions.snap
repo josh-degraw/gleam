@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "\nfn and(a, b) {\n  a && b\n}\n\nfn is_false(a) {a}\n\npub fn something() {\n\n  False\n  |> and(True, _)\n  |> is_false\n}\n"
 ---
 module rec my.``mod``
+
 let private ``and`` (a: bool) (b: bool) = begin
     a && b
 end

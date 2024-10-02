@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/custom_types.rs
 expression: "\ntype Cat {\n  Cat(name: String, cuteness: Int)\n}\n\nfn go(cat) {\n  let Cat(x, y) = cat\n  let Cat(name: x, ..) = cat\n  let assert Cat(cuteness: 4, name: x) = cat\n  x\n}\n\n"
 ---
 module rec my.``mod``
+
 type private Cat = { name: string; cuteness: int64 }
 let private go (cat: Cat) = begin
     let { name = x; cuteness = y } = cat

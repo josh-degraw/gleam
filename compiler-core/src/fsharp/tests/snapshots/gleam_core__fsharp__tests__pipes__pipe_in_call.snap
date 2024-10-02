@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "\npub fn foo() {\n  123\n  |> two(\n    1 |> two(2),\n    _,\n  )\n}\n\npub fn two(a, b) {\n  a\n}\n"
 ---
 module rec my.``mod``
+
 let two (a: 'u9) (b: 'u10) = begin
     a
 end

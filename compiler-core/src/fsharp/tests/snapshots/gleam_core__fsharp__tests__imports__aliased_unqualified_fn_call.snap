@@ -3,8 +3,8 @@ source: compiler-core/src/fsharp/tests/imports.rs
 expression: "import rocket_ship.{launch as boom_time}\npub fn go() { boom_time() }\n"
 ---
 module rec my.``mod``
-
 let boom_time = rocket_ship.launch
+
 let go () = begin
     boom_time()
 end

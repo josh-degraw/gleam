@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "\npub fn foo() {\n  { 1 |> add }(1)\n}\n\npub fn add(x) {\n  fn(y) { x + y }\n}\n"
 ---
 module rec my.``mod``
+
 let add (x: int64) = begin
     fun(y: int64) -> begin 
         x + y

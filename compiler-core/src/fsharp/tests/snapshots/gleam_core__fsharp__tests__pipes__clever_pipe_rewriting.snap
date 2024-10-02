@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "\npub fn apply(f: fn(a) -> b, a: a) { a |> f }\n"
 ---
 module rec my.``mod``
+
 let apply (f: 't8 -> 't9) (a: 't8) = begin
     begin
         let _pipe = a

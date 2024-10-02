@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case.rs
 expression: "pub fn foo(x, y) {\n  case x {\n    _ if !y && !x -> 0\n    _ -> 1\n  }\n}\n"
 ---
 module rec my.``mod``
+
 let foo (x: bool) (y: bool) = begin
     match x with
     | _ when not y && not x ->

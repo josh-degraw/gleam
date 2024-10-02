@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/tuples.rs
 expression: "\nfn go(x) {\n  case x {\n    #(2, #(a, b)) -> a + b\n    _ -> 1\n  }\n}\n"
 ---
 module rec my.``mod``
+
 let private go (x: (int64 * (int64 * int64))) = begin
     match x with
     | (2L, (a, b)) ->

@@ -3,7 +3,7 @@ source: compiler-core/src/fsharp/tests/prelude.rs
 expression: "import gleam\npub fn go() { gleam.Error(1) }\n"
 ---
 module rec my.``mod``
-
+open gleam
 
 let go () = begin
     gleam.Error (1L)

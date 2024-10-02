@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/bools.rs
 expression: "\nfn go() {\n    True\n    False\n    Nil\n}\n"
 ---
 module rec my.``mod``
+
 let private go () = begin
     true
     false

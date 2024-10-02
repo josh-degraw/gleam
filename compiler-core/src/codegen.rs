@@ -178,7 +178,7 @@ impl<'a> FSharpApp<'a> {
         println!("output_directory: {}", self.output_directory);
 
         // Write prelude file
-        let prelude_file_path = self.output_directory.join("gleam_prelude.fsx");
+        let prelude_file_path = self.output_directory.join("gleam_prelude.fs");
         writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
 
         // Write individual module files
@@ -208,7 +208,7 @@ impl<'a> FSharpApp<'a> {
   </PropertyGroup>
 
   <ItemGroup Label="Modules">
-    <Compile Include="gleam_prelude.fsx" />
+    <Compile Include="gleam_prelude.fs" />
     {}
     {}
   </ItemGroup>

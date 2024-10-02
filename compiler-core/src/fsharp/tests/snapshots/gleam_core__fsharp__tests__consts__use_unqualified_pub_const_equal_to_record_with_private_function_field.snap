@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/consts.rs
 expression: "\n              fn identity(a) {\n                a\n              }\n\n              pub type Mapper(b) {\n                Mapper(fn(b) -> b)\n              }\n\n              pub const id_mapper = Mapper(identity)\n        "
 ---
 module rec my.``mod``
+
 type Mapper<'t8> =
 | Mapper of ('t8 -> 't8)
     

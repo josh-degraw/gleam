@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/custom_types.rs
 expression: "pub type Box(x) { Box(a: Int, b: x) }\nfn go(x) {\n  case x {\n    Box(a: _, b: Box(a: a, b: b)) -> a + b\n    _ -> 1\n  }\n}\n"
 ---
 module rec my.``mod``
+
 type Box<'t8> = { a: int64; b: 't8 }
 let private go (x: Box<Box<int64>>) = begin
     match x with

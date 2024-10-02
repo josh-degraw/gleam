@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\npub fn foo() {\n  \"Hello, World!\"\n}\n"
 ---
 module rec my.``mod``
+
 let foo () = begin
     "Hello, World!"
 end

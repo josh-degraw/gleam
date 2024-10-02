@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/bools.rs
 expression: "\nfn go(x, y) {\n  let assert True = x\n  let assert False = x\n  let assert Nil = y\n}\n"
 ---
 module rec my.``mod``
+
 let private go (x: bool) (y: unit) = begin
     let true = x
     let false = x

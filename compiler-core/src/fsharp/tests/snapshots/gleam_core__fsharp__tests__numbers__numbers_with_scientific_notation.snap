@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/numbers.rs
 expression: "\nconst i = 100.001e523\nconst j = -100.001e-523\n\nconst k = 100.001e1_230\nconst l = -100.001e-1_230\n\nconst m = 100.001e123_456_789\nconst n = -100.001e-123_456_789\n\npub fn foo() {\n  i\n  j\n  k\n  l\n  m\n  n\n}\n"
 ---
 module rec my.``mod``
+
 [<Literal>]
 let private i = 100.001e523
 [<Literal>]

@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/records.rs
 expression: "pub type Test { A }\nconst some_test = A\npub fn a() { A }"
 ---
 module rec my.``mod``
+
 type Test =
 | A
     

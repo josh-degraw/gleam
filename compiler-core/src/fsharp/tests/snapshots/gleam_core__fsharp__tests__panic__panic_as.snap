@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/panic.rs
 expression: "\npub fn foo() {\n  panic as \"wibble\"\n}\n"
 ---
 module rec my.``mod``
+
 let foo () = begin
     failwith ("wibble")
 end

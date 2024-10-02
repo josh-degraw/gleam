@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case.rs
 expression: "\npub fn foo(x) {\n  case x {\n    0.0 -> 1\n    _ -> 2\n  }\n}\n"
 ---
 module rec my.``mod``
+
 let foo (x: float) = begin
     match x with
     | 0.0 ->

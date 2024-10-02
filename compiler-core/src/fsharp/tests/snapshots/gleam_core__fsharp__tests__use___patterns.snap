@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/use_.rs
 expression: "\npub fn go() {\n  use Box(x) <- apply(Box(1))\n  x\n}\n\ntype Box(a) {\n  Box(a)\n}\n\nfn apply(arg, fun) {\n  fun(arg)\n}\n"
 ---
 module rec my.``mod``
+
 type private Box<'t8> =
 | Box of 't8
     

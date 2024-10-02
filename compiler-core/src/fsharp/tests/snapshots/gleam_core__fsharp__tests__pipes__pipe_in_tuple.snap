@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "pub fn x(f) {\n  #(\n    1 |> f\n  )\n}"
 ---
 module rec my.``mod``
+
 let x (f: int64 -> 'u10) = begin
     (begin
         let _pipe = 1L

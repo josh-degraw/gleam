@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/bools.rs
 expression: "pub fn negate(x) {\n  !panic\n}"
 ---
 module rec my.``mod``
+
 let negate (x: 'u8) = begin
     not (failwith "Panic encountered")
 end

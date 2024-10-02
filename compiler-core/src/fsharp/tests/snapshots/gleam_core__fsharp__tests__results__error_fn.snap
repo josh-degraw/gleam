@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/results.rs
 expression: "pub fn go() { Error }"
 ---
 module rec my.``mod``
+
 let go () = begin
     Error
 end

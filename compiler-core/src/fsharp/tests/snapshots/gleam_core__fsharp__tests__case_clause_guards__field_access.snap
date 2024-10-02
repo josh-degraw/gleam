@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case_clause_guards.rs
 expression: "\n        pub type Person {\n          Person(username: String, name: String, age: Int)\n        }\n        pub fn go() {\n          let given_name = \"jack\"\n          let raiden = Person(\"raiden\", \"jack\", 31)\n          case given_name {\n            name if name == raiden.name -> \"It's jack\"\n            _ -> \"It's not jack\"\n          }\n        }\n        "
 ---
 module rec my.``mod``
+
 type Person = { username: string; name: string; age: int64 }
 let go () = begin
     let given_name = "jack"

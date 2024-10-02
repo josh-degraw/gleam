@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/tuples.rs
 expression: "\nconst a = \"Hello\"\nconst b = 1\nconst c = 2.0\nconst e = #(\"bob\", \"dug\")\n        "
 ---
 module rec my.``mod``
+
 [<Literal>]
 let private a = "Hello"
 [<Literal>]

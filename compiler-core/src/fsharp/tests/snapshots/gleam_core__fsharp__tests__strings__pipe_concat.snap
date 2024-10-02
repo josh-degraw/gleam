@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\nfn id(x) {\n  x\n}\n\npub fn foo() {\n  { \"\" |> id } <> { \"\" |> id }\n}\n"
 ---
 module rec my.``mod``
+
 let private id (x: 'u8) = begin
     x
 end

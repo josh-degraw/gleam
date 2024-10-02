@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/numbers.rs
 expression: "\npub fn foo() {\n  let a = 3\n  let b = --a\n}\n"
 ---
 module rec my.``mod``
+
 let foo () = begin
     let a = 3L
     let b = -(-a)

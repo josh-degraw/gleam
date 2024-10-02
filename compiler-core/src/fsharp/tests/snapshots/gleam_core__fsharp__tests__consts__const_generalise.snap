@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/consts.rs
 expression: "\nfn identity(a: a) -> a {\na\n}\n\nconst id  = identity\n\npub fn foo(){\n  let num  = id(1)\n  let word = id(\"Word\")\n}"
 ---
 module rec my.``mod``
+
 let private identity (a: 't8) = begin
     a
 end

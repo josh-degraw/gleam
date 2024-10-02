@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/lists.rs
 expression: "\nfn go(func) {\n  let huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable = []\n}\n"
 ---
 module rec my.``mod``
+
 let private go (func: 'u8) = begin
     let huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable = []
     huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable

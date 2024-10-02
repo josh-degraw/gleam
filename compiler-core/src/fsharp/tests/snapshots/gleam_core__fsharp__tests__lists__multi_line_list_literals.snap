@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/lists.rs
 expression: "\nfn go(x) {\n    [{True 1}]\n}\n"
 ---
 module rec my.``mod``
+
 let private go (x: 'u8) = begin
     [begin
         true
