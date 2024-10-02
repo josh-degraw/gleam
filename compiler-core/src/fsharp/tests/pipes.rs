@@ -191,3 +191,50 @@ pub fn something() {
 "#
     )
 }
+
+// #[test]
+// fn pipe_in_different_positions1() {
+//     assert_fsharp!(
+//         r#"
+
+// pub fn upsert(
+//     dict,
+//     key,
+//     f,
+// ) {
+//   dict
+//   |> get(key)
+//   |> from_result
+//   |> f
+//   |> insert(dict, key, _)
+// }
+
+// fn get(dict, key) {
+//   Ok(1)
+// }
+
+// fn insert(dict, key, value) {
+//   Nil
+// }
+// fn from_result(result) {
+//   result
+// }
+// "#
+//     );
+// }
+
+#[test]
+fn multi_argument_pipe_call() {
+    assert_fsharp!(
+        r#"
+fn go(dict, key) {
+    "something"
+    |> insert(dict, key, _)
+}
+
+fn insert(dict, key, value) {
+    value
+}
+"#
+    );
+}

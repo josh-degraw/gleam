@@ -75,3 +75,24 @@ fn something(cba) { cba(1) }
 "#
     );
 }
+
+#[test]
+fn test_function_with_nested_function() {
+    assert_fsharp!(
+        r#"
+type Option(a) {
+  Some(a)
+  None
+}
+fn go(a) {
+    let inc_or_zero = fn(x) {
+        case x {
+            Some(i) -> i + 1
+            None -> 0
+        }
+    }
+    inc_or_zero(a)
+}
+"#
+    );
+}

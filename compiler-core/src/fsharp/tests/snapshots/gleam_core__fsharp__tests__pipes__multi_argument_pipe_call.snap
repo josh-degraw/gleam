@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/pipes.rs
+expression: "\nfn go(dict, key) {\n    \"something\"\n    |> insert(dict, key, _)\n}\n\nfn insert(dict, key, value) {\n    value\n}\n"
+---
+module rec my.``mod``
+
+let private insert (dict: 'u11) (key: 'u12) (value: 'u13) = begin
+    value
+end
+let private go (dict: 'u8) (key: 'u9) = begin
+    begin
+        let _pipe = "something"
+        ((fun(_capture: string) -> begin 
+            insert (dict) (key) (_capture)
+        end) (_pipe))
+    end
+end
