@@ -893,10 +893,11 @@ impl<'a> Generator<'a> {
             }
 
             Statement::Assignment(a) => {
+                let (name, can_use_as_return_value) = self.get_assignment_binding(&a.pattern);
 
-                let name = self.pattern(&a.pattern);
-
-                last_var = Some(name.clone());
+                if can_use_as_return_value {
+                    last_var = Some(name.clone());
+                }
                 self.assignment(name, &a.value)
 
             }
@@ -904,6 +905,26 @@ impl<'a> Generator<'a> {
         };
 
         (statement_doc, last_var)
+    }
+
+    fn get_assignment_binding(&self, pattern: &'a TypedPattern) -> (Document<'a>, bool) {
+        let name = self.pattern(pattern);
+        // Need to disallow a case where the matches in a record constructor pattern only include discards
+        (name, true)
+        // match pattern {
+        //     TypedPattern::Int { .. } | TypedPattern::Float { .. } | TypedPattern::String { .. } => {
+        //         (name, true)
+        //     }
+        //     TypedPattern::Variable { .. } => (name, true),
+        //     TypedPattern::Assign { name, .. } => (name.to_doc(), true),
+        //     TypedPattern::Constructor { type_, .. } if type_.is_bool() => (name.to_doc(), true),
+        //     // Need to disallow a case where the matches in a record constructor pattern only include discards
+        //     TypedPattern::Constructor { constructor, .. } => {
+        //         println!("constructor: {:?}", constructor);
+        //         (name, false)
+        //     }
+        //     _ => (name, true),
+        // }
     }
 
     fn assignment(&self, name: Document<'a>, value: &'a TypedExpr) -> Document<'a> {
@@ -977,6 +998,33 @@ impl<'a> Generator<'a> {
                 }
             }
         }
+
+        // match (return_type, last_var) {
+        //     (None, None) => {}
+        //     (None, Some(last_var)) => res.push(last_var),
+
+        //     (Some(return_type), None) => {
+        //         // TODO: If the last statement is a let assert, we need to either figure out the right value to return, or disallow it
+
+        //         // if !return_type.is_nil() {
+        //         //     // TODO: Fix this somehow?
+        //         //     res.push(
+        //         //         "failwith \"An error occurred while compiling the previous statements: couldn't figure out what to return\""
+        //         //             .to_doc(),
+        //         //     );
+        //         // } else {
+        //         //     res.push("()".to_doc());
+        //         // }
+        //     }
+        //     (Some(return_type), Some(last_var)) => {
+        //         if !return_type.is_nil() {
+        //             res.push(last_var);
+        //         }
+        //         // else {
+        //         //     res.push(last_var)
+        //         // };
+        //     }
+        // }
 
         join(res, line())
     }

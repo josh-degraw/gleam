@@ -1,0 +1,18 @@
+---
+source: compiler-core/src/fsharp/tests/patterns.rs
+expression: "\npub fn go() {\n  let assert Error(b) = Error(1)\n}\nfn int_bind(x) {\n    let assert 1 = x\n}\npub type Result(a, b) {\n  Ok(a)\n  Error(b)\n}\n"
+---
+module rec my.``mod``
+
+type Result<'t8, 't9> =
+| Error of 't9
+| Ok of 't8
+    
+let go () = begin
+    let (Error(b)) = Error (1L)
+    (Error(b))
+end
+let private int_bind (x: int64) = begin
+    let 1L = x
+    1L
+end

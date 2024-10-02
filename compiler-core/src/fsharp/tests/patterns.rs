@@ -122,3 +122,21 @@ fn string_prefix_as_pattern_with_assertion() {
 }"
     );
 }
+
+#[test]
+fn assert_pattern_as_last_statement() {
+    assert_fsharp!(
+        r#"
+pub fn go() {
+  let assert Error(b) = Error(1)
+}
+fn int_bind(x) {
+    let assert 1 = x
+}
+pub type Result(a, b) {
+  Ok(a)
+  Error(b)
+}
+"#
+    );
+}
