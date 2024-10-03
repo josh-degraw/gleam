@@ -4,10 +4,10 @@ expression: "\n              fn identity(a) {\n                a\n              
 ---
 module rec my.``mod``
 
-type Mapper<'t8> =
-| Mapper of ('t8 -> 't8)
+type Mapper<'b> =
+| Mapper of ('b -> 'b)
     
-let private identity (a: 'u9) = begin
+let private identity<'a> (a: 'a) = begin
     a
 end
 let internal id_mapper = Mapper(identity)

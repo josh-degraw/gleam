@@ -1,13 +1,12 @@
 ---
 source: compiler-core/src/fsharp/tests/type_alias.rs
-assertion_line: 14
 expression: "\npub type Decoder(t) =\n  fn(Dynamic) -> Result(t, DecodeErrors)\n\ntype Dynamic = String\ntype DecodeErrors = String\ntype Result(a,b){\n    Ok(a)\n    Err(b)\n}\n"
 ---
 module rec my.``mod``
 
-type private Result<'t8, 't9> =
-| Err of 't9
-| Ok of 't8
+type private Result<'a, 'b> =
+| Err of 'b
+| Ok of 'a
     
 type Decoder<'t> = Dynamic -> Result<'t, DecodeErrors>
 type private Dynamic = string

@@ -7,13 +7,13 @@ module rec my.``mod``
 type PositiveInt = 
     private 
         { inner: int64 }
-let new_positive_int (i: int64) = begin
+let new_positive_int (i: int64): PositiveInt = begin
     match i >= 0L with
     | true ->
         { inner = i }
     | false ->
         { inner = 0L }
 end
-let to_int (i: PositiveInt) = begin
+let to_int (i: PositiveInt): int64 = begin
     i.inner
 end

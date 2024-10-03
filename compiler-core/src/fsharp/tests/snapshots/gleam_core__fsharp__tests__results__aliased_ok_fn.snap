@@ -5,6 +5,6 @@ expression: "import gleam.{Ok as Thing}\npub fn go() { Thing }"
 module rec my.``mod``
 let Thing = gleam.Ok
 
-let go () = begin
+let go<'a, 'b> () = begin
     Thing
 end

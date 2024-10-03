@@ -4,7 +4,7 @@ expression: "pub type Box(x) { Box(a: Int, b: x) }\nfn go(x) {\n  case x {\n    
 ---
 module rec my.``mod``
 
-type Box<'t8> = { a: int64; b: 't8 }
+type Box<'x> = { a: int64; b: 'x }
 let private go (x: Box<Box<int64>>) = begin
     match x with
     | { a = _; b = { a = a; b = b } } ->

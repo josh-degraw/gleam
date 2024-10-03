@@ -4,10 +4,10 @@ expression: "\nfn go(dict, key) {\n    \"something\"\n    |> insert(dict, key, _
 ---
 module rec my.``mod``
 
-let private insert (dict: 'u11) (key: 'u12) (value: 'u13) = begin
+let private insert<'c, 'a, 'b> (dict: 'a) (key: 'b) (value: 'c) = begin
     value
 end
-let private go (dict: 'u8) (key: 'u9) = begin
+let private go<'d, 'e> (dict: 'd) (key: 'e) = begin
     begin
         let _pipe = "something"
         ((fun(_capture: string) -> insert dict key _capture) _pipe)

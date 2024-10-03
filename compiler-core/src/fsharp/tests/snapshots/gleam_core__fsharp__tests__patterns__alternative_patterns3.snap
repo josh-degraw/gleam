@@ -5,7 +5,7 @@ expression: "\npub const constant = Ok(1)\n\npub fn foo(arg) {\n  let _ = consta
 module rec my.``mod``
 
 let constant = Ok(1L)
-let foo (arg: Result<int64, 'u11>) = begin
+let foo<'a> (arg: Result<int64, 'a>) = begin
     let _ = constant
     match arg with
     | _ when arg = Ok(1L) ->

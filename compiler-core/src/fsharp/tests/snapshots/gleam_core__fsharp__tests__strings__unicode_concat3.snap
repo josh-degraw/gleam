@@ -4,6 +4,6 @@ expression: "\npub fn foo(x) -> String {\n  x <> \"\\\\\\u{0308}\"\n}\n"
 ---
 module rec my.``mod``
 
-let foo (x: string) = begin
+let foo (x: string): string = begin
     x + "\\\u0308"
 end

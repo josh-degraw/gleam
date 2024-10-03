@@ -6,10 +6,10 @@ module rec my.``mod``
 
 let private b () = begin
     begin
-        fun(cb: int64 -> 'u11) -> cb 1L
+        fun(cb: int64 -> 'a) -> cb 1L
     end
     begin
-        fun(cb: int64 -> 'u14) -> cb 2L
+        fun(cb: int64 -> 'b) -> cb 2L
     end
     3L
 end

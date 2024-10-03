@@ -4,11 +4,11 @@ expression: "\npub fn go() {\n  let assert Error(b) = Error(1)\n}\nfn int_bind(x
 ---
 module rec my.``mod``
 
-type Result<'t8, 't9> =
-| Error of 't9
-| Ok of 't8
+type Result<'a, 'b> =
+| Error of 'b
+| Ok of 'a
     
-let go () = begin
+let go<'c> () = begin
     let (Error(b)) = Error(1L)
     (Error(b))
 end

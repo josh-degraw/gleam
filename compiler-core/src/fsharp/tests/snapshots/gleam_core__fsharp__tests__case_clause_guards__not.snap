@@ -4,7 +4,7 @@ expression: "pub fn go(x, y) {\n  case x {\n    _ if !y -> 0\n    _ -> 1\n  }\n}
 ---
 module rec my.``mod``
 
-let go (x: 'u8) (y: bool) = begin
+let go<'a> (x: 'a) (y: bool) = begin
     match x with
     | _ when not y ->
         0L

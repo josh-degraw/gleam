@@ -4,9 +4,9 @@ expression: "\npub fn go() {\n  let thingy = fn(f) { f() }\n  use <- thingy()\n}
 ---
 module rec my.``mod``
 
-let go () = begin
+let go<'a> () = begin
     let thingy =
-        fun(f: unit -> 'u11) -> f()
+        fun(f: unit -> 'a) -> f()
     thingy
         (fun() -> failwith "Not implemented")
 end

@@ -4,6 +4,6 @@ expression: "pub fn identity(a) -> a {\n  a\n}\n"
 ---
 module rec my.``mod``
 
-let identity (a: 't9) = begin
+let identity<'a> (a: 'a): 'a = begin
     a
 end

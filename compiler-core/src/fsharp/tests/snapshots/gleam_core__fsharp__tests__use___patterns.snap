@@ -4,10 +4,10 @@ expression: "\npub fn go() {\n  use Box(x) <- apply(Box(1))\n  x\n}\n\ntype Box(
 ---
 module rec my.``mod``
 
-type private Box<'t8> =
-| Box of 't8
+type private Box<'a> =
+| Box of 'a
     
-let private apply (arg: 'u10) (``fun``: 'u10 -> 'u14) = begin
+let private apply<'b, 'c> (arg: 'b) (``fun``: 'b -> 'c) = begin
     ``fun`` arg
 end
 let go () = begin

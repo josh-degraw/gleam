@@ -5,7 +5,7 @@ expression: "pub type X {\n  X(a: Int, b: Int)\n}\n\nfn id(x) {\n  x\n}\n\npub f
 module rec my.``mod``
 
 type X = { a: int64; b: int64 }
-let private id (x: 'u8) = begin
+let private id<'a> (x: 'a) = begin
     x
 end
 let foo (x: X) = begin

@@ -4,9 +4,9 @@ expression: "pub type Animal(t) {\n  Cat(type_: t)\n  Dog(type_: t)\n}\n\npub fn
 ---
 module rec my.``mod``
 
-type Animal<'t8> =
-| Cat of type_: 't8
-| Dog of type_: 't8
+type Animal<'t> =
+| Cat of type_: 't
+| Dog of type_: 't
     member this.type_ = 
         match this with
         | Animal.Cat (type_) -> type_

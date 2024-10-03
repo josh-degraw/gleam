@@ -8,7 +8,7 @@ open gleam
 type X =
 | Ok
     
-let private func (x: 'u8) = begin
+let private func<'a> (x: 'a) = begin
     match gleam.Ok with
     | _ when [] = [gleam.Ok] ->
         true

@@ -4,7 +4,7 @@ expression: "\nfn go(x) {\n    [{True 1}]\n}\n"
 ---
 module rec my.``mod``
 
-let private go (x: 'u8) = begin
+let private go<'a> (x: 'a) = begin
     [begin
         true
         1L

@@ -4,6 +4,6 @@ expression: "\npub fn map(map) {\n  map()\n}\n"
 ---
 module rec my.``mod``
 
-let map (map: unit -> 'u10) = begin
+let map<'a> (map: unit -> 'a) = begin
     map()
 end

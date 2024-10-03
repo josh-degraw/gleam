@@ -4,9 +4,9 @@ expression: "\ntype Option(a) {\n  Some(a)\n  None\n}\nfn go(a) {\n    let inc_o
 ---
 module rec my.``mod``
 
-type private Option<'t8> =
+type private Option<'a> =
 | None
-| Some of 't8
+| Some of 'a
     
 let private go (a: Option<int64>) = begin
     let inc_or_zero =

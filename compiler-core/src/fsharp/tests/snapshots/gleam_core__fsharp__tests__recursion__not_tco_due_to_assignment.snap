@@ -4,7 +4,7 @@ expression: "\npub fn foo(x) {\n  let z = {\n    let y = x\n    foo(y - 1)\n  }\
 ---
 module rec my.``mod``
 
-let foo (x: int64) = begin
+let foo<'a> (x: int64) = begin
     let z = begin
         let y = x
         foo (y - 1L)

@@ -5,6 +5,6 @@ expression: "import gleam\npub fn go() { gleam.Error(1) }"
 module rec my.``mod``
 open gleam
 
-let go () = begin
+let go<'a> () = begin
     gleam.Error 1L
 end

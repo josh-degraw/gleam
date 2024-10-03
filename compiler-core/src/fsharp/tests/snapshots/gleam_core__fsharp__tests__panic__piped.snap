@@ -4,7 +4,7 @@ expression: "\npub fn foo() {\n  \"lets\"\n  |> panic\n}\n    "
 ---
 module rec my.``mod``
 
-let foo () = begin
+let foo<'a> () = begin
     begin
         let _pipe = "lets"
         (failwith "Panic encountered" _pipe)

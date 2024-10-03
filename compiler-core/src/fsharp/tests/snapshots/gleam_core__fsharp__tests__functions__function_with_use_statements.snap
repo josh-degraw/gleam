@@ -4,7 +4,7 @@ expression: "\nfn go() {\n  use a <- something\n  use b <- something\n  a + 1 + 
 ---
 module rec my.``mod``
 
-let private something (cba: int64 -> 'u12) = begin
+let private something<'a> (cba: int64 -> 'a) = begin
     cba 1L
 end
 let private go () = begin

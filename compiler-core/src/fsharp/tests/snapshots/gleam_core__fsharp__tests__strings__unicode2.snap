@@ -4,6 +4,6 @@ expression: "\npub fn y_with_dieresis() -> String {\n  \"\\u{0308}y\"\n}\n"
 ---
 module rec my.``mod``
 
-let y_with_dieresis () = begin
+let y_with_dieresis (): string = begin
     "\u0308y"
 end

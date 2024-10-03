@@ -4,7 +4,7 @@ expression: "pub fn go(xs) -> Int {\n  case xs {\n    [x] | [_, x] -> x\n    _ -
 ---
 module rec my.``mod``
 
-let go (xs: list<int64>) = begin
+let go (xs: list<int64>): int64 = begin
     match xs with
     | [x] | [_; x] ->
         x

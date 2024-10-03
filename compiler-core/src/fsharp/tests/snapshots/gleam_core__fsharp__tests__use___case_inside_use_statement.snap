@@ -4,11 +4,11 @@ expression: "\npub fn go(index, size) {\n    use data <- try(case index >= 0 {\n
 ---
 module rec my.``mod``
 
-type Option<'t8> =
+type Option<'a> =
 | None
-| Some of 't8
+| Some of 'a
     
-let ``try`` (option: Option<'t12>) (``fun``: 't12 -> Option<'t14>) = begin
+let ``try``<'b, 'a> (option: Option<'a>) (``fun``: 'a -> Option<'b>): Option<'b> = begin
     match option with
     | (Some(x)) ->
         ``fun`` x

@@ -4,11 +4,11 @@ expression: "\n          fn identity(a) {\n            a\n          }\n\n       
 ---
 module rec my.``mod``
 
-type Mapper<'t8> =
-| Mapper of ('t8 -> 't8)
+type Mapper<'b> =
+| Mapper of ('b -> 'b)
     
-type Funcs<'t9> = { mapper: Mapper<'t9> }
-let private identity (a: 'u10) = begin
+type Funcs<'b> = { mapper: Mapper<'b> }
+let private identity<'a> (a: 'a) = begin
     a
 end
 let id_mapper = { mapper = Mapper(identity) }

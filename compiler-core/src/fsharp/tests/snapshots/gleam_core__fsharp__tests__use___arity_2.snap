@@ -4,7 +4,7 @@ expression: "\npub fn go() {\n  use <- pair(1.0)\n  123\n}\n\nfn pair(x, f) {\n 
 ---
 module rec my.``mod``
 
-let private pair (x: 'u9) (f: unit -> 'u12) = begin
+let private pair<'a, 'b> (x: 'a) (f: unit -> 'b) = begin
     let y = f()
     (x, y)
 end

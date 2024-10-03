@@ -4,7 +4,7 @@ expression: "\n@external(fsharp, \"FSharp.MyApp\", \"run\")\npub fn run() -> Int
 ---
 module rec my.``mod``
 
-let run () = FSharp.MyApp.run ()
-let foo () = begin
+let run (): int64 = FSharp.MyApp.run ()
+let foo (): int64 = begin
     run()
 end

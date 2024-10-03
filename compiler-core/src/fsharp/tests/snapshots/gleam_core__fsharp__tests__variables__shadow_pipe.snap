@@ -4,9 +4,9 @@ expression: "\npub fn foo(x) {\n  x\n  |> fn(x) { x }\n}\n"
 ---
 module rec my.``mod``
 
-let foo (x: 'u10) = begin
+let foo<'a> (x: 'a) = begin
     begin
         let _pipe = x
-        ((fun(x: 'u10) -> x) _pipe)
+        ((fun(x: 'a) -> x) _pipe)
     end
 end

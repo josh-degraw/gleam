@@ -4,7 +4,7 @@ expression: "\nfn match_sequences(\n  sequences: List(List(a))\n) {\n  case sequ
 ---
 module rec my.``mod``
 
-let private match_sequences (sequences: list<list<'t8>>) = begin
+let private match_sequences<'a> (sequences: list<list<'a>>) = begin
     match sequences with
     | [] ->
         []

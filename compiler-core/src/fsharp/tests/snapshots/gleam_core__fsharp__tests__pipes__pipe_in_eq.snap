@@ -4,7 +4,7 @@ expression: "fn id(x) {\n  x\n}\n\npub fn foo() {\n    1 == 1 |> id\n}"
 ---
 module rec my.``mod``
 
-let private id (x: 'u8) = begin
+let private id<'a> (x: 'a) = begin
     x
 end
 let foo () = begin
