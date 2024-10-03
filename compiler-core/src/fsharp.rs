@@ -939,7 +939,7 @@ impl<'a> Generator<'a> {
              };
         // };
 
-        let all_type_params = if !all_type_params.is_empty() {
+        let _all_type_params = if !all_type_params.is_empty() {
             join(
                 all_type_params.iter().map(Documentable::to_doc),
                 ", ".to_doc(),
@@ -958,11 +958,14 @@ impl<'a> Generator<'a> {
             "let ",
             self.map_publicity(&f.publicity),
             sanitized_name,
-            all_type_params,
+            _all_type_params,
             " ",
             args,
-            ": ",
-            return_type,
+            if return_annotation.is_some() {
+                docvec![": ", return_type]
+            } else {
+                nil()
+            },
             " = ",
             body
         ]
@@ -982,12 +985,16 @@ impl<'a> Generator<'a> {
         } else {
             join(
                 arguments.iter().map(|arg| {
-                    docvec![
-                        self.arg_name(arg),
-                        ": ",
-                        self.type_to_fsharp(arg.type_.clone())
-                    ]
-                    .surround("(", ")")
+                    if arg.annotation.is_some() {
+                        docvec![
+                            self.arg_name(arg),
+                            ": ",
+                            self.type_to_fsharp(arg.type_.clone())
+                        ]
+                        .surround("(", ")")
+                    } else {
+                        self.arg_name(arg).surround("(", ")")
+                    }
                 }),
                 " ".to_doc(),
             )
