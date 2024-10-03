@@ -172,10 +172,18 @@ fn builtin_typedef_alias(name: &str) -> Option<&'static str> {
         "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Prelude.Builtins.Dict<'key, 'value>"),
         "Option" => Some("type Option<'a> = gleam.Prelude.Builtins.Option<'a>
 let Some a = Option.Some a
-let None = Option.None"),
+let None = Option.None
+let inline (|Some|None|) (option) =
+    match option with
+    | Option.Some v -> Some v
+    | Option.None -> None"),
         "Result" => Some("type Result<'T, 'TErr> = gleam.Prelude.Builtins.Result<'T, 'TErr>
 let Ok a = Result.Ok a
 let Error e = Result.Error e
+// let inline (|Ok|Error|) (result: Result<'T, 'TErr>) =
+//     match result with
+//     | Result.Ok v -> Ok v
+//     | Result.Error v -> Error v
 "),
         "StringBuilder" => Some("type StringBuilder = gleam.Prelude.Builtins.StringBuilder"),
         "Regex" => Some("type Regex = gleam.Prelude.Builtins.Regex"),
@@ -192,7 +200,12 @@ let DecodeError expected found path: gleam.Prelude.Builtins.DecodeError = { expe
         "Order" => Some("type Order = gleam.Prelude.Builtins.Order
 let Lt = Order.Lt
 let Eq = Order.Eq
-let Gt = Order.Gt"),
+let Gt = Order.Gt
+let (|Lt|Eq|Gt|) (order: Order) =
+    match order with
+    | Order.Lt -> Lt
+    | Order.Eq -> Eq
+    | Order.Gt -> Gt"),
         "Match" => Some("type Match = gleam.Prelude.Builtins.Match"),
         "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
 let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
