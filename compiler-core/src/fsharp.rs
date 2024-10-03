@@ -206,7 +206,8 @@ let (|Lt|Eq|Gt|) (order: Order) =
     | Order.Lt -> Lt
     | Order.Eq -> Eq
     | Order.Gt -> Gt"),
-        "Match" => Some("type Match = gleam.Prelude.Builtins.Match"),
+        "Match" => Some("type Match = gleam.Prelude.Builtins.Match
+let Match (content: string) (submatches: list<Option<string>>) : Match = { content = content; submatches = submatches }"),
         "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
 let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
         "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
@@ -985,16 +986,16 @@ impl<'a> Generator<'a> {
         } else {
             join(
                 arguments.iter().map(|arg| {
-                    if arg.annotation.is_some() {
-                        docvec![
-                            self.arg_name(arg),
-                            ": ",
-                            self.type_to_fsharp(arg.type_.clone())
-                        ]
-                        .surround("(", ")")
-                    } else {
-                        self.arg_name(arg).surround("(", ")")
-                    }
+                    // if arg.annotation.is_some() {
+                    docvec![
+                        self.arg_name(arg),
+                        ": ",
+                        self.type_to_fsharp(arg.type_.clone())
+                    ]
+                    .surround("(", ")")
+                    // } else {
+                    //     self.arg_name(arg).surround("(", ")")
+                    // }
                 }),
                 " ".to_doc(),
             )
