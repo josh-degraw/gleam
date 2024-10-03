@@ -34,6 +34,7 @@ mod strings;
 mod todo;
 mod tuples;
 mod type_alias;
+mod types;
 mod use_;
 mod variables;
 pub static CURRENT_PACKAGE: &str = "thepackage";

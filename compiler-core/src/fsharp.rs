@@ -7,8 +7,8 @@ use crate::{
     docvec,
     pretty::*,
     type_::{
-        Deprecation, FieldMap, PatternConstructor, Type, TypeVar, TypedCallArg, ValueConstructor,
-        ValueConstructorVariant,
+        printer::Printer, Deprecation, FieldMap, PatternConstructor, Type, TypeVar, TypedCallArg,
+        ValueConstructor, ValueConstructorVariant,
     },
 };
 use camino::Utf8PathBuf;
@@ -35,6 +35,7 @@ pub struct Generator<'a> {
     pub external_files: HashSet<Utf8PathBuf>,
     module: &'a TypedModule,
     input_file_path: &'a Utf8PathBuf,
+    printer: Printer<'a>,
 }
 
 mod prelude_functions {
@@ -147,6 +148,14 @@ fn is_reserved_word(name: &str) -> bool {
     )
 }
 
+fn sanitize_type_var(name: EcoString) -> EcoString {
+    if is_reserved_word(name.as_str()) {
+        EcoString::from(format!("'_{}", name))
+    } else {
+        EcoString::from(format!("'{}", name))
+    }
+}
+
 fn unicode_escape_sequence_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
@@ -217,6 +226,7 @@ impl<'a> Generator<'a> {
             external_files: HashSet::new(),
             module,
             input_file_path,
+            printer: Printer::new(&module.names),
         }
     }
 
@@ -239,6 +249,7 @@ impl<'a> Generator<'a> {
         input_file_path: &'a Utf8PathBuf,
     ) -> super::Result<String> {
         self.module = new_module;
+        self.printer = Printer::new(&new_module.names);
         self.input_file_path = input_file_path;
         self.render()
     }
@@ -412,7 +423,7 @@ impl<'a> Generator<'a> {
     ///
     /// ```fsharp
     /// type Person = { name: string; age: int }
-    fn custom_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    fn custom_type(&mut self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
         if self.is_building_stdlib() && type_.publicity == Publicity::Public {
             if let Some(s) = builtin_typedef_alias(&type_.name) {
                 return s.to_doc();
@@ -463,7 +474,7 @@ impl<'a> Generator<'a> {
         // ]
     }
 
-    fn record_type(&self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    fn record_type(&mut self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
         let constructor = type_
             .constructors
             .first()
@@ -474,7 +485,7 @@ impl<'a> Generator<'a> {
             .arguments
             .iter()
             .map(|r| {
-                let type_doc = self.type_to_fsharp(&r.type_);
+                let type_doc = self.type_to_fsharp(r.type_.clone());
                 match &r.label {
                     Some((_, ref label)) => docvec![self.sanitize_name(label), ": ", type_doc],
                     None => type_doc,
@@ -506,10 +517,12 @@ impl<'a> Generator<'a> {
         ]
     }
 
-    fn type_params(&self, parameter_types: &[Arc<Type>]) -> Document<'a> {
+    fn type_params(&mut self, parameter_types: &[Arc<Type>]) -> Document<'a> {
         if !parameter_types.is_empty() {
             join(
-                parameter_types.iter().map(|tp| self.type_to_fsharp(tp)),
+                parameter_types
+                    .iter()
+                    .map(|tp| self.type_to_fsharp(tp.clone())),
                 ", ".to_doc(),
             )
             .surround("<", ">")
@@ -518,7 +531,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn discriminated_union_type(&self, t: &'a CustomType<Arc<Type>>) -> Document<'a> {
+    fn discriminated_union_type(&mut self, t: &'a CustomType<Arc<Type>>) -> Document<'a> {
         // need to track which named fields have the same name and position and generate method accessors for them
 
         let mut named_fields = HashMap::new();
@@ -540,7 +553,7 @@ impl<'a> Generator<'a> {
                     .arguments
                     .iter()
                     .map(|r| {
-                        let type_ = self.type_to_fsharp(&r.type_);
+                        let type_ = self.type_to_fsharp(r.type_.clone());
                         // Need to wrap in parens if it's a function type
                         let type_doc = if r.type_.is_fun() {
                             type_.surround("(", ")")
@@ -699,7 +712,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn type_alias(&self, t: &'a TypeAlias<Arc<Type>>) -> Document<'a> {
+    fn type_alias(&mut self, t: &'a TypeAlias<Arc<Type>>) -> Document<'a> {
         let TypeAlias {
             alias,
             publicity,
@@ -787,41 +800,13 @@ impl<'a> Generator<'a> {
         }
     }
 
-    // fn function_alias_type(&self, ast: &TypeAst) -> Document<'a> {
-    //     match ast {
-    //         TypeAst::Fn(TypeAstFn {
-    //             arguments, return_, ..
-    //         }) => {
-    //             let arg_types = arguments
-    //                 .iter()
-    //                 .map(|arg| self.type_to_fsharp(arg))
-    //                 .collect::<Vec<Document<'a>>>();
-
-    //             let return_type = self.type_to_fsharp(return_);
-    //             docvec![arg_types, " -> ", return_type]
-    //         }
-    //     }
-    //     let arg_types = args
-    //         .iter()
-    //         .map(|arg| self.type_to_fsharp(arg))
-    //         .collect::<Vec<Document<'a>>>();
-
-    //     let arg_types = if arg_types.is_empty() {
-    //         "unit".to_doc()
-    //     } else {
-    //         join(arg_types, " -> ".to_doc())
-    //     };
-
-    //     let return_type = self.type_to_fsharp(retrn);
-    //     docvec![arg_types, " -> ", return_type]
-    // }
-
     fn function(&mut self, f: &'a TypedFunction) -> Document<'a> {
         let Function {
             name,
             arguments,
             body,
             return_type,
+            return_annotation,
             documentation,
             deprecation,
             external_fsharp,
@@ -904,6 +889,53 @@ impl<'a> Generator<'a> {
             (nil(), args)
         };
 
+        // let return_type = return_annotation.as_ref().map_or_else(
+        //     || self.type_to_fsharp(return_type),
+        //     |t| self.type_ast_to_fsharp(t),
+        // );
+
+        let mut all_type_params = arguments
+            .iter()
+            .flat_map(|arg| {
+                // if let Type::Var { .. } = arg.type_.deref() {
+                //     return Some(self.type_to_fsharp(arg.type_.clone()));
+                // }
+                self.get_all_type_variables(arg.type_.clone())
+
+                // if let Some(annotation) = &arg.annotation {
+                //     if let TypeAst::Var(TypeAstVar { .. }) = &annotation {
+                //         return Some(vec![self.type_ast_to_fsharp(annotation)]);
+                //     }
+                //     None
+                // } else {
+                //     let all_return_type_vars = self.get_all_type_variables(arg.type_.clone());
+
+                //     Some(all_return_type_vars)
+                // }
+            })
+            .collect::<HashSet<_>>();
+
+        let return_type =
+        //match return_annotation {
+            // Some(return_annotation) => self.type_ast_to_fsharp(return_annotation),
+            // _ =>
+            {
+                let all_return_type_vars = self.get_all_type_variables(return_type.clone());
+                all_type_params.extend(all_return_type_vars);
+                self.type_to_fsharp(return_type.clone())
+             };
+        // };
+
+        let all_type_params = if !all_type_params.is_empty() {
+            join(
+                all_type_params.iter().map(Documentable::to_doc),
+                ", ".to_doc(),
+            )
+            .surround("<", ">")
+        } else {
+            nil()
+        };
+
         // For now, since we mark all modules as recursive, we don't need to mark
         // functions as recursive.
         docvec![
@@ -913,10 +945,11 @@ impl<'a> Generator<'a> {
             "let ",
             self.map_publicity(&f.publicity),
             sanitized_name,
+            all_type_params,
             " ",
             args,
-            // ": ",
-            // return_type,
+            ": ",
+            return_type,
             " = ",
             body
         ]
@@ -930,14 +963,18 @@ impl<'a> Generator<'a> {
     }
 
     /// Function definition arguments
-    fn fun_args(&self, arguments: &'a [TypedArg]) -> Document<'a> {
+    fn fun_args(&mut self, arguments: &'a [TypedArg]) -> Document<'a> {
         if arguments.is_empty() {
             "()".to_doc()
         } else {
             join(
                 arguments.iter().map(|arg| {
-                    docvec![self.arg_name(arg), ": ", self.type_to_fsharp(&arg.type_)]
-                        .surround("(", ")")
+                    docvec![
+                        self.arg_name(arg),
+                        ": ",
+                        self.type_to_fsharp(arg.type_.clone())
+                    ]
+                    .surround("(", ")")
                 }),
                 " ".to_doc(),
             )
@@ -956,7 +993,7 @@ impl<'a> Generator<'a> {
     }
 
     /// Anonymous functions
-    fn fun(&self, args: &'a [TypedArg], body: &'a Vec1<TypedStatement>) -> Document<'a> {
+    fn fun(&mut self, args: &'a [TypedArg], body: &'a Vec1<TypedStatement>) -> Document<'a> {
         if !self.body_must_be_multiline(body) {
             return docvec![
                 "fun",
@@ -999,7 +1036,7 @@ impl<'a> Generator<'a> {
     //     }
     // }
 
-    fn statement(&self, s: &'a TypedStatement) -> (Document<'a>, Option<Document<'a>>) {
+    fn statement(&mut self, s: &'a TypedStatement) -> (Document<'a>, Option<Document<'a>>) {
         let mut last_var = None;
         let statement_doc = match s {
             Statement::Expression(expr) => {
@@ -1063,7 +1100,7 @@ impl<'a> Generator<'a> {
         (statement_doc, last_var)
     }
 
-    fn get_assignment_binding(&self, pattern: &'a TypedPattern) -> (Document<'a>, bool) {
+    fn get_assignment_binding(&mut self, pattern: &'a TypedPattern) -> (Document<'a>, bool) {
         let name = self.pattern(pattern);
         // TODO: Need to disallow a case where the matches in a record constructor pattern only include discards
         (name, true)
@@ -1082,7 +1119,7 @@ impl<'a> Generator<'a> {
         // }
     }
 
-    fn assignment(&self, name: Document<'a>, value: &'a TypedExpr) -> Document<'a> {
+    fn assignment(&mut self, name: Document<'a>, value: &'a TypedExpr) -> Document<'a> {
         let value_doc = self.expression(value);
 
         if self.must_start_assignment_value_on_newline(value) {
@@ -1128,7 +1165,7 @@ impl<'a> Generator<'a> {
         false
     }
 
-    fn statements(&self, s: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
+    fn statements(&mut self, s: &'a [TypedStatement], return_type: Option<&Type>) -> Document<'a> {
         let mut last_var = None;
         let mut res = s
             .iter()
@@ -1233,7 +1270,7 @@ impl<'a> Generator<'a> {
         value.to_doc().append("L")
     }
 
-    fn expression(&self, expr: &'a TypedExpr) -> Document<'a> {
+    fn expression(&mut self, expr: &'a TypedExpr) -> Document<'a> {
         match expr {
             TypedExpr::Int { value, .. } => self.integer(value),
             TypedExpr::Float { value, .. } => value.to_doc(),
@@ -1365,7 +1402,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn tuple_index(&self, tuple: &'a TypedExpr, index: &'a u64) -> Document<'a> {
+    fn tuple_index(&mut self, tuple: &'a TypedExpr, index: &'a u64) -> Document<'a> {
         // TODO: Add warning suppression when this is encountered:
         // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
         docvec![self.expression(tuple), ".Item", index + 1]
@@ -1429,7 +1466,7 @@ impl<'a> Generator<'a> {
     // }
 
     fn record_instantiation(
-        &self,
+        &mut self,
         field_map: &'a FieldMap,
         args: &'a [CallArg<TypedExpr>],
     ) -> Document<'a> {
@@ -1475,7 +1512,7 @@ impl<'a> Generator<'a> {
     }
 
     fn function_call(
-        &self,
+        &mut self,
         curried: bool,
         fun: &'a TypedExpr,
         args: &'a [TypedCallArg],
@@ -1530,7 +1567,7 @@ impl<'a> Generator<'a> {
         fun_expr.append(args).group()
     }
 
-    fn record_access(&self, record: &'a TypedExpr, label: &'a EcoString) -> Document<'a> {
+    fn record_access(&mut self, record: &'a TypedExpr, label: &'a EcoString) -> Document<'a> {
         let record_expr = self.expression(record);
         docvec![record_expr, ".", self.sanitize_name(label)]
     }
@@ -1559,7 +1596,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn todo(&self, message: &'a Option<Box<TypedExpr>>) -> Document<'a> {
+    fn todo(&mut self, message: &'a Option<Box<TypedExpr>>) -> Document<'a> {
         match message {
             Some(message) => "failwith "
                 .to_doc()
@@ -1568,7 +1605,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn panic_(&self, message: &'a Option<Box<TypedExpr>>) -> Document<'a> {
+    fn panic_(&mut self, message: &'a Option<Box<TypedExpr>>) -> Document<'a> {
         match message {
             Some(message) => "failwith "
                 .to_doc()
@@ -1581,7 +1618,7 @@ impl<'a> Generator<'a> {
         join(elements, ", ".to_doc()).surround("(", ")")
     }
 
-    fn case(&self, subjects: &'a [TypedExpr], clauses: &'a [TypedClause]) -> Document<'a> {
+    fn case(&mut self, subjects: &'a [TypedExpr], clauses: &'a [TypedClause]) -> Document<'a> {
         let subjects_doc = if subjects.len() == 1 {
             self.expression(
                 subjects
@@ -1607,7 +1644,7 @@ impl<'a> Generator<'a> {
         .group()
     }
 
-    fn clause(&self, clause: &'a TypedClause) -> Document<'a> {
+    fn clause(&mut self, clause: &'a TypedClause) -> Document<'a> {
         let Clause {
             guard,
             pattern: pat,
@@ -1644,14 +1681,14 @@ impl<'a> Generator<'a> {
         ]
     }
 
-    fn clause_consequence(&self, consequence: &'a TypedExpr) -> Document<'a> {
+    fn clause_consequence(&mut self, consequence: &'a TypedExpr) -> Document<'a> {
         match consequence {
             TypedExpr::Block { statements, .. } => self.statement_sequence(statements),
             _ => self.expression(consequence),
         }
     }
 
-    fn statement_sequence(&self, statements: &'a [TypedStatement]) -> Document<'a> {
+    fn statement_sequence(&mut self, statements: &'a [TypedStatement]) -> Document<'a> {
         let documents = statements.iter().map(|e| self.statement(e).0.group());
 
         let documents = join(documents, line());
@@ -1662,7 +1699,7 @@ impl<'a> Generator<'a> {
         }
     }
     fn optional_clause_guard(
-        &self,
+        &mut self,
         guard: Option<&'a TypedClauseGuard>,
         additional_guards: Vec<Document<'a>>,
     ) -> Document<'a> {
@@ -1683,7 +1720,7 @@ impl<'a> Generator<'a> {
             " when ".to_doc().append(doc)
         }
     }
-    fn clause_guard(&self, guard: &'a TypedClauseGuard) -> Document<'a> {
+    fn clause_guard(&mut self, guard: &'a TypedClauseGuard) -> Document<'a> {
         match guard {
             // Binary operators are wrapped in parens
             ClauseGuard::Or { .. }
@@ -1720,7 +1757,7 @@ impl<'a> Generator<'a> {
             | ClauseGuard::ModuleSelect { .. } => self.bare_clause_guard(guard),
         }
     }
-    fn bare_clause_guard(&self, guard: &'a TypedClauseGuard) -> Document<'a> {
+    fn bare_clause_guard(&mut self, guard: &'a TypedClauseGuard) -> Document<'a> {
         match guard {
             ClauseGuard::Not { expression, .. } => {
                 docvec!["not ", self.bare_clause_guard(expression)]
@@ -1824,7 +1861,12 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn binop(&self, name: &'a BinOp, left: &'a TypedExpr, right: &'a TypedExpr) -> Document<'a> {
+    fn binop(
+        &mut self,
+        name: &'a BinOp,
+        left: &'a TypedExpr,
+        right: &'a TypedExpr,
+    ) -> Document<'a> {
         let operand = match name {
             // Boolean logic
             BinOp::And => "&&",
@@ -1858,7 +1900,11 @@ impl<'a> Generator<'a> {
     }
 
     /// Implement pipeline (|>) expressions
-    fn pipeline(&self, assignments: &'a [TypedAssignment], finally: &'a TypedExpr) -> Document<'a> {
+    fn pipeline(
+        &mut self,
+        assignments: &'a [TypedAssignment],
+        finally: &'a TypedExpr,
+    ) -> Document<'a> {
         let mut documents = Vec::with_capacity((assignments.len() + 1) * 3);
 
         for a in assignments {
@@ -1882,7 +1928,7 @@ impl<'a> Generator<'a> {
             .append(line().append("end"))
     }
 
-    fn block(&self, s: &'a [TypedStatement]) -> Document<'a> {
+    fn block(&mut self, s: &'a [TypedStatement]) -> Document<'a> {
         "begin"
             .to_doc()
             .append(line())
@@ -1891,7 +1937,7 @@ impl<'a> Generator<'a> {
             .append(line().append("end"))
     }
 
-    fn pattern(&self, p: &'a Pattern<Arc<Type>>) -> Document<'a> {
+    fn pattern(&mut self, p: &'a Pattern<Arc<Type>>) -> Document<'a> {
         match p {
             Pattern::Int { value, .. } => self.integer(value),
             Pattern::Float { value, .. } => value.to_doc(),
@@ -2046,7 +2092,7 @@ impl<'a> Generator<'a> {
     }
 
     fn constructor_pattern(
-        &self,
+        &mut self,
         arguments: &'a [CallArg<Pattern<Arc<Type>>>],
         constructor: &'a Inferred<PatternConstructor>,
         name: &'a EcoString,
@@ -2070,12 +2116,12 @@ impl<'a> Generator<'a> {
         docvec![name.to_doc(), args].surround("(", ")")
     }
 
-    fn type_to_fsharp(&self, t: &Type) -> Document<'a> {
+    fn type_to_fsharp(&mut self, t: Arc<Type>) -> Document<'a> {
         if t.is_nil() {
             return "unit".to_doc();
         }
 
-        match t {
+        match t.deref() {
             Type::Named { name, args, .. } => {
                 let name = map_builtin_type_name_to_fsharp(name);
                 if args.is_empty() {
@@ -2084,32 +2130,72 @@ impl<'a> Generator<'a> {
                     name.to_doc()
                         .append("<")
                         .append(join(
-                            args.iter().map(|arg| self.type_to_fsharp(arg)),
+                            args.iter().map(|arg| self.type_to_fsharp(arg.clone())),
                             ", ".to_doc(),
                         ))
                         .append(">")
                 }
             }
             Type::Fn { args, retrn } => self.function_type(args, retrn),
-            Type::Tuple { elems } => {
-                join(elems.iter().map(|t| self.type_to_fsharp(t)), " * ".to_doc())
-                    .surround("(", ")")
-            }
+            Type::Tuple { elems } => join(
+                elems.iter().map(|t| self.type_to_fsharp(t.clone())),
+                " * ".to_doc(),
+            )
+            .surround("(", ")"),
             Type::Var { type_ } => {
                 let borrowed = type_.borrow();
                 match borrowed.deref() {
-                    TypeVar::Link { type_ } => self.type_to_fsharp(type_),
-                    TypeVar::Unbound { id } => EcoString::from(format!("'u{}", id)).to_doc(),
-                    TypeVar::Generic { id } => EcoString::from(format!("'t{}", id)).to_doc(),
+                    TypeVar::Link { type_ } => self.type_to_fsharp(type_.clone()),
+                    TypeVar::Unbound { id } | TypeVar::Generic { id } => {
+                        sanitize_type_var(self.printer.type_variable(*id)).to_doc()
+                    }
                 }
             }
         }
     }
 
-    fn function_type(&self, args: &[Arc<Type>], retrn: &Arc<Type>) -> Document<'a> {
+    fn get_all_type_variables(&mut self, type_: Arc<Type>) -> HashSet<EcoString> {
+        fn visit(type_: Arc<Type>, printer: &mut Printer<'_>, type_vars: &mut HashSet<EcoString>) {
+            match type_.as_ref() {
+                Type::Var { type_ } => {
+                    let borrowed = type_.borrow();
+                    match borrowed.deref() {
+                        TypeVar::Link { type_ } => {
+                            visit(type_.clone(), printer, type_vars);
+                        }
+                        TypeVar::Unbound { id } | TypeVar::Generic { id } => {
+                            _ = type_vars.insert(sanitize_type_var(printer.type_variable(*id)));
+                        }
+                    }
+                }
+                Type::Named { args, .. } => {
+                    for argument in args {
+                        visit(argument.clone(), printer, type_vars);
+                    }
+                }
+                Type::Tuple { elems, .. } => {
+                    for e in elems {
+                        visit(e.clone(), printer, type_vars);
+                    }
+                }
+                Type::Fn { args, retrn } => {
+                    for arg in args {
+                        visit(arg.clone(), printer, type_vars);
+                    }
+                    visit(retrn.clone(), printer, type_vars);
+                }
+            }
+        }
+
+        let mut type_vars = HashSet::new();
+        visit(type_, &mut self.printer, &mut type_vars);
+        type_vars
+    }
+
+    fn function_type(&mut self, args: &[Arc<Type>], retrn: &Arc<Type>) -> Document<'a> {
         let arg_types = args
             .iter()
-            .map(|arg| self.type_to_fsharp(arg))
+            .map(|arg| self.type_to_fsharp(arg.clone()))
             .collect::<Vec<Document<'a>>>();
 
         let arg_types = if arg_types.is_empty() {
@@ -2118,11 +2204,14 @@ impl<'a> Generator<'a> {
             join(arg_types, " -> ".to_doc())
         };
 
-        let return_type = self.type_to_fsharp(retrn);
+        let return_type = self.type_to_fsharp(retrn.clone());
         docvec![arg_types, " -> ", return_type]
     }
 
-    fn module_constant(&self, constant: &'a ModuleConstant<Arc<Type>, EcoString>) -> Document<'a> {
+    fn module_constant(
+        &mut self,
+        constant: &'a ModuleConstant<Arc<Type>, EcoString>,
+    ) -> Document<'a> {
         let attr = match constant.value.deref() {
             Constant::Int { .. } | Constant::Float { .. } | Constant::String { .. } => {
                 docvec!["[<Literal>]", line()]
@@ -2146,7 +2235,7 @@ impl<'a> Generator<'a> {
         ]
     }
 
-    fn constant_expression(&self, expression: &'a TypedConstant) -> Document<'a> {
+    fn constant_expression(&mut self, expression: &'a TypedConstant) -> Document<'a> {
         match expression {
             Constant::Int { value, .. } => self.integer(value),
             Constant::Float { value, .. } => value.to_doc(),
@@ -2211,7 +2300,7 @@ impl<'a> Generator<'a> {
     }
 
     fn constant_record_expression(
-        &self,
+        &mut self,
         record_name: &'a EcoString,
         args: &'a [CallArg<TypedConstant>],
         type_: &'a Arc<Type>,
@@ -2252,7 +2341,7 @@ impl<'a> Generator<'a> {
     }
 
     fn constant_union_constructor(
-        &self,
+        &mut self,
         type_: &'a Arc<Type>,
         record_name: &'a EcoString,
         module: &'a Option<(EcoString, SrcSpan)>,
@@ -2298,7 +2387,7 @@ impl<'a> Generator<'a> {
     }
 
     fn construct_type(
-        &self,
+        &mut self,
         module: Option<&'a str>,
         name: &'a str,
         arguments: impl IntoIterator<Item = Document<'a>>,
@@ -2323,7 +2412,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn list(&self, elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
+    fn list(&mut self, elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
         join(elements, "; ".to_doc()).group().surround("[", "]")
     }
 }

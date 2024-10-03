@@ -1,0 +1,23 @@
+---
+source: compiler-core/src/fsharp/tests/types.rs
+expression: "\ntype Action(element) {\n  Stop\n  Continue(element, fn() -> Action(element))\n}\npub opaque type Iterator(element) {\n  Iterator(continuation: fn() -> Action(element))\n}\npub type Step(element, accumulator) {\n  Next(element: element, accumulator: accumulator)\n  Done\n}\npub fn repeatedly(f: fn() -> element) -> Iterator(element) {\n todo\n}\n pub fn unfold(\n  from initial: acc,\n  with f: fn(acc) -> Step(element, acc),\n) -> Iterator(element) {\n  todo\n}\n"
+---
+module rec my.``mod``
+
+type private Action<'element> =
+| Continue of 'element * (unit -> Action<'element>)
+| Stop
+    
+type Iterator<'element> = 
+    private 
+        { continuation: unit -> Action<'element> }
+type Step<'element, 'accumulator> =
+| Done
+| Next of element: 'element * accumulator: 'accumulator
+    
+let repeatedly<element> (f: unit -> 'element): Iterator<'element> = begin
+    failwith "Not implemented"
+end
+let unfold<acc, element> (initial: 'acc) (f: 'acc -> Step<'element, 'acc>): Iterator<'element> = begin
+    failwith "Not implemented"
+end
