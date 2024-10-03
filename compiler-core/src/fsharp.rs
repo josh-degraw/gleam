@@ -2051,6 +2051,7 @@ impl<'a> Generator<'a> {
                 spread,
                 arguments,
                 type_,
+                module,
                 ..
             } if arguments.len() == field_map.fields.len() => {
                 let (_, type_name) = type_.named_type_name().expect("Expected a named type");
@@ -2063,7 +2064,12 @@ impl<'a> Generator<'a> {
                 // If there's more than one possible constructor, we can't print this like a record type
                 if let Some(c) = constructor {
                     if c.variants.len() > 1 {
-                        return self.constructor_pattern(arguments, pattern_constructor, name);
+                        return self.constructor_pattern(
+                            arguments,
+                            pattern_constructor,
+                            name,
+                            module,
+                        );
                     }
                 }
 
@@ -2099,8 +2105,9 @@ impl<'a> Generator<'a> {
                 name,
                 arguments,
                 constructor,
+                module,
                 ..
-            } => self.constructor_pattern(arguments, constructor, name),
+            } => self.constructor_pattern(arguments, constructor, name, module),
         }
     }
 
@@ -2109,6 +2116,7 @@ impl<'a> Generator<'a> {
         arguments: &'a [CallArg<Pattern<Arc<Type>>>],
         constructor: &'a Inferred<PatternConstructor>,
         name: &'a EcoString,
+        module: &Option<(EcoString, SrcSpan)>,
     ) -> Document<'a> {
         let args = arguments
             .iter()
@@ -2126,7 +2134,11 @@ impl<'a> Generator<'a> {
         } else {
             join(args, ", ".to_doc()).surround("(", ")")
         };
-        docvec![name.to_doc(), args].surround("(", ")")
+        let module = match module {
+            Some((module, _)) => docvec![module, "."],
+            None => nil(),
+        };
+        docvec![module, name.to_doc(), args].surround("(", ")")
     }
 
     fn type_to_fsharp(&mut self, t: Arc<Type>) -> Document<'a> {
