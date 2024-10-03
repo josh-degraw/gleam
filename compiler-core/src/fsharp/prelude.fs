@@ -53,13 +53,17 @@ module Prelude =
             { content: string
               submatches: list<Option<string>> }
 
+        type RegexOptions =
+            { case_insensitive: bool
+              multi_line: bool }
+
         type CompileError = { error: string; byte_index: int64 }
 
         type Uri =
             { scheme: Option<string>
               userinfo: Option<string>
               host: Option<string>
-              port: Option<int>
+              port: Option<int64>
               path: string
               query: Option<string>
               fragment: Option<string> }

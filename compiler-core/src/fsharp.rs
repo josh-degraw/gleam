@@ -172,10 +172,12 @@ let Error e = Result.Error e
         "Regex" => Some("type Regex = gleam.Prelude.Builtins.Regex"),
 
         // Gleam-specific types defined in the prelude
+        // Since these types won't be rewritten to affect calling code, we'll need to add manual constructors for some of them
         "BitArray" => Some("type BitArray = gleam.Prelude.Builtins.BitArray"),
         "UtfCodepoint" => Some("type UtfCodepoint = gleam.Prelude.Builtins.UtfCodepoint"),
         "Dynamic" => Some("type Dynamic = gleam.Prelude.Builtins.Dynamic"),
-        "DecodeError" => Some("type DecodeError = gleam.Prelude.Builtins.DecodeError"),
+        "DecodeError" => Some("type DecodeError = gleam.Prelude.Builtins.DecodeError
+let DecodeError expected found path: gleam.Prelude.Builtins.DecodeError = { expected = expected; found = found; path = path }"),
         "DecodeErrors" => Some("type DecodeErrors = gleam.Prelude.Builtins.DecodeErrors"),
         "UnknownTuple" => Some("type UnknownTuple = gleam.Prelude.Builtins.UnknownTuple"),
         "Order" => Some("type Order = gleam.Prelude.Builtins.Order
@@ -183,6 +185,8 @@ let Lt = Order.Lt
 let Eq = Order.Eq
 let Gt = Order.Gt"),
         "Match" => Some("type Match = gleam.Prelude.Builtins.Match"),
+        "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
+let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
         "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
         "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri"),
 
@@ -757,6 +761,12 @@ impl<'a> Generator<'a> {
                     .iter()
                     .map(|arg| self.type_ast_to_fsharp(arg))
                     .collect::<Vec<Document<'a>>>();
+
+                let arg_types = if arg_types.is_empty() {
+                    "unit".to_doc()
+                } else {
+                    join(arg_types, " -> ".to_doc())
+                };
 
                 let return_type = self.type_ast_to_fsharp(return_);
                 docvec![arg_types, " -> ", return_type]
