@@ -6,5 +6,5 @@ module rec my.``mod``
 
 
 let go () = begin
-    gleam.Error 1L
+    gleam.Error(1L)
 end
