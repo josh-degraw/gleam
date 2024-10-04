@@ -95,7 +95,7 @@ impl<'a> Generator<'a> {
             .append(self.sanitize_name(&self.module.name))
     }
 
-    fn render_imports(&self) -> Document<'a> {
+    fn render_imports(&mut self) -> Document<'a> {
         let all_imports = self
             .module
             .definitions
@@ -138,7 +138,7 @@ impl<'a> Generator<'a> {
     }
 
     fn import(
-        &self,
+        &mut self,
         i: &'a Import<EcoString>,
     ) -> (Vec<Document<'a>>, Vec<Document<'a>>, Vec<Document<'a>>) {
         let Import {
@@ -166,15 +166,15 @@ impl<'a> Generator<'a> {
             }
             Some((AssignName::Discard(_), _)) => {}
             // If the imports are from the same package, don't need to open it
-            None if unqualified_values.is_empty() && unqualified_types.is_empty() => {
+            None => {
+                // if unqualified_values.is_empty() && unqualified_types.is_empty() => {
                 // if package is empty, it's from a builtin
-                if package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib" {
+                if self.is_building_stdlib() {
                     open_statements.push(docvec!["open ", &full_module_name]);
                 } else if self.package_name != package {
                     open_statements.push(docvec!["open ", self.sanitize_name(package)]);
                 }
-            }
-            None => {}
+            } //None => {}
         };
 
         unqualified_values.iter().for_each(|v| {
@@ -188,6 +188,56 @@ impl<'a> Generator<'a> {
                 ".",
                 self.sanitize_name(name)
             ]);
+        });
+
+        unqualified_types.iter().for_each(|v| {
+            let name = &v.name;
+            if let Some(ref label) = v.as_name {
+                other_aliases.push(docvec![
+                    "type ",
+                    self.sanitize_name(label),
+                    //type_params.clone(),
+                    " = ",
+                    &full_module_name,
+                    ".",
+                    self.sanitize_name(name),
+                    //type_params
+                ]);
+            }
+            // let label = v.as_name.as_ref().unwrap_or(name);
+
+            // let type_info = self.module.type_info.types.get(name);
+
+            // println!("{}", self.module.name);
+            // println!("\t{}: {:?}", name, type_info);
+
+            // let type_params = match type_info {
+            //     Some(type_info) => {
+            //         if type_info.parameters.is_empty() {
+            //             join(
+            //                 type_info
+            //                     .parameters
+            //                     .iter()
+            //                     .map(|p| self.type_to_fsharp(p.clone())),
+            //                 ", ".to_doc(),
+            //             )
+            //             .surround("<", ">")
+            //         } else {
+            //             nil()
+            //         }
+            //     }
+            //     None => nil(),
+            // };
+            // other_aliases.push(docvec![
+            //     "type ",
+            //     self.sanitize_name(label),
+            //     type_params.clone(),
+            //     " = ",
+            //     &full_module_name,
+            //     ".",
+            //     self.sanitize_name(name),
+            //     type_params
+            // ]);
         });
 
         (open_statements, module_aliases, other_aliases)
@@ -598,7 +648,7 @@ impl<'a> Generator<'a> {
                 let return_type = self.type_ast_to_fsharp(return_);
                 docvec![arg_types, " -> ", return_type]
             }
-            TypeAst::Var(TypeAstVar { name, .. }) => docvec!["'", self.sanitize_name(name)],
+            TypeAst::Var(TypeAstVar { name, .. }) => sanitize_type_var(name.clone()).to_doc(),
             TypeAst::Tuple(TypeAstTuple { elems, .. }) => {
                 let items = join(
                     elems.iter().map(|arg| self.type_ast_to_fsharp(arg)),
@@ -729,18 +779,21 @@ impl<'a> Generator<'a> {
             })
             .collect::<HashSet<_>>();
 
-        let return_type =
-        //match return_annotation {
-            // Some(return_annotation) => self.type_ast_to_fsharp(return_annotation),
-            // _ =>
-            {
+        let return_type = match return_annotation {
+            Some(return_annotation) => self.type_ast_to_fsharp(return_annotation),
+            _ => {
                 let all_return_type_vars = self.get_all_type_variables(return_type.clone());
                 all_type_params.extend(all_return_type_vars);
                 self.type_to_fsharp(return_type.clone())
-             };
-        // };
+            }
+        };
 
-        let _all_type_params = if !all_type_params.is_empty() {
+        // HACK: Omitting type params is usually helpful because it can infer type constraints
+        // But some funcitons need to be marked as explicitly generic to avoid getting prematurely narrowed
+        let always_include_type_params = self.is_building_stdlib() && name_str == "map_errors";
+
+        let _all_type_params = if always_include_type_params {
+            //|| !all_type_params.is_empty()  {
             join(
                 all_type_params.iter().map(Documentable::to_doc),
                 ", ".to_doc(),
@@ -2290,6 +2343,7 @@ fn builtin_typedef_alias(name: &str) -> Option<&'static str> {
     match name {
         // Aliases to .NET builtins
         "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Dict<'key, 'value>"),
+        "Set" => Some("type Set<'key when 'key: comparison> = gleam.Set<'key>"),
         "Option" => Some("type Option<'a> = gleam.Option<'a>
 let Some a = Option.Some a
 let None = Option.None

@@ -1,24 +1,12 @@
 namespace gleam
 
+// Re-export some core types under the gleam namespace
 type Dict<'key, 'value when 'key: comparison> = Map<'key, 'value>
+type Set<'key when 'key: comparison> = Microsoft.FSharp.Collections.Set<'key>
 type Option<'a> = Microsoft.FSharp.Core.Option<'a>
 type Result<'T, 'TErr> = Microsoft.FSharp.Core.Result<'T, 'TErr>
 type StringBuilder = System.Text.StringBuilder
 type Regex = System.Text.RegularExpressions.Regex
-
-
-// [<AutoOpen>]
-// module Prelude =
-
-//     [<AutoOpen>]
-//     module Builtins =
-
-// Aliases to .NET builtins
-// type Dict<'key, 'value when 'key: comparison> = Map<'key, 'value>
-// type Option<'a> = Microsoft.FSharp.Core.Option<'a>
-// type Result<'T, 'TErr> = Microsoft.FSharp.Core.Result<'T, 'TErr>
-// type StringBuilder = System.Text.StringBuilder
-// type Regex = System.Text.RegularExpressions.Regex
 
 // Gleam-specific types
 [<Struct>]
