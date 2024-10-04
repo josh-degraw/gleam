@@ -125,8 +125,26 @@ fn match_sequences(
 ) {
   case sequences {
     [] -> []
-    [sequence] -> [sequence]
+    [sequence] -> sequence
     [ascending1, ascending2, ..rest] -> []
+  }
+}
+"#,
+    );
+}
+
+#[test]
+fn nested_list_pattern2() {
+    assert_fsharp!(
+        r#"
+fn match_sequences(
+  sequences: List(List(a))
+) {
+  case sequences {
+    [] -> []
+    [[], ..sequence] -> [sequence]
+    [[a, ..ascending1], ascending2, ..rest] -> []
+    _ -> []
   }
 }
 "#,
