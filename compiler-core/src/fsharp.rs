@@ -49,186 +49,6 @@ mod prelude_functions {
     pub const STRING_PATTERN_PARTS: &str = "Gleam_codegen_string_parts";
 }
 
-fn is_reserved_word(name: &str) -> bool {
-    matches!(
-        name,
-        "asr"
-            | "land"
-            | "lor"
-            | "lsl"
-            | "lsr"
-            | "lxor"
-            | "mod"
-            | "sig"
-            | "break"
-            | "checked"
-            | "component"
-            | "const"
-            | "constraint"
-            | "continue"
-            | "event"
-            | "external"
-            | "include"
-            | "mixin"
-            | "parallel"
-            | "process"
-            | "protected"
-            | "pure"
-            | "sealed"
-            | "tailcall"
-            | "trait"
-            | "virtual"
-
-            // Keywords
-            | "abstract"
-            | "and"
-            | "as"
-            | "assert"
-            | "base"
-            | "begin"
-            | "class"
-            | "default"
-            | "delegate"
-            | "do"
-            | "done"
-            | "downcast"
-            | "downto"
-            | "elif"
-            | "else"
-            | "end"
-            | "exception"
-            | "extern"
-            | "false"
-            | "finally"
-            | "fixed"
-            | "for"
-            | "fun"
-            | "function"
-            | "global"
-            | "if"
-            | "in"
-            | "inherit"
-            | "inline"
-            | "interface"
-            | "internal"
-            | "lazy"
-            | "let"
-            | "match"
-            | "member"
-            | "module"
-            | "mutable"
-            | "namespace"
-            | "new"
-            | "not"
-            | "null"
-            | "of"
-            | "open"
-            | "or"
-            | "override"
-            | "private"
-            | "public"
-            | "rec"
-            | "return"
-            | "select"
-            | "static"
-            | "struct"
-            | "then"
-            | "to"
-            | "true"
-            | "try"
-            | "type"
-            | "upcast"
-            | "use"
-            | "val"
-            | "void"
-            | "when"
-            | "while"
-            | "with"
-            | "yield"
-    )
-}
-
-fn sanitize_type_var(name: EcoString) -> EcoString {
-    if is_reserved_word(name.as_str()) {
-        EcoString::from(format!("'_{}", name))
-    } else {
-        EcoString::from(format!("'{}", name))
-    }
-}
-
-fn unicode_escape_sequence_pattern() -> &'static Regex {
-    static PATTERN: OnceLock<Regex> = OnceLock::new();
-    PATTERN.get_or_init(|| {
-        Regex::new(r#"(\\+)(u)\{(\S+)\}"#)
-            .expect("Unicode escape sequence regex cannot be constructed")
-    })
-}
-
-/// HACK: For builtins, if we're trying to write to the standard library,
-/// instead of printing out a full typedef, we'll just emit a type alias when possible
-fn builtin_typedef_alias(name: &str) -> Option<&'static str> {
-    match name {
-        // Aliases to .NET builtins
-        "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Prelude.Builtins.Dict<'key, 'value>"),
-        "Option" => Some("type Option<'a> = gleam.Prelude.Builtins.Option<'a>
-let Some a = Option.Some a
-let None = Option.None
-let inline (|Some|None|) (option) =
-    match option with
-    | Option.Some v -> Some v
-    | Option.None -> None"),
-        "Result" => Some("type Result<'T, 'TErr> = gleam.Prelude.Builtins.Result<'T, 'TErr>
-let Ok a = Result.Ok a
-let Error e = Result.Error e
-// let inline (|Ok|Error|) (result: Result<'T, 'TErr>) =
-//     match result with
-//     | Result.Ok v -> Ok v
-//     | Result.Error v -> Error v
-"),
-        "StringBuilder" => Some("type StringBuilder = gleam.Prelude.Builtins.StringBuilder"),
-        "Regex" => Some("type Regex = gleam.Prelude.Builtins.Regex"),
-
-        // Gleam-specific types defined in the prelude
-        // Since these types won't be rewritten to affect calling code, we'll need to add manual constructors for some of them
-        "BitArray" => Some("type BitArray = gleam.Prelude.Builtins.BitArray"),
-        "UtfCodepoint" => Some("type UtfCodepoint = gleam.Prelude.Builtins.UtfCodepoint"),
-        "Dynamic" => Some("type Dynamic = gleam.Prelude.Builtins.Dynamic"),
-        "DecodeError" => Some("type DecodeError = gleam.Prelude.Builtins.DecodeError
-let DecodeError expected found path: gleam.Prelude.Builtins.DecodeError = { expected = expected; found = found; path = path }"),
-        "DecodeErrors" => Some("type DecodeErrors = gleam.Prelude.Builtins.DecodeErrors"),
-        "UnknownTuple" => Some("type UnknownTuple = gleam.Prelude.Builtins.UnknownTuple"),
-        "Order" => Some("type Order = gleam.Prelude.Builtins.Order
-let Lt = Order.Lt
-let Eq = Order.Eq
-let Gt = Order.Gt
-let (|Lt|Eq|Gt|) (order: Order) =
-    match order with
-    | Order.Lt -> Lt
-    | Order.Eq -> Eq
-    | Order.Gt -> Gt"),
-        "Match" => Some("type Match = gleam.Prelude.Builtins.Match
-let Match (content: string) (submatches: list<Option<string>>) : Match = { content = content; submatches = submatches }"),
-        "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
-let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
-        "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
-        "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri"),
-
-        _ => None,
-    }
-}
-
-fn map_builtin_type_name_to_fsharp(name: &EcoString) -> EcoString {
-    match name.as_str() {
-        "Int" | "int" => EcoString::from("int64"),
-        "Float" | "float" => EcoString::from("float"),
-        "String" | "string" => EcoString::from("string"),
-        "Bool" | "bool" => EcoString::from("bool"),
-        "Nil" => EcoString::from("unit"),
-        "List" => EcoString::from("list"),
-        _ => name.clone(),
-    }
-}
-
 impl<'a> Generator<'a> {
     pub fn new(
         package_name: &'a EcoString,
@@ -2460,4 +2280,184 @@ fn invert_field_map(field_map: &FieldMap) -> HashMap<&u32, &EcoString> {
         .iter()
         .map(|(k, v)| (v, k))
         .collect::<HashMap<_, _>>()
+}
+
+fn is_reserved_word(name: &str) -> bool {
+    matches!(
+        name,
+        "asr"
+            | "land"
+            | "lor"
+            | "lsl"
+            | "lsr"
+            | "lxor"
+            | "mod"
+            | "sig"
+            | "break"
+            | "checked"
+            | "component"
+            | "const"
+            | "constraint"
+            | "continue"
+            | "event"
+            | "external"
+            | "include"
+            | "mixin"
+            | "parallel"
+            | "process"
+            | "protected"
+            | "pure"
+            | "sealed"
+            | "tailcall"
+            | "trait"
+            | "virtual"
+
+            // Keywords
+            | "abstract"
+            | "and"
+            | "as"
+            | "assert"
+            | "base"
+            | "begin"
+            | "class"
+            | "default"
+            | "delegate"
+            | "do"
+            | "done"
+            | "downcast"
+            | "downto"
+            | "elif"
+            | "else"
+            | "end"
+            | "exception"
+            | "extern"
+            | "false"
+            | "finally"
+            | "fixed"
+            | "for"
+            | "fun"
+            | "function"
+            | "global"
+            | "if"
+            | "in"
+            | "inherit"
+            | "inline"
+            | "interface"
+            | "internal"
+            | "lazy"
+            | "let"
+            | "match"
+            | "member"
+            | "module"
+            | "mutable"
+            | "namespace"
+            | "new"
+            | "not"
+            | "null"
+            | "of"
+            | "open"
+            | "or"
+            | "override"
+            | "private"
+            | "public"
+            | "rec"
+            | "return"
+            | "select"
+            | "static"
+            | "struct"
+            | "then"
+            | "to"
+            | "true"
+            | "try"
+            | "type"
+            | "upcast"
+            | "use"
+            | "val"
+            | "void"
+            | "when"
+            | "while"
+            | "with"
+            | "yield"
+    )
+}
+
+fn sanitize_type_var(name: EcoString) -> EcoString {
+    if is_reserved_word(name.as_str()) {
+        EcoString::from(format!("'_{}", name))
+    } else {
+        EcoString::from(format!("'{}", name))
+    }
+}
+
+fn unicode_escape_sequence_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r#"(\\+)(u)\{(\S+)\}"#)
+            .expect("Unicode escape sequence regex cannot be constructed")
+    })
+}
+
+/// HACK: For builtins, if we're trying to write to the standard library,
+/// instead of printing out a full typedef, we'll just emit a type alias when possible
+fn builtin_typedef_alias(name: &str) -> Option<&'static str> {
+    match name {
+        // Aliases to .NET builtins
+        "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Prelude.Builtins.Dict<'key, 'value>"),
+        "Option" => Some("type Option<'a> = gleam.Prelude.Builtins.Option<'a>
+let Some a = Option.Some a
+let None = Option.None
+let inline (|Some|None|) (option) =
+    match option with
+    | Option.Some v -> Some v
+    | Option.None -> None"),
+        "Result" => Some("type Result<'T, 'TErr> = gleam.Prelude.Builtins.Result<'T, 'TErr>
+let Ok a = Result.Ok a
+let Error e = Result.Error e
+// let inline (|Ok|Error|) (result: Result<'T, 'TErr>) =
+//     match result with
+//     | Result.Ok v -> Ok v
+//     | Result.Error v -> Error v
+"),
+        "StringBuilder" => Some("type StringBuilder = gleam.Prelude.Builtins.StringBuilder"),
+        "Regex" => Some("type Regex = gleam.Prelude.Builtins.Regex"),
+
+        // Gleam-specific types defined in the prelude
+        // Since these types won't be rewritten to affect calling code, we'll need to add manual constructors for some of them
+        "BitArray" => Some("type BitArray = gleam.Prelude.Builtins.BitArray"),
+        "UtfCodepoint" => Some("type UtfCodepoint = gleam.Prelude.Builtins.UtfCodepoint"),
+        "Dynamic" => Some("type Dynamic = gleam.Prelude.Builtins.Dynamic"),
+        "DecodeError" => Some("type DecodeError = gleam.Prelude.Builtins.DecodeError
+let DecodeError expected found path: gleam.Prelude.Builtins.DecodeError = { expected = expected; found = found; path = path }"),
+        "DecodeErrors" => Some("type DecodeErrors = gleam.Prelude.Builtins.DecodeErrors"),
+        "UnknownTuple" => Some("type UnknownTuple = gleam.Prelude.Builtins.UnknownTuple"),
+        "Order" => Some("type Order = gleam.Prelude.Builtins.Order
+let Lt = Order.Lt
+let Eq = Order.Eq
+let Gt = Order.Gt
+let (|Lt|Eq|Gt|) (order: Order) =
+    match order with
+    | Order.Lt -> Lt
+    | Order.Eq -> Eq
+    | Order.Gt -> Gt"),
+        "Match" => Some("type Match = gleam.Prelude.Builtins.Match
+let Match (content: string) (submatches: list<Option<string>>) : Match = { content = content; submatches = submatches }"),
+        "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
+let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
+        "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
+        "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri"),
+
+        _ => None,
+    }
+}
+
+fn map_builtin_type_name_to_fsharp(name: &EcoString) -> EcoString {
+    match name.as_str() {
+        "Int" | "int" => EcoString::from("int64"),
+        "Float" | "float" => EcoString::from("float"),
+        "String" | "string" => EcoString::from("string"),
+        "Bool" | "bool" => EcoString::from("bool"),
+        "Nil" => EcoString::from("unit"),
+        "List" => EcoString::from("list"),
+        _ => name.clone(),
+    }
 }
