@@ -1,0 +1,14 @@
+---
+source: compiler-core/src/fsharp/tests/functions.rs
+expression: "\ntype Value {\n    Value(content: String)\n}\n\nfn get_value(content) {\n    Value(content: content)\n}\n\nfn go(){\n    let x = get_value(\"hello\").content\n}\n\n"
+---
+module rec my.``mod``
+
+type private Value = { content: string }
+let private get_value (content: string) = begin
+    { content = content }
+end
+let private go () = begin
+    let x = (get_value "hello").content
+    x
+end
