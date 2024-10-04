@@ -8,6 +8,10 @@ type Result<'T, 'TErr> = Microsoft.FSharp.Core.Result<'T, 'TErr>
 type StringBuilder = System.Text.StringBuilder
 type Regex = System.Text.RegularExpressions.Regex
 
+// Manual Override
+type Iterator<'a> = System.Collections.Generic.IEnumerable<'a>
+
+
 // Gleam-specific types
 [<Struct>]
 type BitArray = BitArray of int64

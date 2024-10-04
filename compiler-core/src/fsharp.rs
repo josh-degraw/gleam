@@ -7,8 +7,8 @@ use crate::{
     docvec,
     pretty::*,
     type_::{
-        printer::Printer, Deprecation, FieldMap, PatternConstructor, Type, TypeVar, TypedCallArg,
-        ValueConstructor, ValueConstructorVariant,
+        printer::Printer, Deprecation, FieldMap, ModuleValueConstructor, PatternConstructor, Type,
+        TypeVar, TypedCallArg, ValueConstructor, ValueConstructorVariant,
     },
 };
 use camino::Utf8PathBuf;
@@ -1144,6 +1144,14 @@ impl<'a> Generator<'a> {
                     // Every constructor field must have a label to be a record type
                     self.record_instantiation(field_map, args)
                 }
+
+                // If it's a module select but just an alias for a record constructor,
+                // make sure we call the record constructor directly (not curried)
+                TypedExpr::ModuleSelect {
+                    constructor: ModuleValueConstructor::Record { .. },
+                    ..
+                } => self.function_call(false, fun, args),
+
                 TypedExpr::Var {
                     constructor:
                         ValueConstructor {
@@ -2355,10 +2363,6 @@ let inline (|Some|None|) (option) =
         "Result" => Some("type Result<'T, 'TErr> = gleam.Result<'T, 'TErr>
 let Ok a = Result.Ok a
 let Error e = Result.Error e
-// let inline (|Ok|Error|) (result: Result<'T, 'TErr>) =
-//     match result with
-//     | Result.Ok v -> Ok v
-//     | Result.Error v -> Error v
 "),
         "StringBuilder" => Some("type StringBuilder = gleam.StringBuilder"),
         "Regex" => Some("type Regex = gleam.Regex"),
@@ -2369,7 +2373,7 @@ let Error e = Result.Error e
         "UtfCodepoint" => Some("type UtfCodepoint = gleam.UtfCodepoint"),
         "Dynamic" => Some("type Dynamic = gleam.Dynamic"),
         "DecodeError" => Some("type DecodeError = gleam.DecodeError
-let DecodeError expected found path: gleam.DecodeError = { expected = expected; found = found; path = path }"),
+let DecodeError (expected, found, path): gleam.DecodeError = { expected = expected; found = found; path = path }"),
         "DecodeErrors" => Some("type DecodeErrors = gleam.DecodeErrors"),
         "UnknownTuple" => Some("type UnknownTuple = gleam.UnknownTuple"),
         "Order" => Some("type Order = gleam.Order
@@ -2382,12 +2386,12 @@ let (|Lt|Eq|Gt|) (order: Order) =
     | Order.Eq -> Eq
     | Order.Gt -> Gt"),
         "Match" => Some("type Match = gleam.Match
-let Match (content: string) (submatches: list<Option<string>>) : Match = { content = content; submatches = submatches }"),
+let Match (content, submatches) : Match = { content = content; submatches = submatches }"),
         "Options" => Some("type Options = gleam.RegexOptions
-let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
+let Options (case_insensitive, multi_line) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
         "CompileError" => Some("type CompileError = gleam.CompileError"),
         "Uri" => Some("type Uri = gleam.Uri
-let Uri scheme userinfo host port path query fragment : Uri = { scheme = scheme; userinfo = userinfo; host = host; port = port; path = path; query = query; fragment = fragment }"),
+let Uri(scheme, userinfo, host, port, path, query, fragment) : Uri = { scheme = scheme; userinfo = userinfo; host = host; port = port; path = path; query = query; fragment = fragment }"),
 
         _ => None,
     }

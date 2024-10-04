@@ -57,12 +57,21 @@ macro_rules! assert_fsharp {
 
 #[macro_export]
 macro_rules! assert_fsharp_with_multiple_imports {
-    ($(($name:literal, $module_src:literal)),+; $src:literal) => {
+    ($(($name:literal, $module_src:literal)),*; $src:literal) => {
         let output =
             $crate::fsharp::tests::compile_test_project($src, vec![$((CURRENT_PACKAGE, $name, $module_src)),*]);
         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
     };
 }
+
+// #[macro_export]
+// macro_rules! assert_fsharp_with_import {
+//     ($(($name:literal, $module_src:literal)); $src:literal) => {
+//         let output =
+//             $crate::fsharp::tests::compile_test_project($src, vec![$((CURRENT_PACKAGE, $name, $module_src)),*]);
+//         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
+//     };
+// }
 
 #[track_caller]
 pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String {
