@@ -189,26 +189,6 @@ impl<'a> Generator<'a> {
                 self.sanitize_name(name)
             ]);
         });
-        // unqualified_types.iter().for_each(|v| {
-        //     let name = &v.name;
-        //     let label = v.as_name.as_ref().unwrap_or(name);
-        //     other_aliases.push(docvec![
-        //         "let ",
-        //         self.sanitize_name(label),
-        //         " = ",
-        //         &full_module_name,
-        //         ".",
-        //         self.sanitize_name(name)
-        //     ]);
-        // });
-
-        // let mut values = Vec::new();
-        // values.push(module_ref);
-        // values.extend(open_statements);
-        // values.extend(other_aliases);
-        // values.extend(module_aliases);
-
-        // join(values, line())
 
         (open_statements, module_aliases, other_aliases)
     }
@@ -806,16 +786,12 @@ impl<'a> Generator<'a> {
         } else {
             join(
                 arguments.iter().map(|arg| {
-                    // if arg.annotation.is_some() {
                     docvec![
                         self.arg_name(arg),
                         ": ",
                         self.type_to_fsharp(arg.type_.clone())
                     ]
                     .surround("(", ")")
-                    // } else {
-                    //     self.arg_name(arg).surround("(", ")")
-                    // }
                 }),
                 " ".to_doc(),
             )
@@ -854,27 +830,7 @@ impl<'a> Generator<'a> {
                 .append("end"),
         ]
     }
-    // /// Anonymous functions
-    // fn fun(&self, args: &'a [TypedArg], body: &'a [TypedStatement]) -> Document<'a> {
-    //     let output = docvec![
-    //         "fun",
-    //         self.fun_args(args),
-    //         " ->",
-    //         break_(" begin\n", " ")
-    //             .nest_if_broken(INDENT)
-    //             .append(
-    //                 self.statements(body, None)
-    //                     .nest_if_broken(INDENT)
-    //                     //.append(line())
-    //             )
-    //             .append(break_("\nend", "")),
-    //     ];
 
-    //     if self.body_must_be_multiline(body) {
-    //         output.force_break() //.nest(INDENT)
-    //     } else {
-    //         output
-    //     }
     // }
 
     fn statement(&mut self, s: &'a TypedStatement) -> (Document<'a>, Option<Document<'a>>) {
@@ -1031,33 +987,6 @@ impl<'a> Generator<'a> {
                 }
             }
         }
-
-        // match (return_type, last_var) {
-        //     (None, None) => {}
-        //     (None, Some(last_var)) => res.push(last_var),
-
-        //     (Some(return_type), None) => {
-        //         // TODO: If the last statement is a let assert, we need to either figure out the right value to return, or disallow it
-
-        //         // if !return_type.is_nil() {
-        //         //     // TODO: Fix this somehow?
-        //         //     res.push(
-        //         //         "failwith \"An error occurred while compiling the previous statements: couldn't figure out what to return\""
-        //         //             .to_doc(),
-        //         //     );
-        //         // } else {
-        //         //     res.push("()".to_doc());
-        //         // }
-        //     }
-        //     (Some(return_type), Some(last_var)) => {
-        //         if !return_type.is_nil() {
-        //             res.push(last_var);
-        //         }
-        //         // else {
-        //         //     res.push(last_var)
-        //         // };
-        //     }
-        // }
 
         join(res, line())
     }
@@ -1248,63 +1177,6 @@ impl<'a> Generator<'a> {
         // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
         docvec![self.expression(tuple), ".Item", index + 1]
     }
-
-    // fn union_instantiation(&self, args: &'a [CallArg<TypedExpr>]) -> Document<'a> {
-    //     let args = args.iter().enumerate().map(|(i, arg)| {
-    //         let label = field_map.get(&(i as u32)).expect("Index out of bounds");
-    //         docvec![
-    //             self.sanitize_name(label).to_doc(),
-    //             " = ",
-    //             self.expression(&arg.value)
-    //         ]
-    //     });
-    // }
-
-    // fn constant_union_constructor(
-    //     &self,
-    //     type_: &'a Arc<Type>,
-    //     record_name: &'a EcoString,
-    //     module: &'a Option<(EcoString, SrcSpan)>,
-    //     field_map: &'a Option<FieldMap>,
-    //     args: &'a [CallArg<TypedConstant>],
-    // ) -> Document<'a> {
-    //     // If there's no arguments and the type is a function that takes
-    //     // arguments then this is the constructor being referenced, not the
-    //     // function being called.
-    //     if let Some(arity) = type_.fn_arity() {
-    //         if type_.is_bool() && record_name == "True" {
-    //             return "true".to_doc();
-    //         } else if type_.is_bool() {
-    //             return "false".to_doc();
-    //         } else if type_.is_nil() {
-    //             return "undefined".to_doc();
-    //         } else if arity == 0 {
-    //             return match module {
-    //                 Some((module, _)) => docvec![module, ".", record_name, "()"],
-    //                 None => docvec![record_name, "()"],
-    //             };
-    //         } else if let Some((module, _)) = module {
-    //             return docvec![module, ".", self.sanitize_name(record_name)];
-    //         } else {
-    //             return self.sanitize_name(record_name).to_doc();
-    //         }
-    //     }
-
-    //     if field_map.is_none() && args.is_empty() {
-    //         return self.sanitize_name(record_name).to_doc();
-    //     }
-
-    //     let field_values: Vec<_> = args
-    //         .iter()
-    //         .map(|arg| self.constant_expression(&arg.value))
-    //         .collect();
-
-    //     self.construct_type(
-    //         module.as_ref().map(|(module, _)| module.as_str()),
-    //         record_name,
-    //         field_values,
-    //     )
-    // }
 
     fn record_instantiation(
         &mut self,
