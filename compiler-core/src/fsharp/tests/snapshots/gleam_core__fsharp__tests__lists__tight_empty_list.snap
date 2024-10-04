@@ -4,7 +4,7 @@ expression: "\nfn go(func) {\n  let huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu
 ---
 module rec my.``mod``
 
-let private go<'a, 'b> (func: 'a) = begin
+let private go (func: 'a) = begin
     let huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable = []
     huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable
 end

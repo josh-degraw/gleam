@@ -4,7 +4,7 @@ expression: "pub fn foo(board) {\nfn(board) { board }\n  board\n}"
 ---
 module rec my.``mod``
 
-let foo<'b> (board: 'b) = begin
+let foo (board: 'b) = begin
     fun(board: 'a) -> board
     board
 end

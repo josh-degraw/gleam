@@ -7,7 +7,7 @@ module rec my.``mod``
 type Mapper<'b> =
 | Mapper of ('b -> 'b)
     
-let private identity<'a> (a: 'a) = begin
+let private identity (a: 'a) = begin
     a
 end
 let id_mapper = Mapper(identity)

@@ -4,7 +4,7 @@ expression: "\npub fn go() {\n  use <- trip(1.0, \"\")\n  123\n}\n\nfn trip(x, y
 ---
 module rec my.``mod``
 
-let private trip<'c, 'b, 'a> (x: 'a) (y: 'b) (f: unit -> 'c) = begin
+let private trip (x: 'a) (y: 'b) (f: unit -> 'c) = begin
     let z = f()
     (x, y, z)
 end

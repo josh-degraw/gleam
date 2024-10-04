@@ -7,7 +7,7 @@ module rec my.``mod``
 type private Box<'a> =
 | Box of 'a
     
-let private apply<'b, 'c> (arg: 'b) (``fun``: 'b -> 'c) = begin
+let private apply (arg: 'b) (``fun``: 'b -> 'c) = begin
     ``fun`` arg
 end
 let go () = begin

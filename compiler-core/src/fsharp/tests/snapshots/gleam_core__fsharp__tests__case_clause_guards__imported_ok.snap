@@ -3,12 +3,12 @@ source: compiler-core/src/fsharp/tests/case_clause_guards.rs
 expression: "import gleam\npub type X {\n  Ok\n}\nfn func(x) {\n  case gleam.Ok {\n    _ if [] == [ gleam.Ok ] -> True\n    _ -> False\n  }\n}\n"
 ---
 module rec my.``mod``
-open gleam
+
 
 type X =
 | Ok
     
-let private func<'a> (x: 'a) = begin
+let private func (x: 'a) = begin
     match gleam.Ok with
     | _ when [] = [gleam.Ok] ->
         true

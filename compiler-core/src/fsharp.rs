@@ -171,7 +171,7 @@ impl<'a> Generator<'a> {
                 // if package is empty, it's from a builtin
                 if self.is_building_stdlib() {
                     open_statements.push(docvec!["open ", &full_module_name]);
-                } else if self.package_name != package {
+                } else if self.package_name != package && !package.is_empty() {
                     open_statements.push(docvec!["open ", self.sanitize_name(package)]);
                 }
             } //None => {}
@@ -802,8 +802,9 @@ impl<'a> Generator<'a> {
         } else {
             nil()
         };
+
         let return_type = if name_str == "main" {
-            "int".to_doc()
+            ": int".to_doc()
         } else if return_annotation.is_some() {
             docvec![": ", return_type]
         } else {

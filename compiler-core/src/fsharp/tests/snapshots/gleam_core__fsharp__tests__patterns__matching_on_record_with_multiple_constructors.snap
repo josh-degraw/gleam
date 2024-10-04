@@ -8,10 +8,10 @@ type Step<'element, 'accumulator> =
 | Done
 | Next of element: 'element * accumulator: 'accumulator
     
-let private equal<'a> (a: 'a) (b: 'a) = begin
+let private equal (a: 'a) (b: 'a) = begin
     a = b
 end
-let private go<'b> (step: Step<'b, list<'b>>) = begin
+let private go (step: Step<'b, list<'b>>) = begin
     match [] with
     | [] ->
         begin

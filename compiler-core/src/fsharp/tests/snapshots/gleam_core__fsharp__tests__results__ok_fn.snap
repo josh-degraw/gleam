@@ -4,6 +4,6 @@ expression: "pub fn go() { Ok }"
 ---
 module rec my.``mod``
 
-let go<'b, 'a> () = begin
+let go () = begin
     Ok
 end

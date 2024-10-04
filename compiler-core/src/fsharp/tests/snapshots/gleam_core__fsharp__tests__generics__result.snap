@@ -4,7 +4,7 @@ expression: "pub fn map(result, fun) {\n            case result {\n             
 ---
 module rec my.``mod``
 
-let map<'a, 'c, 'b> (result: Result<'a, 'b>) (``fun``: 'a -> 'c) = begin
+let map (result: Result<'a, 'b>) (``fun``: 'a -> 'c) = begin
     match result with
     | (Ok(a)) ->
         Ok(``fun`` a)

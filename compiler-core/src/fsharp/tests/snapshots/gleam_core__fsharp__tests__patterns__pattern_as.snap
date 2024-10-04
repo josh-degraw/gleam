@@ -4,7 +4,7 @@ expression: "pub fn a(x) {\n  case x {\n    Ok(1 as y) -> 1\n    _ -> 0\n  }\n}"
 ---
 module rec my.``mod``
 
-let a<'a> (x: Result<int64, 'a>) = begin
+let a (x: Result<int64, 'a>) = begin
     match x with
     | (Ok(1L as y)) ->
         1L

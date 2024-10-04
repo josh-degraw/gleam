@@ -3,8 +3,8 @@ source: compiler-core/src/fsharp/tests/results.rs
 expression: "import gleam\npub fn go() { gleam.Ok }"
 ---
 module rec my.``mod``
-open gleam
 
-let go<'b, 'a> () = begin
+
+let go () = begin
     gleam.Ok
 end

@@ -8,7 +8,7 @@ type Mapper<'b> =
 | Mapper of ('b -> 'b)
     
 type Funcs<'b> = { mapper: Mapper<'b> }
-let private identity<'a> (a: 'a) = begin
+let private identity (a: 'a) = begin
     a
 end
 let id_mapper = { mapper = Mapper(identity) }

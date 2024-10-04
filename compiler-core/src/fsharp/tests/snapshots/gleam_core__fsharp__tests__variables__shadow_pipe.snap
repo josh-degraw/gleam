@@ -4,7 +4,7 @@ expression: "\npub fn foo(x) {\n  x\n  |> fn(x) { x }\n}\n"
 ---
 module rec my.``mod``
 
-let foo<'a> (x: 'a) = begin
+let foo (x: 'a) = begin
     begin
         let _pipe = x
         ((fun(x: 'a) -> x) _pipe)

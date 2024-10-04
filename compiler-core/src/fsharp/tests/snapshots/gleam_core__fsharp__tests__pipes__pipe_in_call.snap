@@ -4,7 +4,7 @@ expression: "\npub fn foo() {\n  123\n  |> two(\n    1 |> two(2),\n    _,\n  )\n
 ---
 module rec my.``mod``
 
-let two<'b, 'a> (a: 'a) (b: 'b) = begin
+let two (a: 'a) (b: 'b) = begin
     a
 end
 let foo () = begin

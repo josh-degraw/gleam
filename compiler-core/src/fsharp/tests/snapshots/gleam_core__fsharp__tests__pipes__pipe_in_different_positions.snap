@@ -7,7 +7,7 @@ module rec my.``mod``
 let private ``and`` (a: bool) (b: bool) = begin
     a && b
 end
-let private is_false<'a> (a: 'a) = begin
+let private is_false (a: 'a) = begin
     a
 end
 let something () = begin

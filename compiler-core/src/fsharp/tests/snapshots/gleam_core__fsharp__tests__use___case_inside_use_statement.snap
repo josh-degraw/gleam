@@ -8,7 +8,7 @@ type Option<'a> =
 | None
 | Some of 'a
     
-let ``try``<'b, 'a> (option: Option<'a>) (``fun``: 'a -> Option<'b>): Option<'b> = begin
+let ``try`` (option: Option<'a>) (``fun``: 'a -> Option<'b>): Option<'b> = begin
     match option with
     | (Some(x)) ->
         ``fun`` x

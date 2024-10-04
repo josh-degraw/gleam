@@ -4,7 +4,7 @@ expression: "\n          fn identity(a) {\n            a\n          }\n\n       
 ---
 module rec my.``mod``
 
-let private identity<'a> (a: 'a) = begin
+let private identity (a: 'a) = begin
     a
 end
 let funcs = (identity)

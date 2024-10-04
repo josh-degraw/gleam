@@ -4,7 +4,7 @@ expression: "\nfn foo(f, a, b) {\n  {\n    a\n    |> f\n  } <> {\n    b\n    |> 
 ---
 module rec my.``mod``
 
-let private foo<'a> (f: 'a -> string) (a: 'a) (b: 'a) = begin
+let private foo (f: 'a -> string) (a: 'a) (b: 'a) = begin
     begin
         begin
             let _pipe = a

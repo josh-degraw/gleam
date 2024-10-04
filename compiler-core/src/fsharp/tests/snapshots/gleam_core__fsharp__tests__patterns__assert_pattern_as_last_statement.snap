@@ -8,7 +8,7 @@ type Result<'a, 'b> =
 | Error of 'b
 | Ok of 'a
     
-let go<'c> () = begin
+let go () = begin
     let (Error(b)) = Error(1L)
     (Error(b))
 end

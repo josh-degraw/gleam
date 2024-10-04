@@ -4,7 +4,7 @@ expression: "\npub fn apply(f: fn(a, Int) -> b, a: a) { a |> f(1) }\n"
 ---
 module rec my.``mod``
 
-let apply<'a, 'b> (f: 'a -> int64 -> 'b) (a: 'a) = begin
+let apply (f: 'a -> int64 -> 'b) (a: 'a) = begin
     begin
         let _pipe = a
         (f _pipe 1L)

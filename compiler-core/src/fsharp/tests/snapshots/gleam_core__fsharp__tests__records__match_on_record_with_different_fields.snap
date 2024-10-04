@@ -12,7 +12,7 @@ type Step<'element, 'accumulator> =
 | Done
 | Next of element: 'element * accumulator: 'accumulator
     
-let private do_unfold<'element, 'acc> (initial: 'acc) (f: 'acc -> Step<'element, 'acc>): unit -> Action<'element> = begin
+let private do_unfold (initial: 'acc) (f: 'acc -> Step<'element, 'acc>): unit -> Action<'element> = begin
     fun() -> begin
         match f initial with
         | (Next(x, acc)) ->

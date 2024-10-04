@@ -15,9 +15,9 @@ type Step<'element, 'accumulator> =
 | Done
 | Next of element: 'element * accumulator: 'accumulator
     
-let repeatedly<'element> (f: unit -> 'element): Iterator<'element> = begin
+let repeatedly (f: unit -> 'element): Iterator<'element> = begin
     failwith "Not implemented"
 end
-let unfold<'acc, 'element> (initial: 'acc) (f: 'acc -> Step<'element, 'acc>): Iterator<'element> = begin
+let unfold (initial: 'acc) (f: 'acc -> Step<'element, 'acc>): Iterator<'element> = begin
     failwith "Not implemented"
 end

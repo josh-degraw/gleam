@@ -7,7 +7,7 @@ module rec my.``mod``
 type private Ip =
 | Ip of string
     
-let private build<'a> (x: string -> 'a) = begin
+let private build (x: string -> 'a) = begin
     x "1.2.3.4"
 end
 let private go () = begin

@@ -4,6 +4,6 @@ expression: "\npub fn foo(class: class, member: member) {member}\n"
 ---
 module rec my.``mod``
 
-let foo<'_class, '_member> (``class``: '_class) (``member``: '_member) = begin
+let foo (``class``: '_class) (``member``: '_member) = begin
     ``member``
 end

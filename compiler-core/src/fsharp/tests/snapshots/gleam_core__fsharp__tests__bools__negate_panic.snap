@@ -4,6 +4,6 @@ expression: "pub fn negate(x) {\n  !panic\n}"
 ---
 module rec my.``mod``
 
-let negate<'a> (x: 'a) = begin
+let negate (x: 'a) = begin
     not (failwith "Panic encountered")
 end

@@ -4,6 +4,6 @@ expression: "\npub fn foo() {\n  panic\n}\n"
 ---
 module rec my.``mod``
 
-let foo<'a> () = begin
+let foo () = begin
     failwith "Panic encountered"
 end

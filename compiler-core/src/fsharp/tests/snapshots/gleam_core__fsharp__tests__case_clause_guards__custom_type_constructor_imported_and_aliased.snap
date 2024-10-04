@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case_clause_guards.rs
 expression: "import other_module.{A as B}\nfn func() {\n  case B {\n    x if x == B -> True\n    _ -> False\n  }\n}\n"
 ---
 module rec my.``mod``
+open package
 let B = other_module.A
 
 let private func () = begin
