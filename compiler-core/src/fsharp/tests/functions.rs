@@ -96,3 +96,23 @@ fn go(a) {
 "#
     );
 }
+
+#[test]
+fn function_call_with_immediate_record_access() {
+    assert_fsharp!(
+        r#"
+type Value {
+    Value(content: String)
+}
+
+fn get_value(content) {
+    Value(content: content)
+}
+
+fn go(){
+    let x = get_value("hello").content
+}
+
+"#
+    );
+}

@@ -749,6 +749,13 @@ impl<'a> Generator<'a> {
         } else {
             nil()
         };
+        let return_type = if name_str == "main" {
+            "int".to_doc()
+        } else if return_annotation.is_some() {
+            docvec![": ", return_type]
+        } else {
+            nil()
+        };
 
         // For now, since we mark all modules as recursive, we don't need to mark
         // functions as recursive.
@@ -762,11 +769,7 @@ impl<'a> Generator<'a> {
             _all_type_params,
             " ",
             args,
-            if return_annotation.is_some() {
-                docvec![": ", return_type]
-            } else {
-                nil()
-            },
+            return_type,
             " = ",
             body
         ]
@@ -1840,19 +1843,38 @@ impl<'a> Generator<'a> {
         }
 
         match t.deref() {
-            Type::Named { name, args, .. } => {
+            Type::Named {
+                module, name, args, ..
+            } => {
                 let name = map_builtin_type_name_to_fsharp(name);
-                if args.is_empty() {
-                    name.to_doc()
-                } else {
-                    name.to_doc()
-                        .append("<")
-                        .append(join(
+                // let _fully_qualified_name = match name.as_str() {
+                //     "list" | "string" | "bool" | "int64" | "float" | "unit" => name.to_doc(),
+                //     _ => docvec![self.sanitize_name(module), ".", name],
+                // };
+                // if args.is_empty() {
+                //     docvec![self.sanitize_name(module), ".", name]
+                // } else {
+                docvec![
+                    // fully_qualified_name,
+                    name,
+                    if !args.is_empty() {
+                        join(
                             args.iter().map(|arg| self.type_to_fsharp(arg.clone())),
                             ", ".to_doc(),
-                        ))
-                        .append(">")
-                }
+                        )
+                        .surround("<", ">")
+                    } else {
+                        nil()
+                    }
+                ]
+                // name.to_doc()
+                //     .append("<")
+                //     .append(join(
+                //         args.iter().map(|arg| self.type_to_fsharp(arg.clone())),
+                //         ", ".to_doc(),
+                //     ))
+                //     .append(">")
+                //}
             }
             Type::Fn { args, retrn } => self.function_type(args, retrn),
             Type::Tuple { elems } => join(
@@ -2267,15 +2289,15 @@ fn unicode_escape_sequence_pattern() -> &'static Regex {
 fn builtin_typedef_alias(name: &str) -> Option<&'static str> {
     match name {
         // Aliases to .NET builtins
-        "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Prelude.Builtins.Dict<'key, 'value>"),
-        "Option" => Some("type Option<'a> = gleam.Prelude.Builtins.Option<'a>
+        "Dict" => Some("type Dict<'key, 'value when 'key: comparison> = gleam.Dict<'key, 'value>"),
+        "Option" => Some("type Option<'a> = gleam.Option<'a>
 let Some a = Option.Some a
 let None = Option.None
 let inline (|Some|None|) (option) =
     match option with
     | Option.Some v -> Some v
     | Option.None -> None"),
-        "Result" => Some("type Result<'T, 'TErr> = gleam.Prelude.Builtins.Result<'T, 'TErr>
+        "Result" => Some("type Result<'T, 'TErr> = gleam.Result<'T, 'TErr>
 let Ok a = Result.Ok a
 let Error e = Result.Error e
 // let inline (|Ok|Error|) (result: Result<'T, 'TErr>) =
@@ -2283,19 +2305,19 @@ let Error e = Result.Error e
 //     | Result.Ok v -> Ok v
 //     | Result.Error v -> Error v
 "),
-        "StringBuilder" => Some("type StringBuilder = gleam.Prelude.Builtins.StringBuilder"),
-        "Regex" => Some("type Regex = gleam.Prelude.Builtins.Regex"),
+        "StringBuilder" => Some("type StringBuilder = gleam.StringBuilder"),
+        "Regex" => Some("type Regex = gleam.Regex"),
 
         // Gleam-specific types defined in the prelude
         // Since these types won't be rewritten to affect calling code, we'll need to add manual constructors for some of them
-        "BitArray" => Some("type BitArray = gleam.Prelude.Builtins.BitArray"),
-        "UtfCodepoint" => Some("type UtfCodepoint = gleam.Prelude.Builtins.UtfCodepoint"),
-        "Dynamic" => Some("type Dynamic = gleam.Prelude.Builtins.Dynamic"),
-        "DecodeError" => Some("type DecodeError = gleam.Prelude.Builtins.DecodeError
-let DecodeError expected found path: gleam.Prelude.Builtins.DecodeError = { expected = expected; found = found; path = path }"),
-        "DecodeErrors" => Some("type DecodeErrors = gleam.Prelude.Builtins.DecodeErrors"),
-        "UnknownTuple" => Some("type UnknownTuple = gleam.Prelude.Builtins.UnknownTuple"),
-        "Order" => Some("type Order = gleam.Prelude.Builtins.Order
+        "BitArray" => Some("type BitArray = gleam.BitArray"),
+        "UtfCodepoint" => Some("type UtfCodepoint = gleam.UtfCodepoint"),
+        "Dynamic" => Some("type Dynamic = gleam.Dynamic"),
+        "DecodeError" => Some("type DecodeError = gleam.DecodeError
+let DecodeError expected found path: gleam.DecodeError = { expected = expected; found = found; path = path }"),
+        "DecodeErrors" => Some("type DecodeErrors = gleam.DecodeErrors"),
+        "UnknownTuple" => Some("type UnknownTuple = gleam.UnknownTuple"),
+        "Order" => Some("type Order = gleam.Order
 let Lt = Order.Lt
 let Eq = Order.Eq
 let Gt = Order.Gt
@@ -2304,12 +2326,12 @@ let (|Lt|Eq|Gt|) (order: Order) =
     | Order.Lt -> Lt
     | Order.Eq -> Eq
     | Order.Gt -> Gt"),
-        "Match" => Some("type Match = gleam.Prelude.Builtins.Match
+        "Match" => Some("type Match = gleam.Match
 let Match (content: string) (submatches: list<Option<string>>) : Match = { content = content; submatches = submatches }"),
-        "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
+        "Options" => Some("type Options = gleam.RegexOptions
 let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
-        "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
-        "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri
+        "CompileError" => Some("type CompileError = gleam.CompileError"),
+        "Uri" => Some("type Uri = gleam.Uri
 let Uri scheme userinfo host port path query fragment : Uri = { scheme = scheme; userinfo = userinfo; host = host; port = port; path = path; query = query; fragment = fragment }"),
 
         _ => None,

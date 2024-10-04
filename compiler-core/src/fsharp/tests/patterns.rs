@@ -140,3 +140,35 @@ pub type Result(a, b) {
 "#
     );
 }
+
+#[test]
+fn matching_on_record_with_multiple_constructors() {
+    assert_fsharp!(
+        "
+pub type Step(element, accumulator) {
+  Next(element: element, accumulator: accumulator)
+  Done
+}
+
+fn go(step) {
+  case [] {
+      [] ->
+        step
+        |> equal(Done)
+
+      [h, ..t] -> {
+        let assert Next(h2, t2) = step
+        h
+        |> equal(h2)
+        t2
+        |> equal(t)
+      }
+    }
+}
+
+fn equal(a, b) {
+  a == b
+}
+"
+    );
+}

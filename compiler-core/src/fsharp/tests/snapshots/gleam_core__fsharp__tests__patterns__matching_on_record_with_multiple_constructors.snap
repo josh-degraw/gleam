@@ -1,0 +1,31 @@
+---
+source: compiler-core/src/fsharp/tests/patterns.rs
+expression: "\npub type Step(element, accumulator) {\n  Next(element: element, accumulator: accumulator)\n  Done\n}\n\nfn go(step) {\n  case [] {\n      [] ->\n        step\n        |> equal(Done)\n\n      [h, ..t] -> {\n        let assert Next(h2, t2) = step\n        h\n        |> equal(h2)\n        t2\n        |> equal(t)\n      }\n    }\n}\n\nfn equal(a, b) {\n  a == b\n}\n"
+---
+module rec my.``mod``
+
+type Step<'element, 'accumulator> =
+| Done
+| Next of element: 'element * accumulator: 'accumulator
+    
+let private equal<'a> (a: 'a) (b: 'a) = begin
+    a = b
+end
+let private go<'b> (step: Step<'b, list<'b>>) = begin
+    match [] with
+    | [] ->
+        begin
+            let _pipe = step
+            (equal _pipe Done)
+        end
+    | h::t ->
+        let (Next(h2, t2)) = step
+        begin
+            let _pipe = h
+            (equal _pipe h2)
+        end
+        begin
+            let _pipe = t2
+            (equal _pipe t)
+        end
+end
