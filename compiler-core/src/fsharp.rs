@@ -2316,7 +2316,8 @@ let Match (content: string) (submatches: list<Option<string>>) : Match = { conte
         "Options" => Some("type Options = gleam.Prelude.Builtins.RegexOptions
 let Options (case_insensitive: bool) (multi_line: bool) : Options = { case_insensitive = case_insensitive; multi_line = multi_line }"),
         "CompileError" => Some("type CompileError = gleam.Prelude.Builtins.CompileError"),
-        "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri"),
+        "Uri" => Some("type Uri = gleam.Prelude.Builtins.Uri
+let Uri scheme userinfo host port path query fragment : Uri = { scheme = scheme; userinfo = userinfo; host = host; port = port; path = path; query = query; fragment = fragment }"),
 
         _ => None,
     }
