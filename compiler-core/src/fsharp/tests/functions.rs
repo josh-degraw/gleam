@@ -116,3 +116,20 @@ fn go(){
 "#
     );
 }
+
+// #[test]
+// fn anonymous_function_with_single_let_assert() {
+//     assert_fsharp!(
+//         r#"
+// fn each(items, f: fn(a) -> Nil){
+
+// }
+
+// pub fn each_test() {
+//   each([1, 1, 1], fn(x) {
+//     let assert 1 = x
+//   })
+// }
+// "#
+//     );
+// }

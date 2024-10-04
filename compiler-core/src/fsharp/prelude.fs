@@ -77,17 +77,3 @@ module Prelude =
             Some(p, s.Substring(p.Length))
         else
             None
-
-// Re-implement some core types under the gleam namespace in case they are
-// Referenced explicitly from gleam code
-// module gleam =
-//     type Option<'a> = Microsoft.FSharp.Core.Option<'a>
-//     type Result<'T, 'TErr> = Microsoft.FSharp.Core.Result<'T, 'TErr>
-
-//     [<GeneralizableValue>]
-//     let inline Ok value = Ok value
-
-//     [<GeneralizableValue>]
-//     let inline Error value = Error value
-
-//     let Nil = ()
