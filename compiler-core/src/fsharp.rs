@@ -208,9 +208,6 @@ impl<'a> Generator<'a> {
 
             // let type_info = self.module.type_info.types.get(name);
 
-            // println!("{}", self.module.name);
-            // println!("\t{}: {:?}", name, type_info);
-
             // let type_params = match type_info {
             //     Some(type_info) => {
             //         if type_info.parameters.is_empty() {
@@ -843,12 +840,18 @@ impl<'a> Generator<'a> {
         } else {
             join(
                 arguments.iter().map(|arg| {
-                    docvec![
-                        self.arg_name(arg),
-                        ": ",
-                        self.type_to_fsharp(arg.type_.clone())
-                    ]
-                    .surround("(", ")")
+                    let arg_name = arg.get_variable_name();
+
+                    // HACK: this is mainly to work around issues with how the Dynamic module works
+                    // If this causes problems we'll need to either restrict this behavior to there or figure out another way
+                    let arg_types = match (arg_name, arg.type_.deref()) {
+                        (Some(arg_name), Type::Fn { args, retrn }) if arg_name == "constructor" => {
+                            self.function_type(false, args, retrn)
+                        }
+                        _ => self.type_to_fsharp(arg.type_.clone()),
+                    };
+
+                    docvec![self.arg_name(arg), ": ", arg_types].surround("(", ")")
                 }),
                 " ".to_doc(),
             )
@@ -1143,6 +1146,11 @@ impl<'a> Generator<'a> {
                 } if *arity == field_map.fields.len() as u16 => {
                     // Every constructor field must have a label to be a record type
                     self.record_instantiation(field_map, args)
+                }
+
+                // HACK: Workaround for constructor issues in Dynamic module
+                TypedExpr::Var { name, .. } if name == "constructor" => {
+                    self.function_call(false, fun, args)
                 }
 
                 // If it's a module select but just an alias for a record constructor,
@@ -1813,22 +1821,17 @@ impl<'a> Generator<'a> {
                 ..
             } if arguments.len() == field_map.fields.len() => {
                 let (_, type_name) = type_.named_type_name().expect("Expected a named type");
-                let constructor = self
+                let value_constructor = self
                     .module
                     .type_info
                     .types_value_constructors
                     .get(&type_name);
 
-                // If there's more than one possible constructor, we can't print this like a record type
-                if let Some(c) = constructor {
-                    if c.variants.len() > 1 {
-                        return self.constructor_pattern(
-                            arguments,
-                            pattern_constructor,
-                            name,
-                            module,
-                        );
-                    }
+                // If there's no constructor found, or more than one possible constructor, we can't print this like a record type
+                if value_constructor.is_none()
+                    || value_constructor.expect("impossible").variants.len() > 1
+                {
+                    return self.constructor_pattern(arguments, pattern_constructor, name, module);
                 }
 
                 let field_map = invert_field_map(field_map);
@@ -1905,9 +1908,7 @@ impl<'a> Generator<'a> {
         }
 
         match t.deref() {
-            Type::Named {
-                module, name, args, ..
-            } => {
+            Type::Named { name, args, .. } => {
                 let name = map_builtin_type_name_to_fsharp(name);
                 // let _fully_qualified_name = match name.as_str() {
                 //     "list" | "string" | "bool" | "int64" | "float" | "unit" => name.to_doc(),
@@ -1938,7 +1939,7 @@ impl<'a> Generator<'a> {
                 //     .append(">")
                 //}
             }
-            Type::Fn { args, retrn } => self.function_type(args, retrn),
+            Type::Fn { args, retrn } => self.function_type(true, args, retrn),
             Type::Tuple { elems } => join(
                 elems.iter().map(|t| self.type_to_fsharp(t.clone())),
                 " * ".to_doc(),
@@ -1994,7 +1995,12 @@ impl<'a> Generator<'a> {
         type_vars
     }
 
-    fn function_type(&mut self, args: &[Arc<Type>], retrn: &Arc<Type>) -> Document<'a> {
+    fn function_type(
+        &mut self,
+        curried: bool,
+        args: &[Arc<Type>],
+        retrn: &Arc<Type>,
+    ) -> Document<'a> {
         let arg_types = args
             .iter()
             .map(|arg| self.type_to_fsharp(arg.clone()))
@@ -2002,6 +2008,8 @@ impl<'a> Generator<'a> {
 
         let arg_types = if arg_types.is_empty() {
             "unit".to_doc()
+        } else if !curried {
+            join(arg_types, " * ".to_doc())
         } else {
             join(arg_types, " -> ".to_doc())
         };

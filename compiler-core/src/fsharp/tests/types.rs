@@ -1,4 +1,4 @@
-use crate::{assert_fsharp, assert_fsharp_with_multiple_imports};
+use crate::assert_fsharp;
 
 #[test]
 fn type_inferrence_produces_correct_type_params() {
@@ -57,6 +57,41 @@ type Cat {
 fn go(cat: Cat) {
     Next(cat, Cat(id: cat.id + 1))
     iterator.Next(cat, Cat(id: cat.id + 1))
+}
+"#,
+    );
+}
+
+#[test]
+fn correctly_pattern_matches_with_union_type() {
+    assert_fsharp!(
+        (
+            "",
+            "gleam/iterator",
+            r#"
+pub type Step(element, accumulator) {
+  Next(element: element, accumulator: accumulator)
+  Done
+}
+"#
+        ),
+        r#"
+import gleam/iterator.{Next}
+fn go(step) {
+    let assert Next(h2, t2) = step
+}
+"#,
+    );
+}
+
+#[test]
+fn constructor_arg_hack() {
+    assert_fsharp!(
+        r#"
+pub fn decode2(
+  constructor: fn(String, String) -> Nil
+) {
+  constructor("a", "b")
 }
 "#,
     );
