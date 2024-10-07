@@ -184,14 +184,14 @@ fn run_fsharp(
     for arg in arguments.into_iter() {
         args.push(arg);
     }
-
-    ProjectIO::new().exec(
-        "dotnet",
-        &["fantomas".to_string()],
-        &[],
-        None,
-        Stdio::Inherit,
-    );
+    let path = paths.build_directory_for_package(Mode::Dev, Target::FSharp, package);
+    // let _ = ProjectIO::new().exec(
+    //     "dotnet",
+    //     &["fantomas".to_string(), path.to_string()],
+    //     &[],
+    //     None,
+    //     Stdio::Inherit,
+    // )?;
     ProjectIO::new().exec("dotnet", &args, &[], None, Stdio::Inherit)
 }
 

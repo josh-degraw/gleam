@@ -10,6 +10,6 @@ let private match_sequences (sequences: list<list<'a>>) = begin
         []
     | [sequence] ->
         sequence
-    | ascending1::ascending2::rest ->
+    | (ascending1)::(ascending2)::rest ->
         []
 end
