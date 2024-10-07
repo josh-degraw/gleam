@@ -941,7 +941,6 @@ impl TypeVar {
         match self {
             Self::Link { type_, .. } => type_.is_list(),
             Self::Unbound { .. } | Self::Generic { .. } => false,
-            _ => false,
         }
     }
 
@@ -949,7 +948,6 @@ impl TypeVar {
         match self {
             Self::Link { type_, .. } => type_.is_nested_list(),
             Self::Unbound { .. } | Self::Generic { .. } => false,
-            _ => false,
         }
     }
 }
