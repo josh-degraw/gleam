@@ -142,8 +142,8 @@ fn match_sequences(
 ) {
   case sequences {
     [] -> []
-    [[], ..sequence] -> [sequence]
     [[a, ..ascending1], ascending2, ..rest] -> []
+    [[], ..sequence] -> [sequence]
     _ -> []
   }
 }

@@ -236,6 +236,26 @@ impl Type {
         }
     }
 
+    pub fn is_list(&self) -> bool {
+        match self {
+            Self::Named { module, name, .. } if "List" == name && is_prelude_module(module) => true,
+            Self::Var { type_ } => type_.borrow().is_list(),
+            _ => false,
+        }
+    }
+
+    pub fn is_nested_list(&self) -> bool {
+        match self {
+            Self::Named {
+                module, name, args, ..
+            } => {
+                "List" == name && is_prelude_module(module) && args.len() == 1 && args[0].is_list()
+            }
+            Self::Var { type_ } => type_.borrow().is_nested_list(),
+            _ => false,
+        }
+    }
+
     /// Get the args for the type if the type is a specific `Type::App`.
     /// Returns None if the type is not a `Type::App` or is an incorrect `Type:App`
     ///
@@ -915,6 +935,21 @@ impl TypeVar {
         match self {
             Self::Link { type_ } => type_.named_type_name(),
             Self::Unbound { .. } | Self::Generic { .. } => None,
+        }
+    }
+    pub fn is_list(&self) -> bool {
+        match self {
+            Self::Link { type_, .. } => type_.is_list(),
+            Self::Unbound { .. } | Self::Generic { .. } => false,
+            _ => false,
+        }
+    }
+
+    pub fn is_nested_list(&self) -> bool {
+        match self {
+            Self::Link { type_, .. } => type_.is_nested_list(),
+            Self::Unbound { .. } | Self::Generic { .. } => false,
+            _ => false,
         }
     }
 }

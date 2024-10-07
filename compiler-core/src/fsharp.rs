@@ -1724,18 +1724,43 @@ impl<'a> Generator<'a> {
             Pattern::Variable { name, .. } => self.sanitize_name(name).to_doc(),
             Pattern::Discard { name, .. } => name.to_doc(),
             Pattern::List { elements, tail, .. } => {
+                let is_nested_list = p.type_().is_nested_list();
+                // if p.type_().is_nested_list() {
+                //     if let Some(tail) = tail {
+                //         return docvec![
+                //             "HeadTail(",
+                //             join(elements.iter().map(|e| self.pattern(e).surround("(", ")")), ":: ".to_doc())
+                //                 .surround("[", "]"),
+                //             ",",
+                //             self.pattern(tail),
+                //             ")",
+                //         ];
+                //     }
+                // }
+
                 // let elements_doc = join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc());
                 // let head = if elements.len() == 1 {
                 //     elements_doc
                 // } else {
                 //     elements_doc.surround("[", "]")
                 // };
+                // TODO: Properly support nested list patterns via new (|HeadTail|_|) pattern
+                // if there is a
                 match tail {
                     Some(tail) => {
                         let items = if elements.is_empty() {
                             "[]".to_doc()
                         } else {
-                            join(elements.iter().map(|e| self.pattern(e)), "::".to_doc())
+                            join(
+                                elements.iter().map(|e| {
+                                    if is_nested_list {
+                                        self.pattern(e).surround("(", ")")
+                                    } else {
+                                        self.pattern(e)
+                                    }
+                                }),
+                                "::".to_doc(),
+                            )
                         };
                         items.append("::").append(self.pattern(tail))
                     }

@@ -150,7 +150,7 @@ pub type Step(element, accumulator) {
   Done
 }
 
-fn go(step) {
+fn go() {
   case [] {
       [] ->
         step

@@ -1,6 +1,6 @@
 ---
 source: compiler-core/src/fsharp/tests/case.rs
-expression: "\nfn match_sequences(\n  sequences: List(List(a))\n) {\n  case sequences {\n    [] -> []\n    [sequence] -> [sequence]\n    [ascending1, ascending2, ..rest] -> []\n  }\n}\n"
+expression: "\nfn match_sequences(\n  sequences: List(List(a))\n) {\n  case sequences {\n    [] -> []\n    [sequence] -> sequence\n    [ascending1, ascending2, ..rest] -> []\n  }\n}\n"
 ---
 module rec my.``mod``
 
@@ -9,7 +9,7 @@ let private match_sequences (sequences: list<list<'a>>) = begin
     | [] ->
         []
     | [sequence] ->
-        [sequence]
+        sequence
     | ascending1::ascending2::rest ->
         []
 end
