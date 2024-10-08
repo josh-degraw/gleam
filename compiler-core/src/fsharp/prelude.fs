@@ -16,6 +16,7 @@ type Iterator<'a> = System.Collections.Generic.IEnumerable<'a>
 [<Struct>]
 type BitArray = BitArray of int64
 
+[<Struct>]
 type UtfCodepoint = UtfCodepoint of int64
 
 [<CustomEquality; CustomComparison>]

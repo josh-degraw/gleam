@@ -174,12 +174,16 @@ impl<'a> FSharpApp<'a> {
             .output_directory
             .join(format!("{}.fsproj", &config.name));
 
-        println!("input_dir: {}", self.input_dir);
-        println!("output_directory: {}", self.output_directory);
-
         // Write prelude file
         let prelude_file_path = self.output_directory.join("gleam_prelude.fs");
         writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
+
+        // Write gleam.toml
+        let gleam_toml_path = self.input_dir.join("../gleam.toml");
+        let existing_gleam_toml = std::fs::read_to_string(&gleam_toml_path)
+            .expect(&format!("Failed to read {gleam_toml_path}"));
+        let gleam_toml_path = self.output_directory.join("gleam.toml");
+        writer.write(&gleam_toml_path, &existing_gleam_toml)?;
 
         // Write individual module files
         for module in modules {
@@ -206,6 +210,10 @@ impl<'a> FSharpApp<'a> {
     <RootNamespace>{}</RootNamespace>
     <IncludeDocumentation>true</IncludeDocumentation>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="gleam.toml" />
+  </ItemGroup>
 
   <ItemGroup Label="Modules">
     <Compile Include="gleam_prelude.fs" />
@@ -254,16 +262,11 @@ impl<'a> FSharpApp<'a> {
 
         let directory_build_props =
             std::fs::read_to_string(self.input_dir.join("Directory.Build.props"));
-        match directory_build_props {
-            Ok(props_file) => {
-                _ = writer.write(
-                    &self.output_directory.join("Directory.Build.props"),
-                    &props_file,
-                );
-            }
-            Err(e) => {
-                println!("Error reading Directory.Build.props: {}", e);
-            }
+        if let Ok(props_file) = directory_build_props {
+            _ = writer.write(
+                &self.output_directory.join("Directory.Build.props"),
+                &props_file,
+            );
         }
 
         Ok(())

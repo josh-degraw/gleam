@@ -8,7 +8,7 @@ use gleam_core::{
     config::{DenoFlag, PackageConfig},
     error::Error,
     io::{CommandExecutor, Stdio},
-    paths::ProjectPaths,
+    paths::{ProjectPaths, ARTEFACT_DIRECTORY_NAME},
     type_::ModuleFunction,
 };
 
@@ -129,7 +129,13 @@ pub fn command(
             }
             Runtime::Bun => run_javascript_bun(&paths, &main_function.package, &module, arguments),
         },
-        Target::FSharp => run_fsharp(&paths, &main_function.package, &module, arguments),
+        Target::FSharp => match runtime {
+            Some(r) => Err(Error::InvalidRuntime {
+                target: Target::FSharp,
+                invalid_runtime: r,
+            }),
+            _ => run_fsharp(&paths, &main_function.package, &module, arguments),
+        },
     }?;
 
     std::process::exit(status);
@@ -176,47 +182,20 @@ fn run_fsharp(
     arguments: Vec<String>,
 ) -> Result<i32, Error> {
     // Run the generated F# project via dotnet run
-    let mut args = vec![];
-    let entry = write_fsharp_entrypoint(paths, package, module)?;
+    let mut args = vec!["run".to_string()];
 
+    let build_dir = paths
+        .build_directory_for_package(Mode::Dev, Target::FSharp, package)
+        .join(ARTEFACT_DIRECTORY_NAME);
+    let entry = build_dir.join(format!("{package}.fsproj"));
+    args.push("--project".to_string());
     args.push(entry.to_string());
 
     for arg in arguments.into_iter() {
         args.push(arg);
     }
-    let path = paths.build_directory_for_package(Mode::Dev, Target::FSharp, package);
-    // let _ = ProjectIO::new().exec(
-    //     "dotnet",
-    //     &["fantomas".to_string(), path.to_string()],
-    //     &[],
-    //     None,
-    //     Stdio::Inherit,
-    // )?;
+
     ProjectIO::new().exec("dotnet", &args, &[], None, Stdio::Inherit)
-}
-
-fn write_fsharp_entrypoint(
-    paths: &ProjectPaths,
-    package: &str,
-    _module: &str,
-) -> Result<Utf8PathBuf, Error> {
-    let path = paths
-        .build_directory_for_package(Mode::Dev, Target::FSharp, package)
-        .to_path_buf()
-        .join("gleam.main.fsx");
-
-    //TODO: actually stitch things together for F#
-    let module = format!(
-        r#"open System
-
-let main argv =
-    printfn "Hello World from F#!"
-    argv |> Array.iter (fun arg -> printfn "%s" arg)
-"#,
-    );
-
-    crate::fs::write(&path, &module)?;
-    Ok(path)
 }
 
 fn run_javascript_bun(
