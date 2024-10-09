@@ -1245,23 +1245,23 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn bit_array(&mut self, segments: &[TypedExprBitArraySegment]) -> Document<'a> {
-        let segments = segments.iter().map(|segment| {
-            let value = self.expression(&segment.value);
-            let options = segment.options.iter().map(|option| {
-                let value = self.expression(option.value());
-                docvec![self.sanitize_name(option.label()), " = ", value]
-            });
-            docvec![
-                value,
-                segment
-                    .options
-                    .iter()
-                    .map(|option| { docvec![self.sanitize_name(option.label()), " = ", value] })
-            ]
-        });
-        join(segments, "; ".to_doc()).group().surround("(", ")")
-    }
+    // fn bit_array(&mut self, segments: &[TypedExprBitArraySegment]) -> Document<'a> {
+    //     let segments = segments.iter().map(|segment| {
+    //         let value = self.expression(&segment.value);
+    //         let options = segment.options.iter().map(|option| {
+    //             let value = self.expression(option.value());
+    //             docvec![self.sanitize_name(option.label()), " = ", value]
+    //         });
+    //         docvec![
+    //             value,
+    //             segment
+    //                 .options
+    //                 .iter()
+    //                 .map(|option| { docvec![self.sanitize_name(option.label()), " = ", value] })
+    //         ]
+    //     });
+    //     join(segments, "; ".to_doc()).group().surround("(", ")")
+    // }
 
     fn tuple_index(&mut self, tuple: &'a TypedExpr, index: &'a u64) -> Document<'a> {
         // TODO: Add warning suppression when this is encountered:
