@@ -12,6 +12,28 @@ fn go() {
 }
 
 #[test]
+fn empty_tuple() {
+    assert_fsharp!(
+        r#"
+fn go() {
+  let value = #()
+}
+"#,
+    );
+}
+
+#[test]
+fn single_value_tuple() {
+    assert_fsharp!(
+        r#"
+fn go() {
+    let value = #("1")
+}
+"#,
+    );
+}
+
+#[test]
 fn tuple1() {
     assert_fsharp!(
         r#"
