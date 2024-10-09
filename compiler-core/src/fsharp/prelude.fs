@@ -9,10 +9,16 @@ type StringBuilder = System.Text.StringBuilder
 type Regex = System.Text.RegularExpressions.Regex
 
 // Manual Override
-type Iterator<'a> = System.Collections.Generic.IEnumerable<'a>
-
+//type Iterator<'a> = System.Collections.Generic.IEnumerable<'a>
 
 // Gleam-specific types
+
+// For tuples above 1 element we can use built-in tuples
+// But gleam supports tuples of any size so we need to define our own
+// to represent an empty tuple and a single item tuple
+// type Tuple1<'a> = Tuple1 of 'a
+
+type EmptyTuple = EmptyTuple
 
 type BitArray = BitArray of int64
 
@@ -21,6 +27,7 @@ type UtfCodepoint = UtfCodepoint of int64
 
 [<CustomEquality; CustomComparison>]
 type Dynamic =
+    private
     | Dynamic of obj
 
     interface System.IComparable with
@@ -34,6 +41,11 @@ type Dynamic =
 
     override this.GetHashCode() =
         System.StringComparer.InvariantCulture.GetHashCode($"%A{this}")
+
+    static member From(a: obj) : Dynamic =
+        match a with
+        | :? Dynamic as (Dynamic(d)) -> Dynamic.From d
+        | a -> Dynamic(a)
 
 type DecodeError =
     { expected: string
@@ -82,3 +94,8 @@ module Prelude =
             Some(p, s.Substring(p.Length))
         else
             None
+
+    let (|Dynamic|) (Dynamic v) = v
+
+    let (|Tuple1|) (t: System.Tuple<'a>) = t.Item1
+    let Tuple1 (a: 'a) = System.Tuple.Create(a)

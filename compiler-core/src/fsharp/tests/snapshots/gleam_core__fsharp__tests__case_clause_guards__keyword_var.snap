@@ -17,7 +17,7 @@ let go () = begin
         true
     | _ when [``class``] = [5L] ->
         true
-    | ``function`` when (``function``) = (5L) ->
+    | ``function`` when (Tuple1 ``function``) = (Tuple1 5L) ->
         false
     | _ when 10L = 5L ->
         true

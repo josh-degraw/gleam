@@ -1412,7 +1412,21 @@ impl<'a> Generator<'a> {
     }
 
     fn tuple(&self, elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
-        join(elements, ", ".to_doc()).surround("(", ")")
+        let v = elements.into_iter().collect_vec();
+        let l = v.len();
+        if l == 0 {
+            "EmptyTuple".to_doc()
+        } else if l == 1 {
+            docvec![
+                "(Tuple1 ",
+                v.first()
+                    .expect("We checked that there is one element")
+                    .clone(),
+                ")",
+            ]
+        } else {
+            join(v, ", ".to_doc()).surround("(", ")")
+        }
     }
 
     fn case(&mut self, subjects: &'a [TypedExpr], clauses: &'a [TypedClause]) -> Document<'a> {

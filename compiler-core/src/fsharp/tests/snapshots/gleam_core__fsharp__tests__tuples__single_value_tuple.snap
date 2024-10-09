@@ -5,6 +5,6 @@ expression: "\nfn go() {\n    let value = #(\"1\")\n}\n"
 module rec my.``mod``
 
 let private go () = begin
-    let value = ("1")
+    let value = (Tuple1 "1")
     value
 end

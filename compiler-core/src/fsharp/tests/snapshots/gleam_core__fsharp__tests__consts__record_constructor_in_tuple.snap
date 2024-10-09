@@ -7,7 +7,7 @@ module rec my.``mod``
 type X =
 | X of int64
     
-let z = (X)
+let z = (Tuple1 X)
 let foo () = begin
     z
 end
