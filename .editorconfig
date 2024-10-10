@@ -27,4 +27,4 @@ indent_size = 4
 
 [*.{fsx,fs}]
 indent_size = 4
-multiline_bracket_style = stroustrup
+fsharp_multiline_bracket_style = stroustrup
