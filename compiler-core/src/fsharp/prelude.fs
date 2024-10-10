@@ -23,7 +23,7 @@ type EmptyTuple = EmptyTuple
 type BitArray = BitArray of int64
 
 [<Struct>]
-type UtfCodepoint = UtfCodepoint of int64
+type UtfCodepoint = UtfCodepoint of System.Text.Rune
 
 [<CustomEquality; CustomComparison>]
 type Dynamic =
@@ -47,10 +47,11 @@ type Dynamic =
         | :? Dynamic as (Dynamic(d)) -> Dynamic.From d
         | a -> Dynamic(a)
 
-type DecodeError =
-    { expected: string
-      found: string
-      path: list<string> }
+type DecodeError = {
+    expected: string
+    found: string
+    path: list<string>
+}
 
 type DecodeErrors = list<DecodeError>
 type UnknownTuple = UnknownTuple of Dynamic list
@@ -60,24 +61,27 @@ type Order =
     | Eq
     | Gt
 
-type Match =
-    { content: string
-      submatches: list<Option<string>> }
+type Match = {
+    content: string
+    submatches: list<Option<string>>
+}
 
-type RegexOptions =
-    { case_insensitive: bool
-      multi_line: bool }
+type RegexOptions = {
+    case_insensitive: bool
+    multi_line: bool
+}
 
 type CompileError = { error: string; byte_index: int64 }
 
-type Uri =
-    { scheme: Option<string>
-      userinfo: Option<string>
-      host: Option<string>
-      port: Option<int64>
-      path: string
-      query: Option<string>
-      fragment: Option<string> }
+type Uri = {
+    scheme: Option<string>
+    userinfo: Option<string>
+    host: Option<string>
+    port: Option<int64>
+    path: string
+    query: Option<string>
+    fragment: Option<string>
+}
 
 [<AutoOpen>]
 module Prelude =
