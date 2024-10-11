@@ -10,4 +10,8 @@ target_framework = "net8.0"
 # [dependencies]
 # gleam_erlang = "~> 0.23"
 
+[fsharp.type_mappings]
+"Stack" = "System.Collections.Generic.Stack<'a>"
+"SomeCustomType" = "FSharpCustomBehavior.SomeCustomType"
+
 [dev-dependencies]

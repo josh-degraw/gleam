@@ -679,6 +679,12 @@ pub struct FSharpConfig {
     /// TODO: Maybe add support for Update variant of package?
     #[serde(default, rename = "package_references")]
     pub package_references: HashMap<String, String>,
+
+    /// Type mappings for F#
+    /// Use this section to tell the compiler how to map external types to F# types.
+    /// If the type is generic, make sure to include them in both the key and value.
+    #[serde(default, rename = "type_mappings")]
+    pub type_mappings: HashMap<String, String>,
 }
 
 fn default_fsharp_target_framework() -> String {

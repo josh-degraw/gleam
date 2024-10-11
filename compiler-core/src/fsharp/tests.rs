@@ -120,6 +120,7 @@ pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String 
         .expect("syntax error");
     let mut config = PackageConfig::default();
     config.name = "thepackage".into();
+    config.fsharp.type_mappings = std::collections::HashMap::from_iter(vec![]);
     let mut ast = parsed.module;
     ast.name = "my/mod".into();
     let line_numbers = LineNumbers::new(src);
@@ -136,6 +137,7 @@ pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String 
     .infer_module(ast, line_numbers, path.clone())
     .expect("should successfully infer root FSharp");
 
-    let mut generator = crate::fsharp::Generator::new(&config.name, &module, &path);
+    let mut generator =
+        crate::fsharp::Generator::new(&config.name, &module, &path, &config.fsharp.type_mappings);
     generator.render().expect("should render FSharp")
 }

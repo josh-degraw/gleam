@@ -194,12 +194,6 @@ impl<'a> FSharpApp<'a> {
 
         let target_framework = config.fsharp.target_framework.as_str();
 
-        // if config.fsharp.target_framework.is_empty() {
-        //     "net8.0"
-        // } else {
-        //     config.fsharp.target_framework.as_str()
-        // };
-
         // TODO: Support conditionally outputting an exe or library
         // Create project file content
         let project_file_content = format!(

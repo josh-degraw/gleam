@@ -447,6 +447,7 @@ where
             &self.config.name,
             &first_module.ast,
             &first_module.input_path,
+            &self.config.fsharp.type_mappings,
         );
         for module in modules {
             let module_name: EcoString = module.name.replace("/", ".");

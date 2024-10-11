@@ -33,6 +33,7 @@ fn is_stdlib_package(package: &str) -> bool {
 pub struct Generator<'a> {
     package_name: &'a EcoString,
     pub external_files: HashSet<Utf8PathBuf>,
+    type_mappings: &'a HashMap<String, String>,
     module: &'a TypedModule,
     input_file_path: &'a Utf8PathBuf,
     printer: Printer<'a>,
@@ -54,10 +55,12 @@ impl<'a> Generator<'a> {
         package_name: &'a EcoString,
         module: &'a TypedModule,
         input_file_path: &'a Utf8PathBuf,
+        type_mappings: &'a HashMap<String, String>,
     ) -> Self {
         Self {
             package_name,
             external_files: HashSet::new(),
+            type_mappings,
             module,
             input_file_path,
             printer: Printer::new(&module.names),
@@ -303,36 +306,30 @@ impl<'a> Generator<'a> {
         is_stdlib_package(self.package_name.as_str())
     }
 
-    /// TODO: Is this safe or incorrect?
-    /// We should probably emit a warning at least
     fn external_type(&self, _type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
+        let params = _type_
+            .parameters
+            .iter()
+            .map(|(_, p)| sanitize_type_var(p).to_doc())
+            .collect::<Vec<_>>();
+
+        let type_name = _type_.name.to_string();
+
+        let mapped_type = self.type_mappings.get(&type_name);
+        if let Some(mapped_type_name) = mapped_type {
+            if params.is_empty() {
+                return docvec!["type ", &_type_.name, " = ", mapped_type_name.to_doc()];
+            }
+
+            return docvec![
+                "type ",
+                &_type_.name,
+                join(params, ", ".to_doc()).surround("<", ">"),
+                " = ",
+                mapped_type_name.to_doc()
+            ];
+        }
         return nil();
-        // let name = &type_.name;
-        // let values = if !type_.typed_parameters.is_empty() {
-        //     join(
-        //         type_
-        //             .typed_parameters
-        //             .iter()
-        //             .map(|tp| self.type_to_fsharp(tp)),
-        //         " * ".to_doc(),
-        //     )
-        // } else {
-        //     nil()
-        // };
-        // docvec![
-        //     "/// NOTE: This type has no clear definition so the compiler made a best guess at a way to represent it.", line(),
-        //     "/// Please report any issues", line(),
-        //     self.documentation(&type_.documentation),
-        //     self.deprecation(&type_.deprecation),
-        //     "type ",
-        //     self.map_publicity(&type_.publicity),
-        //     name,
-        //     self.type_params(type_),
-        //     " = ",
-        //     name,
-        //     " of ",
-        //     values
-        // ]
     }
 
     fn record_type(&mut self, type_: &'a CustomType<Arc<Type>>) -> Document<'a> {
@@ -645,7 +642,7 @@ impl<'a> Generator<'a> {
                 let return_type = self.type_ast_to_fsharp(return_);
                 docvec![arg_types, " -> ", return_type]
             }
-            TypeAst::Var(TypeAstVar { name, .. }) => sanitize_type_var(name.clone()).to_doc(),
+            TypeAst::Var(TypeAstVar { name, .. }) => sanitize_type_var(name).to_doc(),
             TypeAst::Tuple(TypeAstTuple { elems, .. }) => {
                 let items = join(
                     elems.iter().map(|arg| self.type_ast_to_fsharp(arg)),
@@ -2007,7 +2004,7 @@ impl<'a> Generator<'a> {
                 match borrowed.deref() {
                     TypeVar::Link { type_ } => self.type_to_fsharp(type_.clone()),
                     TypeVar::Unbound { id } | TypeVar::Generic { id } => {
-                        sanitize_type_var(self.printer.type_variable(*id)).to_doc()
+                        sanitize_type_var(&self.printer.type_variable(*id)).to_doc()
                     }
                 }
             }
@@ -2024,7 +2021,7 @@ impl<'a> Generator<'a> {
                             visit(type_.clone(), printer, type_vars);
                         }
                         TypeVar::Unbound { id } | TypeVar::Generic { id } => {
-                            _ = type_vars.insert(sanitize_type_var(printer.type_variable(*id)));
+                            _ = type_vars.insert(sanitize_type_var(&printer.type_variable(*id)));
                         }
                     }
                 }
@@ -2395,7 +2392,7 @@ fn is_reserved_word(name: &str) -> bool {
     )
 }
 
-fn sanitize_type_var(name: EcoString) -> EcoString {
+fn sanitize_type_var(name: &EcoString) -> EcoString {
     if is_reserved_word(name.as_str()) {
         EcoString::from(format!("'_{}", name))
     } else {
