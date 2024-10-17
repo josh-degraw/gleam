@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\nfn go() {\n  <<256:16-big>>\n}\n"
+---
+module rec my.``mod``
+
+let private go () = begin
+    BitArray.Create(
+        { endianness = Some BitArrayEndianness.Big; size = Some(16L); unit = None; signed = None; value = BitArraySegmentValue.Int(256L) }
+    )
+end

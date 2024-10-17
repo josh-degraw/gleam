@@ -1,0 +1,25 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\n          pub const data = <<\n            0x1,\n            2,\n            2:size(16),\n            0x4:size(32),\n            -1:32,\n            \"Gleam\":utf8,\n            4.2:float,\n            4.2:32-float,\n            <<\n              <<1, 2, 3>>:bits,\n              \"Gleam\":utf8,\n              1024\n            >>:bits\n          >>\n        "
+---
+module rec my.``mod``
+
+let data = BitArray.Create(
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(0x1L) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(2L) }, 
+    { endianness = None; size = Some(16L); unit = None; signed = None; value = BitArraySegmentValue.Int(2L) }, 
+    { endianness = None; size = Some(32L); unit = None; signed = None; value = BitArraySegmentValue.Int(0x4L) }, 
+    { endianness = None; size = Some(32L); unit = None; signed = None; value = BitArraySegmentValue.Int(-1L) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes("Gleam")) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Float(4.2) }, 
+    { endianness = None; size = Some(32L); unit = None; signed = None; value = BitArraySegmentValue.Float(4.2) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Bits(BitArray.Create(
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Bits(BitArray.Create(
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(1L) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(2L) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(3L) }
+)) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes("Gleam")) }, 
+    { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(1024L) }
+)) }
+)

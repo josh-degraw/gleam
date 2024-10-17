@@ -10,6 +10,7 @@ use crate::{
     warning::{TypeWarningEmitter, WarningEmitter},
 };
 
+mod bit_arrays;
 mod blocks;
 mod bools;
 mod case;
@@ -45,12 +46,14 @@ macro_rules! assert_fsharp {
         let output = $crate::fsharp::tests::compile_test_project(
             $src,
             vec![($dep_package, $dep_name, $dep_src)],
-        );
+        )
+        .expect("compilation failed");
         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
     }};
 
     ($src:expr $(,)?) => {{
-        let output = $crate::fsharp::tests::compile_test_project($src, vec![]);
+        let output =
+            $crate::fsharp::tests::compile_test_project($src, vec![]).expect("compilation failed");
         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
     }};
 }
@@ -59,9 +62,17 @@ macro_rules! assert_fsharp {
 macro_rules! assert_fsharp_with_multiple_imports {
     ($(($name:literal, $module_src:literal)),*; $src:literal) => {
         let output =
-            $crate::fsharp::tests::compile_test_project($src, vec![$((CURRENT_PACKAGE, $name, $module_src)),*]);
+            $crate::fsharp::tests::compile_test_project($src, vec![$((CURRENT_PACKAGE, $name, $module_src)),*]).expect("compilation failed");
         insta::assert_snapshot!(insta::internals::AutoName, output, $src);
     };
+}
+
+#[macro_export]
+macro_rules! assert_fsharp_error {
+    ($src:expr $(,)?) => {{
+        let output = $crate::fsharp::tests::expect_fsharp_error($src, vec![]);
+        insta::assert_snapshot!(insta::internals::AutoName, output, $src);
+    }};
 }
 
 // #[macro_export]
@@ -74,7 +85,10 @@ macro_rules! assert_fsharp_with_multiple_imports {
 // }
 
 #[track_caller]
-pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String {
+pub fn compile_test_project(
+    src: &str,
+    deps: Vec<(&str, &str, &str)>,
+) -> Result<String, crate::Error> {
     let mut modules = im::HashMap::new();
     let ids = UniqueIdGenerator::new();
     // DUPE: preludeinsertion
@@ -139,5 +153,21 @@ pub fn compile_test_project(src: &str, deps: Vec<(&str, &str, &str)>) -> String 
 
     let mut generator =
         crate::fsharp::Generator::new(&config.name, &module, &path, &config.fsharp.type_mappings);
-    generator.render().expect("should render FSharp")
+    generator.render()
+}
+
+pub fn expect_fsharp_error(src: &str, deps: Vec<(&str, &str, &str)>) -> String {
+    let error = compile_test_project(src, deps).expect_err("should not compile");
+    println!("er: {error:#?}");
+    let better_error = match error {
+        crate::Error::FSharp {
+            error: inner_error, ..
+        } => crate::Error::FSharp {
+            src: src.into(),
+            path: Utf8PathBuf::from("/src/fsharp/error.gleam"),
+            error: inner_error,
+        },
+        _ => panic!("expected fsharp error, got {error:#?}"),
+    };
+    better_error.pretty_string()
 }

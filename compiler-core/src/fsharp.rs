@@ -1237,28 +1237,203 @@ impl<'a> Generator<'a> {
             TypedExpr::NegateBool { value, .. } => {
                 docvec!["not ", self.expression(value).surround("(", ")")]
             }
-            TypedExpr::BitArray { .. } => "(BitArray(0))".to_doc(),
+            TypedExpr::BitArray { segments, .. } => self.bit_array(segments),
             TypedExpr::Invalid { .. } => "// TODO: TypedExpr::Invalid".to_doc(),
         }
     }
 
-    // fn bit_array(&mut self, segments: &[TypedExprBitArraySegment]) -> Document<'a> {
-    //     let segments = segments.iter().map(|segment| {
-    //         let value = self.expression(&segment.value);
-    //         let options = segment.options.iter().map(|option| {
-    //             let value = self.expression(option.value());
-    //             docvec![self.sanitize_name(option.label()), " = ", value]
-    //         });
-    //         docvec![
-    //             value,
-    //             segment
-    //                 .options
-    //                 .iter()
-    //                 .map(|option| { docvec![self.sanitize_name(option.label()), " = ", value] })
-    //         ]
-    //     });
-    //     join(segments, "; ".to_doc()).group().surround("(", ")")
-    // }
+    fn bit_array(&mut self, segments: &'a [TypedExprBitArraySegment]) -> Document<'a> {
+        println!("{:#?}", segments);
+
+        if segments.is_empty() {
+            return "BitArray.Empty".to_doc();
+        } else {
+            let segments = segments
+                .iter()
+                .map(|segment| self.bit_array_segment(segment, bit_array_segment_kind(segment)))
+                .collect_vec();
+
+            docvec![
+                "BitArray.Create(",
+                line()
+                    .nest(INDENT)
+                    .append(join(segments, ", ".to_doc().append(line().nest(INDENT))).group())
+                    .append(line())
+                    .append(")"),
+            ]
+        }
+    }
+
+    fn bit_array_segment<T: ExpressionLike>(
+        &mut self,
+        segment: &'a BitArraySegment<T, Arc<Type>>,
+        kind: BitArraySegmentKind,
+    ) -> Document<'a> {
+        let expr = segment.value.as_ref();
+
+        let mut endianness_param = docvec!["endianness = None"];
+        let mut size_param = docvec!["size = None"];
+        let mut unit_param = docvec!["unit = None"];
+        let mut signed_param = docvec!["signed = None"];
+        //let mut value_param = docvec!["value = None"];
+
+        // let mut value_param = "value = failwith \"Invalid value provided\"".to_doc();
+        let mut value_param = match kind {
+            BitArraySegmentKind::Int => docvec![
+                "value = BitArraySegmentValue.Int",
+                expr.to_doc(self).surround("(", ")")
+            ],
+            BitArraySegmentKind::Float => docvec![
+                "value = BitArraySegmentValue.Float",
+                expr.to_doc(self).surround("(", ")")
+            ],
+            BitArraySegmentKind::BitArray => docvec![
+                "value = BitArraySegmentValue.Bits",
+                expr.to_doc(self).surround("(", ")")
+            ],
+            BitArraySegmentKind::String => docvec![
+                "value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes",
+                expr.to_doc(self).surround("(", ")"),
+                ")"
+            ],
+            BitArraySegmentKind::UtfCodepoint => docvec![
+                "value = BitArraySegmentValue.Utf8Codepoint",
+                expr.to_doc(self).surround("(", ")")
+            ],
+            // BitArraySegmentKind::Var { .. } => match segment.type_.as_ref() {
+            //     Type::Named { name, .. } => match name.as_str() {
+            //         "Int" => docvec![
+            //             "value = BitArraySegmentValue.Int",
+            //             self.expression(expr).surround("(", ")")
+            //         ],
+            //         "Float" => docvec![
+            //             "value = BitArraySegmentValue.Float",
+            //             self.expression(expr).surround("(", ")")
+            //         ],
+
+            //         _ => {
+            //             println!("Invalid type provided: {:#?}", segment.type_);
+            //             println!("Value provided: {:#?}", expr);
+            //             "failwith \"Invalid value provided\"".to_doc()
+            //         }
+            //     },
+            //     _ => {
+            //         println!("Invalid type provided: {:#?}", segment.type_);
+            //         println!("Value provided: {:#?}", expr);
+            //         "failwith \"Invalid value provided\"".to_doc()
+            //     }
+            // },
+            _ => {
+                println!("Invalid type provided: {:#?}", segment.type_);
+                // println!("Value provided: {:#?}", expr);
+                "failwith \"Invalid value provided\"".to_doc()
+            }
+        };
+
+        segment.options.iter().for_each(|option| {
+            match option {
+                BitArrayOption::Int { .. } => {
+                    if BitArraySegmentKind::Int == kind {
+                        // value already generated correctly above
+                    }
+                    else {
+                        value_param = docvec![
+                            "value = BitArraySegmentValue.Int",
+                            expr.to_doc(self).surround("(int64 ", ")")
+                        ];
+                    }
+                }
+                BitArrayOption::Bytes { .. } => (),
+                BitArrayOption::Float { .. } => {
+                    if kind == BitArraySegmentKind::Float {
+                        // value already generated correctly above
+                    } else {
+                        value_param = docvec![
+                            "value = BitArraySegmentValue.Float",
+                            expr.to_doc(self).surround("(float ", ")")
+                        ];
+                    }
+                },
+                BitArrayOption::Bits { .. } => {
+                    value_param = docvec![
+                        "value = BitArraySegmentValue.Bits",
+                        expr.to_doc(self).surround("(", ")")
+                    ];
+                },
+                BitArrayOption::Utf8 { .. } => {
+                    if BitArraySegmentKind::String == kind {
+                        value_param = docvec![
+                            "value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes",
+                            expr.to_doc(self).surround("(", ")"),
+                            ")"
+                        ];
+                    } else {
+                        value_param = docvec![
+                            "value = failwith \"Invalid value provided for Utf8\"",
+                        ];
+                    }
+                },
+                BitArrayOption::Utf16 { .. } => {
+                    if BitArraySegmentKind::String == kind {
+                        value_param = docvec![
+                            "value = BitArraySegmentValue.Utf16(System.Text.Encoding.Unicode.GetBytes",
+                            expr.to_doc(self).surround("(", ")")
+                        ];
+                    } else {
+                        value_param = docvec![
+                            "value = failwith \"Invalid value provided for Utf16\"",
+                        ];
+                    }
+                },
+                BitArrayOption::Utf32 { .. } => {
+                    if BitArraySegmentKind::String == kind {
+                        value_param = docvec![
+                            "value = BitArraySegmentValue.Utf32(System.Text.Encoding.UTF32.GetBytes",
+                            expr.to_doc(self).surround("(", ")")
+                        ];
+                    } else {
+                        value_param = docvec![
+                            "value = failwith \"Invalid value provided for Utf32\"",
+                        ];
+                    }
+                },
+                BitArrayOption::Utf8Codepoint { .. } => (),
+                BitArrayOption::Utf16Codepoint { .. } => (),
+                BitArrayOption::Utf32Codepoint { .. } => (),
+                BitArrayOption::Signed { .. } => signed_param = docvec!["signed = Some true"],
+                BitArrayOption::Unsigned { .. } => signed_param = docvec!["signed = Some false"],
+                BitArrayOption::Big { .. } => {
+                    endianness_param = docvec!["endianness = Some BitArrayEndianness.Big"]
+                }
+                BitArrayOption::Little { .. } => {
+                    endianness_param = docvec!["endianness = Some BitArrayEndianness.Little"]
+                }
+                BitArrayOption::Native { .. } => {
+                    endianness_param = docvec!["endianness = Some BitArrayEndianness.Native"]
+                }
+                BitArrayOption::Size {
+                    value,
+                    ..
+                } => size_param = docvec!["size = ", value.to_doc(self).surround("Some(", ")")],
+                BitArrayOption::Unit { value, .. } => {
+                    let value_str = EcoString::from(value.to_string());
+                    let value_doc = value_str.to_doc().append("L");
+
+                    unit_param = docvec!["unit = ", value_doc.surround("Some(", ")")]
+                }
+            }
+        });
+
+        let fields = vec![
+            endianness_param,
+            size_param,
+            unit_param,
+            signed_param,
+            value_param,
+        ];
+
+        join(fields, "; ".to_doc()).group().surround("{ ", " }")
+    }
 
     fn tuple_index(&mut self, tuple: &'a TypedExpr, index: &'a u64) -> Document<'a> {
         // TODO: Add warning suppression when this is encountered:
@@ -2137,7 +2312,7 @@ impl<'a> Generator<'a> {
                 ..
             } => self.constant_record_expression(record_name, args, type_, module, field_map),
 
-            Constant::BitArray { .. } => "//TODO: Constant::BitArray".to_doc(),
+            Constant::BitArray { segments, .. } => self.constant_bit_array_expression(segments),
 
             Constant::Var { name, module, .. } => {
                 match module {
@@ -2160,6 +2335,31 @@ impl<'a> Generator<'a> {
             Constant::Invalid { .. } => {
                 panic!("invalid constants should not reach code generation")
             }
+        }
+    }
+
+    fn constant_bit_array_expression(
+        &mut self,
+        segments: &'a [TypedConstantBitArraySegment],
+    ) -> Document<'a> {
+        if segments.is_empty() {
+            return "BitArray.Empty".to_doc();
+        } else {
+            let segments = segments
+                .iter()
+                .map(|segment| {
+                    self.bit_array_segment(segment, constant_bit_array_segment_kind(segment))
+                })
+                .collect_vec();
+
+            docvec![
+                "BitArray.Create(",
+                line()
+                    .nest(INDENT)
+                    .append(join(segments, ", ".to_doc().append(line().nest(INDENT))).group())
+                    .append(line())
+                    .append(")"),
+            ]
         }
     }
 
@@ -2468,5 +2668,91 @@ fn map_builtin_type_name_to_fsharp(name: &EcoString) -> EcoString {
         "Nil" => EcoString::from("unit"),
         "List" => EcoString::from("list"),
         _ => name.clone(),
+    }
+}
+
+#[derive(PartialEq, Clone, Copy)]
+enum BitArraySegmentKind {
+    Int,
+    Float,
+    BitArray,
+    String,
+    UtfCodepoint,
+    Utf8,
+    Utf16,
+    Utf32,
+    Utf8Codepoint,
+    Utf16Codepoint,
+    Utf32Codepoint,
+    Invalid,
+}
+fn bit_array_segment_kind(segment: &TypedExprBitArraySegment) -> BitArraySegmentKind {
+    let expr = segment.value.as_ref();
+    match expr {
+        TypedExpr::Int { .. } => BitArraySegmentKind::Int,
+        TypedExpr::Float { .. } => BitArraySegmentKind::Float,
+        TypedExpr::BitArray { .. } => BitArraySegmentKind::BitArray,
+        TypedExpr::String { .. } => BitArraySegmentKind::String,
+        TypedExpr::Var { .. } => match segment.type_.as_ref() {
+            Type::Named { name, .. } => match name.as_str() {
+                "Int" => BitArraySegmentKind::Int,
+                "Float" => BitArraySegmentKind::Float,
+                "BitArray" => BitArraySegmentKind::BitArray,
+                "String" => BitArraySegmentKind::String,
+                "UtfCodepoint" => BitArraySegmentKind::UtfCodepoint,
+                "Utf8" => BitArraySegmentKind::Utf8,
+                "Utf16" => BitArraySegmentKind::Utf16,
+                "Utf32" => BitArraySegmentKind::Utf32,
+                "Utf8Codepoint" => BitArraySegmentKind::Utf8Codepoint,
+                "Utf16Codepoint" => BitArraySegmentKind::Utf16Codepoint,
+                "Utf32Codepoint" => BitArraySegmentKind::Utf32Codepoint,
+                _ => BitArraySegmentKind::Invalid,
+            },
+            _ => BitArraySegmentKind::Invalid,
+        },
+        _ => BitArraySegmentKind::Invalid,
+    }
+}
+fn constant_bit_array_segment_kind(segment: &TypedConstantBitArraySegment) -> BitArraySegmentKind {
+    let expr = segment.value.as_ref();
+    match expr {
+        Constant::Int { .. } => BitArraySegmentKind::Int,
+        Constant::Float { .. } => BitArraySegmentKind::Float,
+        Constant::BitArray { .. } => BitArraySegmentKind::BitArray,
+        Constant::String { .. } => BitArraySegmentKind::String,
+        Constant::Var { .. } => match segment.type_.as_ref() {
+            Type::Named { name, .. } => match name.as_str() {
+                "Int" => BitArraySegmentKind::Int,
+                "Float" => BitArraySegmentKind::Float,
+                "BitArray" => BitArraySegmentKind::BitArray,
+                "String" => BitArraySegmentKind::String,
+                "UtfCodepoint" => BitArraySegmentKind::UtfCodepoint,
+                "Utf8" => BitArraySegmentKind::Utf8,
+                "Utf16" => BitArraySegmentKind::Utf16,
+                "Utf32" => BitArraySegmentKind::Utf32,
+                "Utf8Codepoint" => BitArraySegmentKind::Utf8Codepoint,
+                "Utf16Codepoint" => BitArraySegmentKind::Utf16Codepoint,
+                "Utf32Codepoint" => BitArraySegmentKind::Utf32Codepoint,
+                _ => BitArraySegmentKind::Invalid,
+            },
+            _ => BitArraySegmentKind::Invalid,
+        },
+        _ => BitArraySegmentKind::Invalid,
+    }
+}
+
+trait ExpressionLike {
+    fn to_doc<'a>(&'a self, ctx: &mut Generator<'a>) -> Document<'a>;
+}
+
+impl ExpressionLike for TypedExpr {
+    fn to_doc<'a>(&'a self, ctx: &mut Generator<'a>) -> Document<'a> {
+        ctx.expression(self)
+    }
+}
+
+impl ExpressionLike for TypedConstant {
+    fn to_doc<'a>(&'a self, ctx: &mut Generator<'a>) -> Document<'a> {
+        ctx.constant_expression(self)
     }
 }

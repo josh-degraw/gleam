@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\nfn go(x, y) {\n  <<x:size(y)>>\n}\n"
+---
+module rec my.``mod``
+
+let private go (x: int64) (y: int64) = begin
+    BitArray.Create(
+        { endianness = None; size = Some(y); unit = None; signed = None; value = BitArraySegmentValue.Int(x) }
+    )
+end

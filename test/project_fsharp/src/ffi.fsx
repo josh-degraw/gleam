@@ -1,14 +1,26 @@
 module rec my.``mod``
 
-type private Box<'t8> = Box of 't8
+#load "../../../compiler-core/src/fsharp/prelude.fs"
+#load "../../../external/stdlib/src/gleam_stdlib.fs"
 
-let private apply (arg: 'u10) (``fun``: 'u10 -> 'u14) = begin ``fun`` (arg) end
+open gleam
 
-let go () =
+let private go (x: UtfCodepoint) =
     begin
-        apply (Box(1L)) (fun (_use0: Box<int64>) ->
-            begin
-                let (Box(x)) = _use0
-                x
-            end)
+        BitArray.Create(
+            {
+                endianness = None
+                size = None
+                unit = None
+                signed = None
+                value = BitArraySegmentValue.Utf8Codepoint(x)
+            },
+            {
+                endianness = None
+                size = None
+                unit = None
+                signed = None
+                value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes("Gleam"))
+            }
+        )
     end

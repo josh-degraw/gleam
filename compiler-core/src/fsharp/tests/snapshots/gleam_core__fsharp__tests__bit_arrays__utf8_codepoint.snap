@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\nfn go(x) {\n  <<x:utf8_codepoint, \"Gleam\":utf8>>\n}\n"
+---
+module rec my.``mod``
+
+let private go (x: UtfCodepoint) = begin
+    BitArray.Create(
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8Codepoint(x) }, 
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes("Gleam")) }
+    )
+end
