@@ -215,17 +215,19 @@ type BitArray private (_buffer: byte[]) =
             failwith $"Sized integers must be 32-bit or 64-bit on .NET, got size of {byteSize * 8} bits"
 
 
-    member this.BinaryFromSlice(start: int64, end': int64) : Result<BitArray, unit> =
+    member this.Slice(start: int64, length: int64) : Result<BitArray, unit> =
         let start = int start
-        let end' = int end'
+        let end' = int length + start - 1
 
-        if
-            start < 0
-            || end' < 0
-            || start > end'
-            || start >= this.Buffer.Length
-            || end' >= this.Buffer.Length
-        then
+        if start = 0 && length = 0 then
+            Ok(BitArray.Empty)
+        elif length = 0 then
+            Error()
+        elif length < 0 && start = this.Buffer.Length then
+            let start = this.Buffer.Length + int length
+            let slice = this.Buffer[start..]
+            Ok(BitArray(slice))
+        elif start < 0 || end' < 0 || end' > this.Buffer.Length then
             Error()
         else
             let slice = this.Buffer[start..end']
@@ -240,7 +242,10 @@ type BitArray private (_buffer: byte[]) =
 
     member this.TryToUtf8String() =
         try
-            Ok(System.Text.Encoding.UTF8.GetString(this.Buffer))
+            if this.IsUtf8() then
+                Ok(System.Text.Encoding.UTF8.GetString(this.Buffer))
+            else
+                Error()
         with _ ->
             Error()
 
@@ -322,21 +327,7 @@ type BitArray private (_buffer: byte[]) =
         try
             Convert.FromHexString(hex) |> BitArray.FromBytes |> Ok
         with e ->
-            eprintfn "Error from %s: %A" hex e
             Error()
-
-    // interface IComparable with
-    //     member this.CompareTo(obj) =
-    //         match obj with
-    //         | :? BitArray as other -> compare this.Buffer other.Buffer
-    //         | _ -> invalidArg "obj" "Cannot compare BitArray with non-BitArray object"
-
-    // override this.Equals(obj) =
-    //     match obj with
-    //     | :? BitArray as other -> compare this.Buffer other.Buffer = 0
-    //     | _ -> false
-
-    // override this.GetHashCode() = buffer.GetHashCode()
 
     member this.Compare(obj: BitArray) : Order =
         let comp = compare this.Buffer obj.Buffer
@@ -469,7 +460,7 @@ and [<Struct>] BitArraySegment = {
         | Utf8 bytes
         | Utf16 bytes
         | Utf32 bytes -> bytes.Length
-        | Utf8Codepoint _ -> 8
+        | Utf8Codepoint(UtfCodepoint c) -> c.Utf8SequenceLength
         | Utf16Codepoint _ -> 16
         | Utf32Codepoint _ -> 32
         | Int i when i <= int64 Byte.MaxValue -> sizeof<byte>

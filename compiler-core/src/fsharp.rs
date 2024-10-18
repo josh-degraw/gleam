@@ -1243,8 +1243,6 @@ impl<'a> Generator<'a> {
     }
 
     fn bit_array(&mut self, segments: &'a [TypedExprBitArraySegment]) -> Document<'a> {
-        // println!("{:#?}", segments);
-
         if segments.is_empty() {
             return "BitArray.Empty".to_doc();
         } else {
