@@ -25,242 +25,6 @@ type EmptyTuple = EmptyTuple
 [<Struct>]
 type UtfCodepoint = UtfCodepoint of System.Text.Rune
 
-// type BitArrayOption =
-//     | Bytes
-//     | Int
-//     | Float
-//     | Bits
-//     | Utf8
-//     | Utf16
-//     | Utf32
-//     | Utf8Codepoint
-//     | Utf16Codepoint
-//     | Utf32Codepoint
-//     | Signed
-//     | Unsigned
-//     | Big
-//     | Little
-//     | Native
-//     | Size of int64
-//     | Unit of int64
-
-[<Struct>]
-type BitArray(buffer: byte[]) =
-
-    // new() = BitArray(Array.empty)
-    // new(size: int) = BitArray(Array.zeroCreate size)
-    //member val internal _buffer = buffer with get/, set
-
-    member internal this.Buffer = buffer
-
-    static member Empty = BitArray()
-
-    member this.ByteAt(index: int64) = buffer.[int index]
-
-    member this.FloatFromSlice(start: int64, end': int64) =
-        let start = int start
-        let end' = int end'
-        let byteSize = end' - start
-
-        let slice = buffer[start..end']
-
-        if byteSize = 8 then
-            System.BitConverter.ToDouble(slice, 0)
-        else if byteSize = 4 then
-            System.BitConverter.ToSingle(slice, 0) |> float
-        else
-            failwith $"Sized floats must be 32-bit on .NET, got size of {byteSize * 8} bits"
-
-    member this.IntFromSlice(start: int64, end': int64) : int64 =
-        let start = int start
-        let end' = int end'
-        let byteSize = end' - start
-
-        let slice = buffer.[start..end']
-
-        if byteSize = 8 then
-            System.BitConverter.ToInt64(slice, 0)
-        else if byteSize = 4 then
-            System.BitConverter.ToInt32(slice, 0)
-        else
-            failwith $"Sized integers must be 32-bit or 64-bit on .NET, got size of {byteSize * 8} bits"
-
-    member this.BinaryFromSlice(start: int64, end': int64) =
-        let start = int start
-        let end' = int end'
-        let slice = buffer[start..end']
-        BitArray(slice)
-
-    member this.SliceAfter(index: int64) =
-        let index = int index
-        let slice = buffer[index..]
-        BitArray(slice)
-
-
-    static member Create([<ParamArray>] segments: BitArraySegment[]) =
-        let size segment =
-            match segment.size with
-            | Some size -> int size
-            | None ->
-                match segment.value with
-                | Bits ba -> ba.Buffer.Length
-                | Bytes bytes -> bytes.Length
-                | Float _
-                | Int _
-                | Utf8 _
-                | Utf16 _
-                | Utf32 _
-                | Utf8Codepoint _
-                | Utf16Codepoint _
-                | Utf32Codepoint _ -> 8
-
-        let byte_length = segments |> Array.map size |> Array.sum
-
-        let mutable buffer = Array.zeroCreate byte_length
-
-        for segment in segments do
-
-            let valueBuffer = segment.ToBytes()
-
-            System.Buffer.BlockCopy(valueBuffer, 0, buffer, 0, valueBuffer.Length)
-
-        BitArray(buffer)
-
-
-and [<Struct>] BitArraySegmentValue =
-    | Bits of bits: BitArray
-    | Bytes of bytes: byte[]
-    | Float of float: float
-    | Int of int: int64
-    | Utf8 of utf8: byte[]
-    | Utf16 of utf16: byte[]
-    | Utf32 of utf32: byte[]
-    | Utf8Codepoint of utf8Codepoint: UtfCodepoint
-    | Utf16Codepoint of utf16Codepoint: byte[]
-    | Utf32Codepoint of utf32Codepoint: byte[]
-
-and [<Struct>] BitArrayEndianness =
-    | Big
-    | Little
-    | Native
-
-and [<Struct>] BitArraySegment = {
-    endianness: BitArrayEndianness option
-    size: int64 option
-    unit: int64 option
-    signed: bool option
-    value: BitArraySegmentValue
-} with
-
-    static member Bytes(bytes: byte[]) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Bytes bytes
-    }
-
-    static member Int(int: int64, ?endianness: BitArrayEndianness, ?signed: bool) = {
-        endianness = endianness
-        size = None
-        unit = None
-        signed = signed
-        value = Int int
-    }
-
-    static member Float(float: float, ?endianness: BitArrayEndianness) = {
-        endianness = endianness
-        size = None
-        unit = None
-        signed = None
-        value = Float float
-    }
-
-    static member Bits(bits: BitArray) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Bits bits
-    }
-
-    static member Utf8(utf8: string) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Utf8(System.Text.Encoding.UTF8.GetBytes(utf8))
-    }
-
-    static member Utf16(utf16: string) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Utf16(System.Text.Encoding.Unicode.GetBytes(utf16))
-    }
-
-    static member Utf32(utf32: string) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Utf32(System.Text.Encoding.UTF32.GetBytes(utf32))
-    }
-
-    static member Utf8Codepoint(utf8Codepoint: UtfCodepoint) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Utf8Codepoint utf8Codepoint
-    }
-
-    static member Utf16Codepoint(utf16Codepoint: byte[]) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Utf16Codepoint utf16Codepoint
-    }
-
-    static member Utf32Codepoint(utf32Codepoint: byte[]) = {
-        endianness = None
-        size = None
-        unit = None
-        signed = None
-        value = Utf32Codepoint utf32Codepoint
-    }
-
-    // static member Unit(unit: int64) = {
-    //     endianness = None
-    //     size = None
-    //     unit = Some unit
-    //     signed = None
-    //     value = Unit unit
-    // }
-
-    // static member Size(size: int64) = {
-    //     endianness = None
-    //     unit = None
-    //     signed = None
-    //     value = Size size
-    // }
-
-    member this.ToBytes() =
-        match this.value with
-        | Bits ba -> ba.Buffer
-        | Bytes bytes -> bytes
-        | Float f -> System.BitConverter.GetBytes(f)
-        | Int i when this.signed = Some true -> System.BitConverter.GetBytes(uint64 i)
-        | Int i -> System.BitConverter.GetBytes(i)
-        | Utf8Codepoint(UtfCodepoint cp) -> System.Text.Encoding.UTF8.GetBytes(string cp)
-        | Utf8 bytes
-        | Utf16 bytes
-        | Utf32 bytes
-        | Utf16Codepoint bytes
-        | Utf16Codepoint bytes
-        | Utf32Codepoint bytes -> bytes
 
 [<CustomEquality; CustomComparison>]
 type Dynamic =
@@ -320,6 +84,432 @@ type Uri = {
     fragment: Option<string>
 }
 
+// type BitArrayOption =
+//     | Bytes
+//     | Int
+//     | Float
+//     | Bits
+//     | Utf8
+//     | Utf16
+//     | Utf32
+//     | Utf8Codepoint
+//     | Utf16Codepoint
+//     | Utf32Codepoint
+//     | Signed
+//     | Unsigned
+//     | Big
+//     | Little
+//     | Native
+//     | Size of int64
+//     | Unit of int64
+
+[<Struct; CustomEquality; CustomComparison>]
+type BitArray private (_buffer: byte[]) =
+    static let b64EncodeLookup = [
+        65uy
+        66uy
+        67uy
+        68uy
+        69uy
+        70uy
+        71uy
+        72uy
+        73uy
+        74uy
+        75uy
+        76uy
+        77uy
+        78uy
+        79uy
+        80uy
+        81uy
+        82uy
+        83uy
+        84uy
+        85uy
+        86uy
+        87uy
+        88uy
+        89uy
+        90uy
+        97uy
+        98uy
+        99uy
+        100uy
+        101uy
+        102uy
+        103uy
+        104uy
+        105uy
+        106uy
+        107uy
+        108uy
+        109uy
+        110uy
+        111uy
+        112uy
+        113uy
+        114uy
+        115uy
+        116uy
+        117uy
+        118uy
+        119uy
+        120uy
+        121uy
+        122uy
+        48uy
+        49uy
+        50uy
+        51uy
+        52uy
+        53uy
+        54uy
+        55uy
+        56uy
+        57uy
+        43uy
+        47uy
+    ]
+
+    member internal this.Buffer = if isNull _buffer then Array.empty else _buffer
+
+    static member Empty = BitArray()
+
+    override this.Equals(obj) =
+        match obj with
+        | :? BitArray as other when other.Length = this.Length ->
+            System.Linq.Enumerable.SequenceEqual(this.Buffer, other.Buffer)
+        | _ -> false
+
+    override this.GetHashCode() = System.HashCode.Combine(this.Buffer)
+
+    member this.ByteAt(index: int64) = this.Buffer.[int index]
+
+    member this.FloatFromSlice(start: int64, end': int64) =
+        let start = int start
+        let end' = int end'
+        let byteSize = end' - start
+
+        let slice = this.Buffer[start..end']
+
+        if byteSize = 8 then
+            System.BitConverter.ToDouble(slice, 0)
+        else if byteSize = 4 then
+            System.BitConverter.ToSingle(slice, 0) |> float
+        else
+            failwith $"Sized floats must be 32-bit on .NET, got size of {byteSize * 8} bits"
+
+    member this.IntFromSlice(start: int64, end': int64) : int64 =
+        let start = int start
+        let end' = int end'
+        let byteSize = end' - start
+
+        let slice = this.Buffer[start..end']
+
+        if byteSize = 8 then
+            System.BitConverter.ToInt64(slice, 0)
+        else if byteSize = 4 then
+            System.BitConverter.ToInt32(slice, 0)
+        else
+            failwith $"Sized integers must be 32-bit or 64-bit on .NET, got size of {byteSize * 8} bits"
+
+
+    member this.BinaryFromSlice(start: int64, end': int64) : Result<BitArray, unit> =
+        let start = int start
+        let end' = int end'
+
+        if
+            start < 0
+            || end' < 0
+            || start > end'
+            || start >= this.Buffer.Length
+            || end' >= this.Buffer.Length
+        then
+            Error()
+        else
+            let slice = this.Buffer[start..end']
+            Ok(BitArray(slice))
+
+    member this.SliceAfter(index: int64) =
+        let index = int index
+        let slice = this.Buffer[index..]
+        BitArray(slice)
+
+    member this.Length = this.Buffer.Length
+
+    member this.TryToUtf8String() =
+        try
+            Ok(System.Text.Encoding.UTF8.GetString(this.Buffer))
+        with _ ->
+            Error()
+
+    member this.IsUtf8() =
+        let rec isValidUtf8 (bytes: byte[]) (index: int) =
+            if index >= bytes.Length then
+                true
+            else
+                let byte = bytes.[index]
+
+                if byte <= 127uy then
+                    // ASCII character
+                    isValidUtf8 bytes (index + 1)
+                elif byte >= 192uy && byte <= 223uy then
+                    // 2-byte sequence
+                    if index + 1 >= bytes.Length || (bytes.[index + 1] &&& 192uy) <> 128uy then
+                        false
+                    else
+                        isValidUtf8 bytes (index + 2)
+                elif byte >= 224uy && byte <= 239uy then
+                    // 3-byte sequence
+                    if
+                        index + 2 >= bytes.Length
+                        || (bytes.[index + 1] &&& 192uy) <> 128uy
+                        || (bytes.[index + 2] &&& 192uy) <> 128uy
+                    then
+                        false
+                    else
+                        isValidUtf8 bytes (index + 3)
+                elif byte >= 240uy && byte <= 247uy then
+                    // 4-byte sequence
+                    if
+                        index + 3 >= bytes.Length
+                        || (bytes.[index + 1] &&& 192uy) <> 128uy
+                        || (bytes.[index + 2] &&& 192uy) <> 128uy
+                        || (bytes.[index + 3] &&& 192uy) <> 128uy
+                    then
+                        false
+                    else
+                        isValidUtf8 bytes (index + 4)
+                else
+                    false
+
+        isValidUtf8 this.Buffer 0
+
+
+    // Copied from js implementation to account for padding
+    member this.Base64Encode(padding: bool) =
+        let base64 = Convert.ToBase64String(this.Buffer)
+
+        if padding then
+            base64
+        else
+            base64.Replace("==", "").Replace("=", "")
+
+    static member Base64Decode(encoded: string) : Result<BitArray, unit> =
+        if encoded.Length = 0 then
+            Ok(BitArray.Empty)
+        else
+            try
+                let bytes = Convert.FromBase64String(encoded)
+                BitArray.FromBytes(bytes) |> Ok
+            with _ ->
+                Error()
+
+    member this.Base16Encode() : string =
+        let result = StringBuilder()
+
+        let s = System.Text.Encoding.UTF8.GetString(this.Buffer)
+
+        for byte in this.Buffer do
+            // Trim leading zeros if this was encoded as integers
+            // TODO: Could this be optimized to save space on storage?
+            result.Append(byte.ToString("x2").ToUpper().Trim('0')) |> ignore
+
+        result |> string
+
+    static member Base16Decode(hex: string) : Result<BitArray, unit> =
+        try
+            Convert.FromHexString(hex) |> BitArray.FromBytes |> Ok
+        with e ->
+            eprintfn "Error from %s: %A" hex e
+            Error()
+
+    // interface IComparable with
+    //     member this.CompareTo(obj) =
+    //         match obj with
+    //         | :? BitArray as other -> compare this.Buffer other.Buffer
+    //         | _ -> invalidArg "obj" "Cannot compare BitArray with non-BitArray object"
+
+    // override this.Equals(obj) =
+    //     match obj with
+    //     | :? BitArray as other -> compare this.Buffer other.Buffer = 0
+    //     | _ -> false
+
+    // override this.GetHashCode() = buffer.GetHashCode()
+
+    member this.Compare(obj: BitArray) : Order =
+        let comp = compare this.Buffer obj.Buffer
+
+        if comp = 0 then Eq
+        elif comp < 0 then Lt
+        else Gt
+
+    interface IComparable with
+        member this.CompareTo(obj) =
+            match obj with
+            | :? BitArray as other -> compare this.Buffer other.Buffer
+            | _ -> invalidArg "obj" "Cannot compare BitArray with non-BitArray object"
+
+    member this.MatchSegments([<ParamArray>] matchSegments: BitArraySegment[]) =
+        let bytes = this.Buffer
+
+        let mutable cursor = 0
+        let mutable hasFailure = false
+
+        let res = [|
+
+            for segment in matchSegments do
+                if not hasFailure then
+                    let valueBuffer: byte[] = segment.ToBytes()
+
+                    if valueBuffer.Length > bytes.Length then
+                        hasFailure <- true
+
+                    else
+                        let slice = bytes[cursor .. (cursor + valueBuffer.Length - 1)]
+
+                        if slice = valueBuffer then
+                            cursor <- cursor + valueBuffer.Length
+                            segment.value
+                        else
+                            hasFailure <- true
+            if cursor < bytes.Length then
+                Bytes bytes[cursor..]
+        |]
+
+        if hasFailure then None else Some res
+
+    // Factory methods
+
+    static member FromBytes(bytes: byte[]) = BitArray(bytes)
+
+    static member FromString(str: string) =
+        BitArray(System.Text.Encoding.UTF8.GetBytes(str))
+
+    static member Concat(bit_arrays: BitArray seq) =
+        let buffer = Array.concat [ for ba in bit_arrays -> ba.Buffer ]
+        BitArray(buffer)
+
+    static member Create([<ParamArray>] segments: BitArraySegment[]) =
+        let size segment =
+            match segment.size with
+            | Some size -> int size
+            | None -> segment.Length
+
+        let byte_length = segments |> Array.map size |> Array.sum
+
+        let mutable buffer = Array.zeroCreate byte_length
+        let mutable cursor = 0
+
+        for segment in segments do
+
+            let valueBuffer = segment.ToBytes()
+
+            System.Buffer.BlockCopy(valueBuffer, 0, buffer, cursor, valueBuffer.Length)
+            cursor <- cursor + valueBuffer.Length
+
+        BitArray(buffer)
+
+    override this.ToString() =
+        let builder = System.Text.StringBuilder()
+        builder.Append("<<") |> ignore
+        let mutable i = 0
+
+        for b in this.Buffer do
+            builder.Append(sprintf "%i" b) |> ignore
+
+            if i + 1 < this.Buffer.Length then
+                builder.Append(", ") |> ignore
+
+            i <- i + 1
+
+        builder.Append(">>") |> string
+
+
+and [<Struct>] BitArraySegmentValue =
+    | Bits of bits: BitArray
+    | Bytes of bytes: byte[]
+    | Float of float: float
+    | Int of int: int64
+    | Utf8 of utf8: byte[]
+    | Utf16 of utf16: byte[]
+    | Utf32 of utf32: byte[]
+    | Utf8Codepoint of utf8Codepoint: UtfCodepoint
+    | Utf16Codepoint of utf16Codepoint: byte[]
+    | Utf32Codepoint of utf32Codepoint: byte[]
+
+    static member FromString(str: string) =
+        BitArraySegmentValue.Utf16(System.Text.Encoding.Unicode.GetBytes(str))
+
+and [<Struct>] BitArrayEndianness =
+    | Big
+    | Little
+    | Native
+
+and [<Struct>] BitArraySegment = {
+    endianness: BitArrayEndianness option
+    size: int64 option
+    unit: int64 option
+    signed: bool option
+    value: BitArraySegmentValue
+} with
+
+    static member Empty = {
+        endianness = None
+        size = None
+        unit = None
+        signed = None
+        value = Bytes Array.empty
+    }
+
+    member this.Length =
+        match this.value with
+        | Bytes bytes
+        | Utf8 bytes
+        | Utf16 bytes
+        | Utf32 bytes -> bytes.Length
+        | Utf8Codepoint _ -> 8
+        | Utf16Codepoint _ -> 16
+        | Utf32Codepoint _ -> 32
+        | Int i when i <= int64 Byte.MaxValue -> sizeof<byte>
+        | Int _ when this.signed = Some true -> sizeof<int64>
+        | Int _ -> sizeof<uint64>
+        | Float _ -> sizeof<double>
+        | Bits b -> b.Buffer.Length
+
+    static member FromUtf16String(str: string) = {
+        BitArraySegment.Empty with
+            value = Utf16(System.Text.Encoding.Unicode.GetBytes(str))
+    }
+
+    member this.Equals(bytes: byte[]) = this.ToBytes() = bytes
+
+    member this.ToBytes() =
+        match this.value with
+        | Bits ba -> ba.Buffer
+        | Bytes bytes -> bytes
+        | Float f -> System.BitConverter.GetBytes(f)
+        | Int i when i <= int64 Byte.MaxValue -> [| byte i |]
+        | Int i when this.signed = Some true -> System.BitConverter.GetBytes(uint64 i)
+        | Int i -> System.BitConverter.GetBytes(i)
+        | Utf8Codepoint(UtfCodepoint(cp: Text.Rune)) -> System.Text.Encoding.UTF8.GetBytes(string cp)
+        | Utf8 bytes
+        | Utf16 bytes
+        | Utf32 bytes
+        | Utf16Codepoint bytes
+        | Utf32Codepoint bytes -> bytes
+
+and [<Struct>] BitArraySegmentMatch = {
+    segment: BitArraySegment
+    value: BitArraySegmentValue
+}
+
+// let str = BitArray.Create(BitArraySegment.FromUtf16String("Hello, world!"))
+// let m = BitArraySegment.FromUtf16String("Hello, ")
+// let w = BitArraySegment.FromUtf16String("world")
+// let matches = str.MatchSegments(m, w)
+
 [<AutoOpen>]
 module Prelude =
     /// Check if a string starts with a prefix
@@ -340,3 +530,8 @@ module Prelude =
 
     let (|Tuple1|) (t: System.Tuple<'a>) = t.Item1
     let Tuple1 (a: 'a) = System.Tuple.Create(a)
+
+
+    let (|BitArraySegments|_|) (segments: BitArraySegment[]) (bitArray: BitArray) =
+        //
+        bitArray.MatchSegments(segments)

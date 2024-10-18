@@ -1243,7 +1243,7 @@ impl<'a> Generator<'a> {
     }
 
     fn bit_array(&mut self, segments: &'a [TypedExprBitArraySegment]) -> Document<'a> {
-        println!("{:#?}", segments);
+        // println!("{:#?}", segments);
 
         if segments.is_empty() {
             return "BitArray.Empty".to_doc();
@@ -1463,7 +1463,10 @@ impl<'a> Generator<'a> {
     // If an expression is one of these types, it must take up multiple lines, regardless of how long it is
     fn must_be_multiline(&self, expr: &'a TypedExpr) -> bool {
         match expr {
-            TypedExpr::Pipeline { .. } | TypedExpr::Fn { .. } | TypedExpr::Case { .. } => true,
+            TypedExpr::BitArray { .. }
+            | TypedExpr::Pipeline { .. }
+            | TypedExpr::Fn { .. }
+            | TypedExpr::Case { .. } => true,
             TypedExpr::Call { args, .. } => self.any_arg_must_be_multiline(args),
             TypedExpr::List { elements, .. } => elements.iter().any(|e| self.must_be_multiline(e)),
             TypedExpr::Tuple { elems, .. } => elems.iter().any(|e| self.must_be_multiline(e)),
@@ -1558,8 +1561,7 @@ impl<'a> Generator<'a> {
             | TypedExpr::TupleIndex { .. }
             | TypedExpr::NegateBool { .. }
             | TypedExpr::NegateInt { .. }
-            | TypedExpr::RecordAccess { .. }
-            | TypedExpr::BitArray { .. } => false,
+            | TypedExpr::RecordAccess { .. } => false,
 
             _ => true,
         }
