@@ -4,7 +4,6 @@ expression: "\nimport gleam/iterator.{Next}\nfn go(step) {\n    let assert Next(
 ---
 module rec my.``mod``
 let Next = gleam.iterator.Next
-
 let private go (step: Step<'a, 'b>) = begin
     let (Next(h2, t2)) = step
     (Next(h2, t2))

@@ -1,6 +1,5 @@
 ---
 source: compiler-core/src/fsharp/tests/bit_arrays.rs
-assertion_line: 38
 expression: "\nfn go() {\n  <<256:int>>\n}\n"
 ---
 module rec my.``mod``

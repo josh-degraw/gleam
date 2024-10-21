@@ -4,7 +4,6 @@ expression: "import gleam.{Ok as Y}\npub type X {\n  Ok\n}\nfn func() {\n  case 
 ---
 module rec my.``mod``
 let Y = gleam.Ok
-
 type X =
 | Ok
     

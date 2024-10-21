@@ -4,7 +4,6 @@ expression: "\nimport rocket_ship\npub fn go() { rocket_ship.x }\n"
 ---
 module rec my.``mod``
 
-
 let go () = begin
     rocket_ship.x
 end

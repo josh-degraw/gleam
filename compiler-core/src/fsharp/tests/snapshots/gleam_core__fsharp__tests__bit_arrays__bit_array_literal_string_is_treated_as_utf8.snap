@@ -1,11 +1,10 @@
 ---
 source: compiler-core/src/fsharp/tests/bit_arrays.rs
-expression: "\npub fn main() {\n  <<\"hello\", \" \", \"world\">>\n}"
+expression: "\npub fn go() {\n  <<\"hello\", \" \", \"world\">>\n}"
 ---
 module rec my.``mod``
 
-[<EntryPoint>]
-let main (_: string[]): int = begin
+let go () = begin
     BitArray.Create(
         { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes("hello")) }, 
         { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes(" ")) }, 

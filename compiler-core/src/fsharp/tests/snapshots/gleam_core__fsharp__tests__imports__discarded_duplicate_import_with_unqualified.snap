@@ -4,8 +4,6 @@ expression: "\nimport esa/rocket_ship\nimport nasa/rocket_ship.{go} as _nasa_roc
 ---
 module rec my.``mod``
 let go = nasa.rocket_ship.go
-
-
 let esa_go () = begin
     esa.rocket_ship.go()
 end

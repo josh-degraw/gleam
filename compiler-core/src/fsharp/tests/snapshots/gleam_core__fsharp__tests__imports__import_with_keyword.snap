@@ -5,7 +5,6 @@ expression: "\nimport rocket_ship.{class, in as while}\npub fn go() {\n  #(class
 module rec my.``mod``
 let ``class`` = rocket_ship.``class``
 let ``while`` = rocket_ship.``in``
-
 let go () = begin
     (``class``, ``while``)
 end

@@ -4,7 +4,6 @@ expression: "\n          import hero\n          pub fn go() {\n            let n
 ---
 module rec my.``mod``
 open package
-
 let go () = begin
     let name = "Bruce Wayne"
     match name with

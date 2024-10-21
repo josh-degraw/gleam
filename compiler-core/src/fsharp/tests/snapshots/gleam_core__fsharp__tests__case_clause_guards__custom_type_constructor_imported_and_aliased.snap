@@ -5,7 +5,6 @@ expression: "import other_module.{A as B}\nfn func() {\n  case B {\n    x if x =
 module rec my.``mod``
 open package
 let B = other_module.A
-
 let private func () = begin
     match B with
     | x when x = B ->

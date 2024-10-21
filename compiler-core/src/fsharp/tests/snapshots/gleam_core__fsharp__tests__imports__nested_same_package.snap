@@ -4,7 +4,6 @@ expression: "import one/two/three\npub fn go() { three.go() }\n"
 ---
 module rec my.``mod``
 
-
 let go () = begin
     one.two.three.go()
 end

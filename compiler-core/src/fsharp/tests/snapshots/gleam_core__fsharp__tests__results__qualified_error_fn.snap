@@ -4,7 +4,6 @@ expression: "import gleam\npub fn go() { gleam.Error }"
 ---
 module rec my.``mod``
 
-
 let go () = begin
     gleam.Error
 end

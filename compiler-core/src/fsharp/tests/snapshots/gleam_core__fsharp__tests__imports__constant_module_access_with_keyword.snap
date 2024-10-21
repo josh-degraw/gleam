@@ -4,5 +4,4 @@ expression: "\nimport rocket_ship\npub const variable = rocket_ship.class\n"
 ---
 module rec my.``mod``
 
-
 let variable = rocket_ship.``class``
