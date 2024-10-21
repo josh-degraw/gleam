@@ -1,0 +1,12 @@
+---
+source: compiler-core/src/fsharp/tests/lists.rs
+assertion_line: 107
+expression: "\nfn go(func) {\n  let huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable = []\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let private go (func: 'a) = begin
+    let huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable = []
+    huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge_variable
+end

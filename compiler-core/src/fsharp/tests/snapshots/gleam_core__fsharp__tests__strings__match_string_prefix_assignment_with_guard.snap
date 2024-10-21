@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\npub fn go(x) {\n  case x {\n    \"Hello, \" as greeting <> name if name == \"Dude\" -> greeting <> \"Mate\"\n    \"Hello, \" as greeting <> name -> greeting\n    _ -> \"Unknown\"\n  }\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let go (x: string) = begin
     match x with

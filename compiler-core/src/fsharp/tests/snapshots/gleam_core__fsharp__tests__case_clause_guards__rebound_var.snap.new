@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/case_clause_guards.rs
+assertion_line: 18
+expression: "pub fn go() {\n  let x = False\n  let x = True\n  case x {\n    _ if x -> 1\n    _ -> 0\n  }\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let go () = begin
+    let x = false
+    let x = true
+    match x with
+    | _ when x ->
+        1L
+    | _ ->
+        0L
+end

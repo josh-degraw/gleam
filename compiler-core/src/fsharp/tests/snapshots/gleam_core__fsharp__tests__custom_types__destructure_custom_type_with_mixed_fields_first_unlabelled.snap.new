@@ -1,0 +1,19 @@
+---
+source: compiler-core/src/fsharp/tests/custom_types.rs
+assertion_line: 255
+expression: "\ntype Cat {\n  Cat(String, cuteness: Int)\n}\n\nfn go(cat) {\n  let Cat(x, y) = cat\n  let Cat(cuteness: y, ..) = cat\n  let Cat(x, cuteness: y) = cat\n  x\n}\n\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+type private Cat =
+| Cat of string * cuteness: int64
+    member this.cuteness = 
+        match this with
+        | Cat.Cat (_, cuteness) -> cuteness
+let private go (cat: Cat) = begin
+    let (Cat(x, y)) = cat
+    let (Cat(_, y)) = cat
+    let (Cat(x, y)) = cat
+    x
+end

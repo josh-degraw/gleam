@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/patterns.rs
 expression: "pub fn a(x) {\n  case x {\n    [\"a\" as a <> _, \"b\" as b <> _] -> a <> b\n    _ -> \"\"\n  }\n}"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let a (x: list<string>) = begin
     match x with

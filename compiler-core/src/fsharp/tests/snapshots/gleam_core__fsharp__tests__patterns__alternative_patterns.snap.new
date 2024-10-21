@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/patterns.rs
+assertion_line: 6
+expression: "\npub fn foo() {\n  let duplicate_name = 1\n\n  case 1 {\n    1 | 2 -> {\n      let duplicate_name = duplicate_name + 1\n      duplicate_name\n    }\n    _ -> 0\n  }\n}"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let foo () = begin
+    let duplicate_name = 1L
+    match 1L with
+    | 1L | 2L ->
+        let duplicate_name = duplicate_name + 1L
+        duplicate_name
+    | _ ->
+        0L
+end

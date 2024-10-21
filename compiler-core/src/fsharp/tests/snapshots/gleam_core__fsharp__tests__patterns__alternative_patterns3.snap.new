@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/patterns.rs
+assertion_line: 53
+expression: "\npub const constant = Ok(1)\n\npub fn foo(arg) {\n  let _ = constant\n  case arg {\n    _ if arg == constant -> 1\n    _ -> 0\n  }\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let constant = Ok(1L)
+let foo (arg: Result<int64, 'a>) = begin
+    let _ = constant
+    match arg with
+    | _ when arg = Ok(1L) ->
+        1L
+    | _ ->
+        0L
+end

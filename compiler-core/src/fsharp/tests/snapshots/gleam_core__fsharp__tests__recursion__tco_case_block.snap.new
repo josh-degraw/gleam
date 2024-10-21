@@ -1,0 +1,16 @@
+---
+source: compiler-core/src/fsharp/tests/recursion.rs
+assertion_line: 19
+expression: "\npub fn foo(x) {\n  case x {\n    0 -> Nil\n    _ -> {\n      let y = x\n      foo(y - 1)\n    }\n  }\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let foo (x: int64) = begin
+    match x with
+    | 0L ->
+        ()
+    | _ ->
+        let y = x
+        foo (y - 1L)
+end

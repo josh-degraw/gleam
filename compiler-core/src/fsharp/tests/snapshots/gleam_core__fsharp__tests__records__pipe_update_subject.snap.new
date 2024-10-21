@@ -1,0 +1,19 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 270
+expression: "pub type Thing {\n  Thing(a: Int, b: Int)\n}\n\npub fn identity(x) { x }\n\npub fn foo() {\n  let thing = Thing(1, 2)\n  Thing(..thing |> identity, b: 1000)\n}"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+type Thing = { a: int64; b: int64 }
+let identity (x: 'a) = begin
+    x
+end
+let foo () = begin
+    let thing = { a = 1L; b = 2L }
+    { (begin
+        let _pipe = thing
+        (identity _pipe)
+    end) with b = 1000L }
+end

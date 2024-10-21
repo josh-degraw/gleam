@@ -1,0 +1,14 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+assertion_line: 578
+expression: "\nfn go() {\n  let x = 4\n  <<256:size(x)>>\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let private go () = begin
+    let x = 4L
+    BitArray.Create(
+        { endianness = None; size = Some(x); unit = None; signed = None; value = BitArraySegmentValue.Int(256L) }
+    )
+end

@@ -28,6 +28,11 @@ pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
 /// This is used directly in pattern matching
 pub const STRING_PATTERN_PARTS: &str = "Gleam_codegen_string_parts";
 
+pub const INCOMPLETE_PATTERN_MATCH: &str =
+    "#nowarn \"25\" // Incomplete pattern matches on this expression.";
+
+pub const CONSTRUCT_NOT_USUALLY_USED_FROM_FSHARP: &str = "#nowarn \"3220\" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.";
+
 fn is_stdlib_package(package: &str) -> bool {
     package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib"
 }
@@ -40,6 +45,7 @@ pub struct Generator<'a> {
     module: &'a TypedModule,
     input_file_path: &'a Utf8PathBuf,
     printer: Printer<'a>,
+    pub suppressed_warnings: HashSet<&'static str>,
 }
 
 impl<'a> Generator<'a> {
@@ -56,19 +62,35 @@ impl<'a> Generator<'a> {
             module,
             input_file_path,
             printer: Printer::new(&module.names),
+            suppressed_warnings: HashSet::new(),
         }
     }
 
     pub fn render(&mut self) -> Result<String> {
-        let document = join(
+        let module_dec = self.module_declaration();
+
+        let imports = self.render_imports()?;
+        let contents = self.module_contents()?;
+
+        // TODO: Maybe make this behavior optional?
+        let mut document = if self.suppressed_warnings.is_empty() {
+            vec![module_dec]
+        } else {
             vec![
-                self.module_declaration(),
-                self.render_imports()?,
-                self.module_contents()?,
-            ],
-            line(),
-        );
-        Ok(document.to_pretty_string(120))
+                module_dec,
+                join(
+                    self.suppressed_warnings
+                        .iter()
+                        .map(|warning| warning.to_doc()),
+                    line(),
+                ),
+            ]
+        };
+
+        document.push(imports);
+        document.push(contents);
+
+        Ok(join(document, line()).to_pretty_string(120))
     }
 
     /// Update the currently referenced module and render it
@@ -897,6 +919,7 @@ impl<'a> Generator<'a> {
             }
             TypedStatement::Assignment(Assignment {
                 value,
+                kind,
                 pattern:
                     Pattern::StringPrefix {
                         left_side_string: prefix,
@@ -906,8 +929,10 @@ impl<'a> Generator<'a> {
                     },
                 ..
             }) => {
-                // TODO: Add warning suppression when this is encountered:
-                // #nowarn "25" // Incomplete pattern matches on this expression.
+                if kind == &AssignmentKind::Let {
+                    self.add_warning_suppression(INCOMPLETE_PATTERN_MATCH);
+                }
+
                 let suffix_binding_name: Document<'a> = match right_side_assignment {
                     AssignName::Variable(right) => {
                         let v = right.to_doc();
@@ -938,6 +963,9 @@ impl<'a> Generator<'a> {
             }
 
             Statement::Assignment(a) => {
+                if a.kind == AssignmentKind::Let {
+                    self.add_warning_suppression(INCOMPLETE_PATTERN_MATCH);
+                }
                 let (name, can_use_as_return_value) = self.get_assignment_binding(&a.pattern)?;
 
                 if can_use_as_return_value {
@@ -1471,8 +1499,7 @@ impl<'a> Generator<'a> {
     }
 
     fn tuple_index(&mut self, tuple: &'a TypedExpr, index: &'a u64) -> Result<Document<'a>> {
-        // TODO: Add warning suppression when this is encountered:
-        // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
+        self.add_warning_suppression(CONSTRUCT_NOT_USUALLY_USED_FROM_FSHARP);
         Ok(docvec![self.expression(tuple)?, ".Item", index + 1])
     }
 
@@ -1910,8 +1937,7 @@ impl<'a> Generator<'a> {
 
             ClauseGuard::Constant(c) => self.constant_expression(c),
             ClauseGuard::TupleIndex { tuple, index, .. } => {
-                // TODO: Add warning suppression when this is encountered:
-                // #nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
+                self.add_warning_suppression(CONSTRUCT_NOT_USUALLY_USED_FROM_FSHARP);
                 Ok(docvec![self.clause_guard(tuple)?, ".Item", index + 1])
             }
             ClauseGuard::FieldAccess {
@@ -2077,8 +2103,7 @@ impl<'a> Generator<'a> {
                 left_side_assignment: maybe_prefix_label,
                 ..
             } => {
-                // TODO: Add warning suppression when this is encountered:
-                // #nowarn "25" // Incomplete pattern matches on this expression.
+                self.add_warning_suppression(INCOMPLETE_PATTERN_MATCH);
                 let suffix_binding_name: Document<'a> = match right_side_assignment {
                     AssignName::Variable(right) => right.to_doc(),
                     AssignName::Discard(_) => "_".to_doc(),
@@ -2579,6 +2604,10 @@ impl<'a> Generator<'a> {
 
     fn list(&mut self, elements: impl IntoIterator<Item = Document<'a>>) -> Document<'a> {
         join(elements, "; ".to_doc()).group().surround("[", "]")
+    }
+
+    fn add_warning_suppression(&mut self, warning: &'static str) {
+        _ = self.suppressed_warnings.insert(warning);
     }
 }
 

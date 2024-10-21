@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/use_.rs
+assertion_line: 22
+expression: "\npub fn go() {\n  use <- pair(1.0)\n  123\n}\n\nfn pair(x, f) {\n  let y = f()\n  #(x, y)\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let private pair (x: 'a) (f: unit -> 'b) = begin
+    let y = f()
+    (x, y)
+end
+let go () = begin
+    pair
+        1.0
+        (fun() -> 123L)
+end

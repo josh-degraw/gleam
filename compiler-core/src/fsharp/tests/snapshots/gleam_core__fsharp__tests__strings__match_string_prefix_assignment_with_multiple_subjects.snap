@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/strings.rs
 expression: "\npub fn go(x) {\n  case x {\n    \"1\" as digit <> _ | \"2\" as digit <> _ -> digit\n    _ -> \"Unknown\"\n  }\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let go (x: string) = begin
     match x with

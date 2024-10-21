@@ -1,0 +1,16 @@
+---
+source: compiler-core/src/fsharp/tests/case_clause_guards.rs
+assertion_line: 294
+expression: "\n          import hero\n          pub fn go() {\n            let names = [\"Tony Stark\", \"Bruce Wayne\"]\n            case names {\n              n if n == hero.heroes -> True\n              _ -> False\n            }\n          }\n        "
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+open package
+let go () = begin
+    let names = ["Tony Stark"; "Bruce Wayne"]
+    match names with
+    | n when n = hero.heroes ->
+        true
+    | _ ->
+        false
+end

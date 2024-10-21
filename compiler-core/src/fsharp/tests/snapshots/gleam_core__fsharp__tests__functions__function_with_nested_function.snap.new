@@ -1,0 +1,23 @@
+---
+source: compiler-core/src/fsharp/tests/functions.rs
+assertion_line: 81
+expression: "\ntype Option(a) {\n  Some(a)\n  None\n}\nfn go(a) {\n    let inc_or_zero = fn(x) {\n        case x {\n            Some(i) -> i + 1\n            None -> 0\n        }\n    }\n    inc_or_zero(a)\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+type private Option<'a> =
+| None
+| Some of 'a
+    
+let private go (a: Option<int64>) = begin
+    let inc_or_zero =
+        fun(x: Option<int64>) -> begin
+            match x with
+            | (Some(i)) ->
+                i + 1L
+            | (None) ->
+                0L
+        end
+    inc_or_zero a
+end

@@ -203,6 +203,7 @@ impl<'a> FSharpApp<'a> {
     <OutputType>Exe</OutputType>
     <RootNamespace>{}</RootNamespace>
     <IncludeDocumentation>true</IncludeDocumentation>
+    <NoWarn>$(NoWarn);FS0020;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

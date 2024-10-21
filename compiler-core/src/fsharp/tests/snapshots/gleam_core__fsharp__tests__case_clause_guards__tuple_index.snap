@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case_clause_guards.rs
 expression: "pub fn go(x, xs: #(Bool, Bool, Bool)) {\n  case x {\n    _ if xs.2 -> 1\n    _ -> 0\n  }\n}\n"
 ---
 module rec my.``mod``
+#nowarn "3220" // This method or property is not normally used from F# code, use an explicit tuple pattern for deconstruction instead.
 
 let go (x: 'a) (xs: (bool * bool * bool)) = begin
     match x with

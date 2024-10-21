@@ -1,0 +1,16 @@
+---
+source: compiler-core/src/fsharp/tests/records.rs
+assertion_line: 225
+expression: "\npub type Person { Person(name: String, age: Int) }\n\nfn foo() {\n    let new_p = Person(..return_person(), age: 28)\n    new_p\n}\n\nfn return_person() {\n    Person(\"Quinn\", 27)\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+type Person = { name: string; age: int64 }
+let private return_person () = begin
+    { name = "Quinn"; age = 27L }
+end
+let private foo () = begin
+    let new_p = { return_person() with age = 28L }
+    new_p
+end

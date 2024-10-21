@@ -1,0 +1,20 @@
+---
+source: compiler-core/src/fsharp/tests/pipes.rs
+assertion_line: 50
+expression: "fn id(a) { a }\npub fn foo() {\n  {\n    let x = 1\n    x\n  }\n  |> id\n}"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let private id (a: 'a) = begin
+    a
+end
+let foo () = begin
+    begin
+        let _pipe = begin
+            let x = 1L
+            x
+        end
+        (id _pipe)
+    end
+end

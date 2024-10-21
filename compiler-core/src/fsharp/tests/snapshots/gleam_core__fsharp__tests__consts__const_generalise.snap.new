@@ -1,0 +1,17 @@
+---
+source: compiler-core/src/fsharp/tests/consts.rs
+assertion_line: 53
+expression: "\nfn identity(a: a) -> a {\na\n}\n\nconst id  = identity\n\npub fn foo(){\n  let num  = id(1)\n  let word = id(\"Word\")\n}"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let private identity (a: 'a): 'a = begin
+    a
+end
+let private id = identity
+let foo () = begin
+    let num = id 1L
+    let word = id "Word"
+    word
+end

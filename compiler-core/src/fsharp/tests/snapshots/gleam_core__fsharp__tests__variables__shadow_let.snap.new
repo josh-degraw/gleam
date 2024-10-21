@@ -1,0 +1,16 @@
+---
+source: compiler-core/src/fsharp/tests/variables.rs
+assertion_line: 5
+expression: "\npub fn go(a) {\n  case a {\n    99 -> {\n      let a = a\n      1\n    }\n    _ -> a\n  }\n}"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let go (a: int64) = begin
+    match a with
+    | 99L ->
+        let a = a
+        1L
+    | _ ->
+        a
+end

@@ -1,0 +1,18 @@
+---
+source: compiler-core/src/fsharp/tests/use_.rs
+assertion_line: 39
+expression: "\npub fn go() {\n  use <- trip(1.0, \"\")\n  123\n}\n\nfn trip(x, y, f) {\n  let z = f()\n  #(x, y, z)\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let private trip (x: 'a) (y: 'b) (f: unit -> 'c) = begin
+    let z = f()
+    (x, y, z)
+end
+let go () = begin
+    trip
+        1.0
+        ""
+        (fun() -> 123L)
+end
