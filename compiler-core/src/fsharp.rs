@@ -917,6 +917,12 @@ impl<'a> Generator<'a> {
                 last_var = None;
                 self.expression(expr)
             }
+
+            // TypedStatement::Assignment(Assignment {
+            //     pattern: Pattern::BitArray { segments, .. },
+            //     ..
+            // }) => self.bit_array_assignment(segments),
+
             TypedStatement::Assignment(Assignment {
                 value,
                 kind,
@@ -2027,10 +2033,6 @@ impl<'a> Generator<'a> {
         let statements_doc = self.statements(s, None)?;
 
         Ok(self.wrap_in_begin_end(statements_doc))
-        // .append(line())
-        // .nest(INDENT)
-        // .append(statements_doc.nest(INDENT).group())
-        // .append(line().append("end")))
     }
 
     fn pattern(&mut self, p: &'a Pattern<Arc<Type>>) -> Result<Document<'a>> {
@@ -2042,27 +2044,6 @@ impl<'a> Generator<'a> {
             Pattern::Discard { name, .. } => Ok(name.to_doc()),
             Pattern::List { elements, tail, .. } => {
                 let is_nested_list = p.type_().is_nested_list();
-                // if p.type_().is_nested_list() {
-                //     if let Some(tail) = tail {
-                //         return docvec![
-                //             "HeadTail(",
-                //             join(elements.iter().map(|e| self.pattern(e).surround("(", ")")), ":: ".to_doc())
-                //                 .surround("[", "]"),
-                //             ",",
-                //             self.pattern(tail),
-                //             ")",
-                //         ];
-                //     }
-                // }
-
-                // let elements_doc = join(elements.iter().map(|e| self.pattern(e)), "; ".to_doc());
-                // let head = if elements.len() == 1 {
-                //     elements_doc
-                // } else {
-                //     elements_doc.surround("[", "]")
-                // };
-                // TODO: Properly support nested list patterns via new (|HeadTail|_|) pattern
-                // if there is a
                 match tail {
                     Some(tail) => {
                         let items = if elements.is_empty() {
@@ -2123,13 +2104,7 @@ impl<'a> Generator<'a> {
                     ")"
                 ])
             }
-            Pattern::BitArray { segments, .. } => {
-                let segments_docs = segments
-                    .iter()
-                    .map(|s| self.pattern(&s.value))
-                    .collect_results()?;
-                Ok(join(segments_docs, "; ".to_doc()).surround("[|", "|]"))
-            }
+            Pattern::BitArray { segments, .. } => self.bit_array_pattern(segments),
             Pattern::VarUsage {
                 name, constructor, ..
             } => {
@@ -2366,6 +2341,51 @@ impl<'a> Generator<'a> {
 
         let return_type = self.type_to_fsharp(retrn.clone());
         docvec![arg_types, " -> ", return_type]
+    }
+
+    fn bit_array_pattern(
+        &mut self,
+        segments: &'a [BitArraySegment<Pattern<Arc<Type>>, Arc<Type>>],
+    ) -> Result<Document<'a>> {
+        if segments.is_empty() {
+            return Ok("(BitArray.Empty)".to_doc());
+        }
+
+        let mut sizes = Vec::new();
+        const FLOAT_SIZE: u32 = 8;
+        const INT_SIZE: u32 = 8;
+        let mut patterns = Vec::new();
+        for segment in segments {
+            match segment.value.deref() {
+                Pattern::Int { .. } => {
+                    sizes.push(INT_SIZE);
+                }
+                Pattern::Float { .. } => {
+                    sizes.push(FLOAT_SIZE);
+                }
+                // Pattern::String { value, .. } => {
+                //     sizes.push(value.len() * 8);
+                // }
+                _ => {}
+            }
+            patterns.push(self.pattern(&segment.value)?);
+        }
+
+        //let tail = patterns.pop();
+
+        Ok(docvec![
+            "BitArray.Sections [",
+            join(sizes.iter().map(|s| s.to_doc()), "; ".to_doc()),
+            "] ([",
+            join(patterns, "; ".to_doc()),
+            "])",
+        ])
+
+        // let segments_docs = segments
+        //     .iter()
+        //     .map(|s| self.pattern(&s.value))
+        //     .collect_results()?;
+        // Ok(join(segments_docs, "; ".to_doc()).surround("[|", "|]"))
     }
 
     fn module_constant(
@@ -2819,6 +2839,7 @@ enum BitArraySegmentKind {
     Utf32Codepoint,
     Invalid,
 }
+
 fn bit_array_segment_kind(segment: &TypedExprBitArraySegment) -> BitArraySegmentKind {
     let expr = segment.value.as_ref();
     match expr {

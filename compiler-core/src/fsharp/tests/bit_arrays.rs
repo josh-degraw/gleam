@@ -231,27 +231,28 @@ fn go(x) {
     );
 }
 
-// #[test]
-// fn empty_match() {
-//     assert_fsharp!(
-//         r#"
-// fn go(x) {
-//   let assert <<>> = x
-// }
-// "#,
-//     );
-// }
+#[test]
+fn empty_match() {
+    assert_fsharp!(
+        r#"
+fn go(x) {
+  let assert <<>> = x
+}
+"#,
+    );
+}
 
-// #[test]
-// fn match_bytes() {
-//     assert_fsharp!(
-//         r#"
-// fn go(x) {
-//   let assert <<1, y>> = x
-// }
-// "#,
-//     );
-// }
+#[test]
+fn match_bytes() {
+    assert_fsharp!(
+        r#"
+fn go(x) {
+  let assert <<1, y>> = x
+  y
+}
+"#,
+    );
+}
 
 // #[test]
 // fn match_sized() {

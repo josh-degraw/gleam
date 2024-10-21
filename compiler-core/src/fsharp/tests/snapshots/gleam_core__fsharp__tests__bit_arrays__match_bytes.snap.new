@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+assertion_line: 247
+expression: "\nfn go(x) {\n  let assert <<1, y>> = x\n  y\n}\n"
+---
+module rec my.``mod``
+
+let private go (x: BitArray) = begin
+    let BitArray.Sections [8] ([1L; y]) = x
+    y
+end

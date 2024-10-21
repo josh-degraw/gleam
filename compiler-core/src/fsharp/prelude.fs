@@ -1,4 +1,4 @@
-namespace gleam
+// namespace gleam
 
 open System
 
@@ -176,6 +176,36 @@ type BitArray private (_buffer: byte[]) =
 
     static member Empty = BitArray()
 
+    member this.FloatFromSlice(start: int64, end': int64) =
+        let start = int start
+        let end' = int end'
+        let byteSize = end' - start
+
+        let slice = this.Buffer[start..end']
+
+        if byteSize = sizeof<double> then
+            System.BitConverter.ToDouble(slice, 0) |> Some
+        else if byteSize = sizeof<float32> then
+            System.BitConverter.ToSingle(slice, 0) |> float |> Some
+        else
+            //failwith $"Sized floats must be 32-bit on .NET, got size of {byteSize * 8} bits"
+            None
+
+    member this.IntFromSlice(start: int64, end': int64) : int64 option =
+        let start = int start
+        let end' = int end'
+        let byteSize = end' - start
+
+        let slice = this.Buffer[start..end']
+
+        if byteSize = sizeof<int64> then
+            System.BitConverter.ToInt64(slice, 0) |> Some
+        else if byteSize = sizeof<int32> then
+            System.BitConverter.ToInt32(slice, 0) |> int64 |> Some
+        else
+            //failwith $"Sized integers must be 32-bit or 64-bit on .NET, got size of {byteSize * 8} bits"
+            None
+
     override this.Equals(obj) =
         match obj with
         | :? BitArray as other when other.Length = this.Length ->
@@ -186,57 +216,31 @@ type BitArray private (_buffer: byte[]) =
 
     member this.ByteAt(index: int64) = this.Buffer.[int index]
 
-    member this.FloatFromSlice(start: int64, end': int64) =
-        let start = int start
-        let end' = int end'
-        let byteSize = end' - start
-
-        let slice = this.Buffer[start..end']
-
-        if byteSize = 8 then
-            System.BitConverter.ToDouble(slice, 0)
-        else if byteSize = 4 then
-            System.BitConverter.ToSingle(slice, 0) |> float
-        else
-            failwith $"Sized floats must be 32-bit on .NET, got size of {byteSize * 8} bits"
-
-    member this.IntFromSlice(start: int64, end': int64) : int64 =
-        let start = int start
-        let end' = int end'
-        let byteSize = end' - start
-
-        let slice = this.Buffer[start..end']
-
-        if byteSize = 8 then
-            System.BitConverter.ToInt64(slice, 0)
-        else if byteSize = 4 then
-            System.BitConverter.ToInt32(slice, 0)
-        else
-            failwith $"Sized integers must be 32-bit or 64-bit on .NET, got size of {byteSize * 8} bits"
-
-
-    member this.Slice(start: int64, length: int64) : Result<BitArray, unit> =
+    member this.SliceBuffer(start: int64, length: int64) : Result<byte[], unit> =
         let start = int start
         let end' = int length + start - 1
 
         if start = 0 && length = 0 then
-            Ok(BitArray.Empty)
+            Ok(Array.empty)
         elif length = 0 then
             Error()
         elif length < 0 && start = this.Buffer.Length then
             let start = this.Buffer.Length + int length
             let slice = this.Buffer[start..]
-            Ok(BitArray(slice))
+            Ok(slice)
         elif start < 0 || end' < 0 || end' > this.Buffer.Length then
             Error()
         else
             let slice = this.Buffer[start..end']
-            Ok(BitArray(slice))
+            Ok(slice)
+
+    member this.Slice(start: int64, length: int64) : Result<BitArray, unit> =
+        this.SliceBuffer(start, length) |> Result.map BitArray
 
     member this.SliceAfter(index: int64) =
         let index = int index
         let slice = this.Buffer[index..]
-        BitArray(slice)
+        slice
 
     member this.Length = this.Buffer.Length
 
@@ -378,6 +382,9 @@ type BitArray private (_buffer: byte[]) =
     static member FromString(str: string) =
         BitArray(System.Text.Encoding.UTF8.GetBytes(str))
 
+    static member FromFloat(f: float) =
+        BitArray(System.BitConverter.GetBytes(f))
+
     static member Concat(bit_arrays: BitArray seq) =
         let buffer = Array.concat [ for ba in bit_arrays -> ba.Buffer ]
         BitArray(buffer)
@@ -417,12 +424,16 @@ type BitArray private (_buffer: byte[]) =
 
         builder.Append(">>") |> string
 
+// Patterns
+
+
 
 and [<Struct>] BitArraySegmentValue =
     | Bits of bits: BitArray
     | Bytes of bytes: byte[]
     | Float of float: float
     | Int of int: int64
+    | Byte of byte: byte
     | Utf8 of utf8: byte[]
     | Utf16 of utf16: byte[]
     | Utf32 of utf32: byte[]
@@ -463,16 +474,12 @@ and [<Struct>] BitArraySegment = {
         | Utf8Codepoint(UtfCodepoint c) -> c.Utf8SequenceLength
         | Utf16Codepoint _ -> 16
         | Utf32Codepoint _ -> 32
-        | Int i when i <= int64 Byte.MaxValue -> sizeof<byte>
+        | Byte _ -> sizeof<byte>
+        //| Int i when i <= int64 Byte.MaxValue -> sizeof<byte>
         | Int _ when this.signed = Some true -> sizeof<int64>
         | Int _ -> sizeof<uint64>
         | Float _ -> sizeof<double>
         | Bits b -> b.Buffer.Length
-
-    static member FromUtf16String(str: string) = {
-        BitArraySegment.Empty with
-            value = Utf16(System.Text.Encoding.Unicode.GetBytes(str))
-    }
 
     member this.Equals(bytes: byte[]) = this.ToBytes() = bytes
 
@@ -481,7 +488,8 @@ and [<Struct>] BitArraySegment = {
         | Bits ba -> ba.Buffer
         | Bytes bytes -> bytes
         | Float f -> System.BitConverter.GetBytes(f)
-        | Int i when i <= int64 Byte.MaxValue -> [| byte i |]
+        | Byte i -> [| byte i |]
+        //| Int i when i <= int64 Byte.MaxValue -> [| byte i |]
         | Int i when this.signed = Some true -> System.BitConverter.GetBytes(uint64 i)
         | Int i -> System.BitConverter.GetBytes(i)
         | Utf8Codepoint(UtfCodepoint(cp: Text.Rune)) -> System.Text.Encoding.UTF8.GetBytes(string cp)
@@ -491,15 +499,30 @@ and [<Struct>] BitArraySegment = {
         | Utf16Codepoint bytes
         | Utf32Codepoint bytes -> bytes
 
+    static member FromInt64(i: int64) = {
+        BitArraySegment.Empty with
+            value = Int(i)
+    }
+
+    static member FromFloat(f: float) = {
+        BitArraySegment.Empty with
+            value = Float(f)
+    }
+
+    static member FromByte(b: byte) = {
+        BitArraySegment.Empty with
+            value = Byte(b)
+    }
+
+    static member FromBytes(bytes: byte[]) = {
+        BitArraySegment.Empty with
+            value = Bytes(bytes)
+    }
+
 and [<Struct>] BitArraySegmentMatch = {
     segment: BitArraySegment
     value: BitArraySegmentValue
 }
-
-// let str = BitArray.Create(BitArraySegment.FromUtf16String("Hello, world!"))
-// let m = BitArraySegment.FromUtf16String("Hello, ")
-// let w = BitArraySegment.FromUtf16String("world")
-// let matches = str.MatchSegments(m, w)
 
 [<AutoOpen>]
 module Prelude =
@@ -519,3 +542,67 @@ module Prelude =
     let (|BitArraySegments|_|) (segments: BitArraySegment[]) (bitArray: BitArray) =
         //
         bitArray.MatchSegments(segments)
+
+module BitArray =
+
+    let (|Empty|_|) (bitArray: BitArray) =
+        if bitArray.Length = 0 then Some() else None
+
+    // let (|Integer|_|) (buffer: byte[]) =
+
+    //     match IntFromSlice buffer (0, int64 buffer.Length) with
+    //     | Some i -> Some i
+    //     | None -> None
+
+    //let chunk (bytes: byte[]) (sizes: int64 seq) =
+
+    let (|Sections|_|) (sizes: int64 seq) (bitArray: BitArray) =
+        let mutable cursor = 0L
+
+        let totalSize = sizes |> Seq.sum
+
+        if totalSize > bitArray.Length then
+            None
+        else
+            let head = [
+                for size in sizes do
+                    let slice = bitArray.SliceBuffer(cursor, size)
+
+                    match slice with
+                    | Ok slice ->
+                        cursor <- cursor + size
+                        yield slice
+                    | Error _ -> ()
+            ]
+
+            let tail =
+                if cursor < bitArray.Length then
+                    Some(bitArray.SliceAfter(cursor))
+                else
+                    None
+
+            Some(head, tail)
+
+
+    let tester () =
+
+        let bitArray =
+            BitArray.Create(BitArraySegment.FromInt64(1L), BitArraySegment.FromFloat(1.0))
+
+        let h = bitArray.IntFromSlice(0, sizeof<int64>)
+        let rest = bitArray.SliceAfter(sizeof<int64>)
+
+        let f = bitArray.FloatFromSlice(sizeof<int64>, sizeof<float>)
+
+        printfn "%A" h
+        printfn "%A" rest
+        printfn "%A" f
+        ()
+
+    let tester2 () =
+        let bitArray =
+            BitArray.Create(BitArraySegment.FromInt64(1L), BitArraySegment.FromFloat(1.0))
+
+        match bitArray with
+        | Sections [ 8; 8 ] (head, tail) -> printfn "%A" bitArray
+        | _ -> printfn "No match"

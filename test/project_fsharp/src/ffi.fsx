@@ -5,22 +5,8 @@ module rec my.``mod``
 
 open gleam
 
-let private go (x: UtfCodepoint) =
+let private go (x: BitArray) =
     begin
-        BitArray.Create(
-            {
-                endianness = None
-                size = None
-                unit = None
-                signed = None
-                value = BitArraySegmentValue.Utf8Codepoint(x)
-            },
-            {
-                endianness = None
-                size = None
-                unit = None
-                signed = None
-                value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes("Gleam"))
-            }
-        )
+        let (BitArray.Empty) = x
+        BitArray.Empty
     end

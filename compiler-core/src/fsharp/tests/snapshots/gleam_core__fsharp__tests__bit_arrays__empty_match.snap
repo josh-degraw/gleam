@@ -1,0 +1,11 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+assertion_line: 236
+expression: "\nfn go(x) {\n  let assert <<>> = x\n}\n"
+---
+module rec my.``mod``
+
+let private go (x: BitArray) = begin
+    let (BitArray.Empty) = x
+    (BitArray.Empty)
+end
