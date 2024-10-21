@@ -6,7 +6,7 @@ module rec my.``mod``
 
 let go (x: string) = begin
     match x with
-    | Gleam__codegen__prefix "Hello, " name when name = "Dude" ->
+    | Gleam_codegen_string_parts "Hello, " (_, name) when name = "Dude" ->
         name
     | _ ->
         "Unknown"

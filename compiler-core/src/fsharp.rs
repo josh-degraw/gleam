@@ -25,6 +25,8 @@ use vec1::Vec1;
 
 const INDENT: isize = 4;
 pub const FSHARP_PRELUDE: &str = include_str!("./fsharp/prelude.fs");
+/// This is used directly in pattern matching
+pub const STRING_PATTERN_PARTS: &str = "Gleam_codegen_string_parts";
 
 fn is_stdlib_package(package: &str) -> bool {
     package.is_empty() || package == "gleam" || package == "gleam_dotnet_stdlib"
@@ -38,17 +40,6 @@ pub struct Generator<'a> {
     module: &'a TypedModule,
     input_file_path: &'a Utf8PathBuf,
     printer: Printer<'a>,
-}
-
-mod prelude_functions {
-    /// This is used directly in pattern matching
-    pub const STRING_PATTERN_PREFIX: &str = "Gleam__codegen__prefix";
-
-    // TODO: Is it worth it to have two separate functions here?
-    // Probably not
-
-    /// This is used directly in pattern matching
-    pub const STRING_PATTERN_PARTS: &str = "Gleam_codegen_string_parts";
 }
 
 impl<'a> Generator<'a> {
@@ -932,7 +923,7 @@ impl<'a> Generator<'a> {
 
                 Ok(docvec![
                     "let (",
-                    prelude_functions::STRING_PATTERN_PARTS,
+                    STRING_PATTERN_PARTS,
                     " ",
                     self.string(prefix),
                     " (",
@@ -2093,25 +2084,19 @@ impl<'a> Generator<'a> {
                     AssignName::Discard(_) => "_".to_doc(),
                 };
 
-                match maybe_prefix_label {
-                    None => Ok(docvec![
-                        prelude_functions::STRING_PATTERN_PREFIX,
-                        " ",
-                        self.string(prefix),
-                        " ",
-                        suffix_binding_name,
-                    ]),
-                    Some((prefix_label, _)) => Ok(docvec![
-                        prelude_functions::STRING_PATTERN_PARTS,
-                        " ",
-                        self.string(prefix),
-                        " (",
-                        prefix_label.to_doc(),
-                        ", ",
-                        suffix_binding_name,
-                        ")"
-                    ]),
-                }
+                Ok(docvec![
+                    STRING_PATTERN_PARTS,
+                    " ",
+                    self.string(prefix),
+                    " (",
+                    match maybe_prefix_label {
+                        Some((prefix_label, _)) => prefix_label.to_doc(),
+                        None => "_".to_doc(),
+                    },
+                    ", ",
+                    suffix_binding_name,
+                    ")"
+                ])
             }
             Pattern::BitArray { segments, .. } => {
                 let segments_docs = segments

@@ -7,25 +7,25 @@ module rec my.``mod``
 let go (x: string) = begin
     let _ =
         match x with
-        | Gleam__codegen__prefix "\\u{9}" rest ->
+        | Gleam_codegen_string_parts "\\u{9}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{000009}" rest ->
+        | Gleam_codegen_string_parts "\\u{000009}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{21}" rest ->
+        | Gleam_codegen_string_parts "\\u{21}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{100}" rest ->
+        | Gleam_codegen_string_parts "\\u{100}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{1000}" rest ->
+        | Gleam_codegen_string_parts "\\u{1000}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{1F600}" rest ->
+        | Gleam_codegen_string_parts "\\u{1F600}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{1f600}" rest ->
+        | Gleam_codegen_string_parts "\\u{1f600}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{01F600}" rest ->
+        | Gleam_codegen_string_parts "\\u{01F600}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{01f600}" rest ->
+        | Gleam_codegen_string_parts "\\u{01f600}" (_, rest) ->
             "test"
-        | Gleam__codegen__prefix "\\u{9} \\u{000009} \\u{21} \\u{100} \\u{1000} \\u{1F600} \\u{01F600}" rest ->
+        | Gleam_codegen_string_parts "\\u{9} \\u{000009} \\u{21} \\u{100} \\u{1000} \\u{1F600} \\u{01F600}" (_, rest) ->
             "test"
         | _ ->
             "Unknown"
