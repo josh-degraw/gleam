@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/patterns.rs
 expression: "\npub const constant = Ok(1)\n\npub fn foo(arg) {\n  let _ = constant\n  case arg {\n    _ if arg == constant -> 1\n    _ -> 0\n  }\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let constant = Ok(1L)
 let foo (arg: Result<int64, 'a>) = begin

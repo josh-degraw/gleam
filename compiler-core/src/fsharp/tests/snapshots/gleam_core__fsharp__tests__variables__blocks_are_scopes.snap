@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/variables.rs
 expression: "\npub fn foo() {\n  let x = 1\n  {\n    let x = 2\n  }\n  x\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let foo () = begin
     let x = 1L

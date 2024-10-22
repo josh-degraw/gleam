@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/blocks.rs
 expression: "\nfn add1(a) {\n  a + 1\n}\nfn go() {\n  let x = {\n    1\n    {\n      2\n      3 |> add1\n    } |> add1\n  }\n  x\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let private add1 (a: int64) = begin
     a + 1L

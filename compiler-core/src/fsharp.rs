@@ -81,6 +81,7 @@ impl<'a> Generator<'a> {
                 join(
                     self.suppressed_warnings
                         .iter()
+                        .sorted() // Need to sort to ensure repeatable output
                         .map(|warning| warning.to_doc()),
                     line(),
                 ),

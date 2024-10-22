@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/numbers.rs
 expression: "\npub fn foo() {\n  let i = 100_000\n  let f = 100_000.00101\n  f\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let foo () = begin
     let i = 100_000L

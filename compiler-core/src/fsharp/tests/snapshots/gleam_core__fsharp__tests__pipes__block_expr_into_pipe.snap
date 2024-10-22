@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/pipes.rs
 expression: "fn id(a) { a }\npub fn foo() {\n  {\n    let x = 1\n    x\n  }\n  |> id\n}"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let private id (a: 'a) = begin
     a

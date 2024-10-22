@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/case_clause_guards.rs
 expression: "\n          import hero/submodule as myhero\n          pub fn go() {\n            let name = \"Tony Stark\"\n            case name {\n              n if n == myhero.ironman.name -> True\n              _ -> False\n            }\n          }\n        "
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 module myhero = hero.submodule
 let go () = begin
     let name = "Tony Stark"

@@ -3,6 +3,7 @@ source: compiler-core/src/fsharp/tests/tuples.rs
 expression: "\nfn go() {\n  let value = #()\n}\n"
 ---
 module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
 
 let private go () = begin
     let value = EmptyTuple
