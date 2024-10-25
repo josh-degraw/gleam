@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\nconst bit_size = 8\npub fn go() {\n  let a = <<10:size(bit_size)>>\n  a\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+[<Literal>]
+let private bit_size = 8L
+let go () = begin
+    let a = BitArray.Create(
+        { endianness = None; size = Some(bit_size); unit = None; signed = None; value = BitArraySegmentValue.Int(10L) }
+    )
+    a
+end

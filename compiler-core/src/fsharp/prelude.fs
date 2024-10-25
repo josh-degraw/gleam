@@ -1,4 +1,4 @@
-// namespace gleam
+namespace gleam
 
 open System
 
@@ -243,6 +243,7 @@ type BitArray private (_buffer: byte[]) =
         slice
 
     member this.Length = this.Buffer.Length
+    member this.LongLength = this.Buffer.LongLength
 
     member this.TryToUtf8String() =
         try
@@ -426,8 +427,6 @@ type BitArray private (_buffer: byte[]) =
 
 // Patterns
 
-
-
 and [<Struct>] BitArraySegmentValue =
     | Bits of bits: BitArray
     | Bytes of bytes: byte[]
@@ -440,6 +439,24 @@ and [<Struct>] BitArraySegmentValue =
     | Utf8Codepoint of utf8Codepoint: UtfCodepoint
     | Utf16Codepoint of utf16Codepoint: byte[]
     | Utf32Codepoint of utf32Codepoint: byte[]
+
+    static member inline SizeOf(str: string) =
+        System.Text.Encoding.Unicode.GetBytes(str).Length
+
+    static member inline SizeOfUtf8(str: string) =
+        System.Text.Encoding.UTF8.GetBytes(str).Length
+
+    static member inline SizeOf(utf8: byte[]) = utf8.Length
+
+    static member inline SizeOf(int: int64) = sizeof<int64>
+
+    static member inline SizeOf(float: float) = sizeof<double>
+
+    static member inline SizeOf(bits: BitArray) = bits.Buffer.Length
+
+    static member inline SizeOf(byte: byte) = sizeof<byte>
+
+    static member inline SizeOf(UtfCodepoint utf8Codepoint) = utf8Codepoint.Utf8SequenceLength
 
     static member FromString(str: string) =
         BitArraySegmentValue.Utf16(System.Text.Encoding.Unicode.GetBytes(str))
@@ -544,6 +561,63 @@ module Prelude =
         bitArray.MatchSegments(segments)
 
 module BitArray =
+    module Segment =
+
+        let (|Int64|_|) (bytes: byte[]) =
+            if bytes.Length = sizeof<int64> then
+                System.BitConverter.ToInt64(bytes, 0) |> Some
+            else
+                None
+
+        let (|Int64BigEndian|_|) (bytes: byte[]) =
+            if System.BitConverter.IsLittleEndian then
+                System.BitConverter.ToInt64(bytes |> Array.rev, 0) |> Some
+            elif bytes.Length = sizeof<int64> then
+                System.BitConverter.ToInt64(bytes, 0) |> Some
+            else
+                None
+
+        let (|Int64LittleEndian|_|) (bytes: byte[]) =
+            if System.BitConverter.IsLittleEndian then
+                if bytes.Length = sizeof<int64> then
+                    System.BitConverter.ToInt64(bytes, 0) |> Some
+                else
+                    System.BitConverter.ToInt64(bytes |> Array.rev, 0) |> Some
+            else
+                None
+
+        let (|UInt64|_|) (bytes: byte[]) =
+            if bytes.Length = sizeof<uint64> then
+                System.BitConverter.ToUInt64(bytes, 0) |> Some
+            else
+                None
+
+        let (|Float64|_|) (bytes: byte[]) =
+            if bytes.Length = sizeof<double> then
+                System.BitConverter.ToDouble(bytes, 0) |> Some
+            else
+                None
+
+        let (|Byte|_|) (bytes: byte[]) =
+            if bytes.Length = sizeof<byte> then Some bytes.[0] else None
+
+        let (|Bits|_|) (bytes: byte[]) =
+            if bytes.Length = 0 then
+                None
+            else
+                BitArray.FromBytes(bytes) |> Some
+
+        let (|SizedBits|_|) (size: int64) (bytes: byte[]) =
+            if bytes.LongLength = size then
+                None
+            else
+                BitArray.FromBytes(bytes) |> Some
+
+        let (|Utf8String|_|) (bytes: byte[]) =
+            if bytes.Length = 0 then
+                None
+            else
+                Some(System.Text.Encoding.UTF8.GetString(bytes))
 
     let (|Empty|_|) (bitArray: BitArray) =
         if bitArray.Length = 0 then Some() else None
@@ -564,7 +638,7 @@ module BitArray =
         if totalSize > bitArray.Length then
             None
         else
-            let head = [
+            Some [
                 for size in sizes do
                     let slice = bitArray.SliceBuffer(cursor, size)
 
@@ -573,16 +647,50 @@ module BitArray =
                         cursor <- cursor + size
                         yield slice
                     | Error _ -> ()
+
+                if cursor < bitArray.Length then
+                    yield bitArray.SliceAfter(cursor)
+
             ]
 
-            let tail =
-                if cursor < bitArray.Length then
-                    Some(bitArray.SliceAfter(cursor))
-                else
-                    None
 
-            Some(head, tail)
+    let (|Int64|_|) (bitArray: BitArray) = Segment.(|Int64|_|) bitArray.Buffer
 
+    let (|UInt64|_|) (bitArray: BitArray) = Segment.(|UInt64|_|) bitArray.Buffer
+
+    let (|WithLength|_|) (length: int64) (bitArray: BitArray) =
+        if bitArray.LongLength = length then
+            Some(bitArray)
+        else
+            None
+
+    let (|Float64|_|) (bitArray: BitArray) = Segment.(|Float64|_|) bitArray.Buffer
+
+    let (|Byte|_|) (bitArray: BitArray) = Segment.(|Byte|_|) bitArray.Buffer
+
+    let (|Bits|_|) (bitArray: BitArray) = Segment.(|Bits|_|) bitArray.Buffer
+
+    let (|SizedBits|_|) (size: int64) (bitArray: BitArray) =
+        Segment.(|SizedBits|_|) size bitArray.Buffer
+
+
+
+    // let (|Bytes|_|) (bitArray: BitArray) = Some(bitArray.Buffer)
+
+    // let (|Utf8|_|) (bitArray: BitArray) =
+    //     bitArray.TryToUtf8String() |> Result.toOption
+
+    // let (|Utf16|_|) (bitArray: BitArray) =
+    //     try
+    //         System.Text.Encoding.Unicode.GetString(bitArray.Buffer) |> Some
+    //     with _ ->
+    //         None
+
+    // let (|Utf32|_|) (bitArray: BitArray) =
+    //     try
+    //         System.Text.Encoding.UTF32.GetString(bitArray.Buffer) |> Some
+    //     with _ ->
+    //         None
 
     let tester () =
 

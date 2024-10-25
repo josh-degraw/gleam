@@ -1,0 +1,18 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "pub fn x() { 2 }\nfn go() {\n  let a = -1\n  let b = <<a:unit(2)-size(a * 2), a:size(3 + x())-unit(1)>>\n\n  b\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let x () = begin
+    2L
+end
+let private go () = begin
+    let a = -1L
+    let b = BitArray.Create(
+        { endianness = None; size = Some(a * 2L); unit = Some(2L); signed = None; value = BitArraySegmentValue.Int(a) }, 
+        { endianness = None; size = Some(3L + x()); unit = Some(1L); signed = None; value = BitArraySegmentValue.Int(a) }
+    )
+    b
+end

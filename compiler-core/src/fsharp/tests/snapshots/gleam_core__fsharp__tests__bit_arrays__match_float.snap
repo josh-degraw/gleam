@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\nfn go(x) {\n  let assert <<a:float, b:int>> = x\n  #(a, b)\n}\n"
+---
+module rec my.``mod``
+
+let private go (x: BitArray) = begin
+    let (BitArray.Sections [sizeof<float>; sizeof<int64>] [BitArraySegment.Float64(a); BitArraySegment.Int64(b)]) = x
+    (a, b)
+end

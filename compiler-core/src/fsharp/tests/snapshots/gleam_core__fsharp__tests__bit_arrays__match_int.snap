@@ -1,0 +1,10 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\nfn go(x) {\n  let assert <<1>> = x\n  Nil\n}\n"
+---
+module rec my.``mod``
+
+let private go (x: BitArray) = begin
+    let (BitArray.Sections [sizeof<int64>] [BitArraySegment.Int64(1L)]) = x
+    ()
+end

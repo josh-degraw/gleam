@@ -1,0 +1,13 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\npub fn go() {\n  case <<>> {\n    <<\"a\", \"b\", _:bytes>> -> 1\n    _ -> 2\n  }\n}"
+---
+module rec my.``mod``
+
+let go () = begin
+    match BitArray.Empty with
+    | BitArray.Sections [BitArray.SizeOfUtf8("a"); BitArray.SizeOfUtf8("b")] [BitArraySegment.Utf8String("a"); BitArraySegment.Utf8String("b"); _] ->
+        1L
+    | _ ->
+        2L
+end

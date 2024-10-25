@@ -1,0 +1,26 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+expression: "\npub fn go() {\n  let a = 1\n  let simple = <<1, a>>\n  let complex = <<4:int-big, 5.0:little-float, 6:native-int>>\n  let assert <<7:2, 8:size(3), b:bytes-size(4)>> = <<1>>\n  let assert <<c:8-unit(1), d:bytes-size(2)-unit(2)>> = <<1>>\n\n  simple\n}\n"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let go () = begin
+    let a = 1L
+    let simple = BitArray.Create(
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(1L) }, 
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(a) }
+    )
+    let complex = BitArray.Create(
+        { endianness = Some BitArrayEndianness.Big; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(4L) }, 
+        { endianness = Some BitArrayEndianness.Little; size = None; unit = None; signed = None; value = BitArraySegmentValue.Float(5.0) }, 
+        { endianness = Some BitArrayEndianness.Native; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(6L) }
+    )
+    let (BitArray.Sections [BitArraySegment.SizeOf(BitArraySegment.Int64(7L)); BitArraySegment.SizeOf(BitArraySegment.Int64(8L)); BitArraySegment.SizeOf(b)] [BitArraySegment.Int64(7L); BitArraySegment.Int64(8L); b]) = BitArray.Create(
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(1L) }
+    )
+    let (BitArray.Sections [BitArraySegment.SizeOf(BitArraySegment.Int64(c)); BitArraySegment.SizeOf(d)] [BitArraySegment.Int64(c); d]) = BitArray.Create(
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Int(1L) }
+    )
+    simple
+end

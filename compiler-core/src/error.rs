@@ -3290,6 +3290,21 @@ Fix the warnings and try again."
             },
 
             Error::FSharp { path, src, error } => match error {
+                fsharp::Error::InvalidBitArrayPattern { reason, location } => vec![Diagnostic {
+                    title: "Invalid bit array pattern".into(),
+                    text: reason.into(),
+                    hint: None,
+                    level: Level::Error,
+                    location: Some(Location {
+                        label: Label {
+                            text: None,
+                            span: *location,
+                        },
+                        path: path.clone(),
+                        src: src.clone(),
+                        extra_labels: vec![],
+                    }),
+                }],
                 fsharp::Error::Unsupported { feature, location } => vec![Diagnostic {
                     title: "Unsupported feature for compilation target".into(),
                     text: format!("{feature} is not supported for F# compilation."),

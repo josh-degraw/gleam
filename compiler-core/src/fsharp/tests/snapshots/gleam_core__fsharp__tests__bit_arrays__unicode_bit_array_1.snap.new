@@ -1,0 +1,15 @@
+---
+source: compiler-core/src/fsharp/tests/bit_arrays.rs
+assertion_line: 775
+expression: "\n    pub fn go() {\n        let emoji = \"\\u{1F600}\"\n        let arr = <<emoji:utf8>>\n}"
+---
+module rec my.``mod``
+#nowarn "25" // Incomplete pattern matches on this expression.
+
+let go () = begin
+    let emoji = "\u1F600"
+    let arr = BitArray.Create(
+        { endianness = None; size = None; unit = None; signed = None; value = BitArraySegmentValue.Utf8(System.Text.Encoding.UTF8.GetBytes(emoji)) }
+    )
+    arr
+end

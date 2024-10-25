@@ -5,8 +5,9 @@ module rec my.``mod``
 
 open gleam
 
+
 let private go (x: BitArray) =
     begin
-        let (BitArray.Empty) = x
-        BitArray.Empty
+        let (a) = x
+        a
     end
