@@ -339,6 +339,23 @@ fn pipe_mismatch_error() {
 }
 
 #[test]
+fn pipe_value_type_mismatch_error() {
+    assert_module_error!(
+        "pub fn main() -> String {
+            eat_veggie
+            |> Orange
+         }
+
+         type Fruit{ Orange }
+         type Veg{ Lettuce }
+
+         fn eat_veggie(v: Veg) -> String {
+            \"Ok\"
+         }"
+    );
+}
+
+#[test]
 fn case_tuple_guard() {
     assert_error!("case #(1, 2, 3) { x if x == #(1, 1.0) -> 1 }");
 }
@@ -2403,5 +2420,91 @@ pub fn main() {
 
 fn add_1(to x) { x + 1 }
 "
+    );
+}
+
+#[test]
+fn unknown_field_that_appears_in_an_imported_variant_has_note() {
+    assert_with_module_error!(
+        (
+            "some_mod",
+            "pub type Wibble {
+              Wibble(field: Int)
+              Wobble(not_field: String, field: Int)
+            }"
+        ),
+        "
+import some_mod
+pub fn main() {
+  some_mod.Wibble(1).field
+}
+"
+    );
+}
+
+#[test]
+fn unknown_field_that_appears_in_a_variant_has_note() {
+    assert_module_error!(
+        "
+pub type Wibble {
+  Wibble(field: Int)
+  Wobble(not_field: String, field: Int)
+}
+
+pub fn main() {
+  Wibble(1).field
+}
+"
+    );
+}
+
+#[test]
+fn unknown_field_that_does_not_appear_in_variant_has_no_note() {
+    assert_module_error!(
+        "
+pub type Wibble {
+  Wibble(field: Int)
+  Wobble(not_field: String, field: Int)
+}
+
+pub fn main() {
+  Wibble(1).wibble
+}
+"
+    );
+}
+
+#[test]
+fn no_note_about_reliable_access_if_the_accessed_type_has_a_single_variant() {
+    assert_module_error!(
+        "
+pub type User {
+  User(name: String)
+}
+
+pub fn main() {
+  User(\"Jak\").nam
+}
+"
+    );
+}
+
+#[test]
+fn no_crash_on_duplicate_record_fields() {
+    // https://github.com/gleam-lang/gleam/issues/3713
+    assert_module_error!(
+        "
+pub type X {
+  A
+  B(e0: Int, e0: Int)
+}
+
+fn compiler_crash(x: X) {
+  case x {
+    A -> todo
+    _ -> todo
+  }
+}
+  "
     );
 }

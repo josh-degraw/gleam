@@ -405,7 +405,11 @@ fn module_function<'a>(
     let return_spec = type_printer.print(&function.return_type);
 
     let spec = fun_spec(function_name, args_spec, return_spec);
-    let arguments = fun_args(&function.arguments, &mut env);
+    let arguments = if function.external_erlang.is_some() {
+        external_fun_args(&function.arguments, &mut env)
+    } else {
+        fun_args(&function.arguments, &mut env)
+    };
 
     let body = function
         .external_erlang
@@ -440,6 +444,22 @@ fn file_attribute<'a>(
     let line = line_numbers.line_number(function.location.start);
     let path = path.replace("\\", "\\\\");
     docvec!["-file(\"", path, "\", ", line, ")."]
+}
+
+fn external_fun_args<'a>(args: &'a [TypedArg], env: &mut Env<'a>) -> Document<'a> {
+    wrap_args(args.iter().map(|a| {
+        let name = match &a.names {
+            ArgNames::Discard { name, .. }
+            | ArgNames::LabelledDiscard { name, .. }
+            | ArgNames::Named { name, .. }
+            | ArgNames::NamedLabelled { name, .. } => name,
+        };
+        if name.chars().all(|c| c == '_') {
+            env.next_local_var_name("argument")
+        } else {
+            env.next_local_var_name(name)
+        }
+    }))
 }
 
 fn fun_args<'a>(args: &'a [TypedArg], env: &mut Env<'a>) -> Document<'a> {
@@ -1596,11 +1616,7 @@ fn docs_args_call<'a>(
                 .append(args)
         }
 
-        TypedExpr::Fn {
-            is_capture: true,
-            body,
-            ..
-        } => {
+        TypedExpr::Fn { kind, body, .. } if kind.is_capture() => {
             if let Statement::Expression(TypedExpr::Call {
                 fun,
                 args: inner_args,
@@ -1640,11 +1656,11 @@ fn docs_args_call<'a>(
 }
 
 fn record_update<'a>(
-    spread: &'a TypedExpr,
+    record: &'a TypedExpr,
     args: &'a [TypedRecordUpdateArg],
     env: &mut Env<'a>,
 ) -> Document<'a> {
-    let expr_doc = maybe_block_expr(spread, env);
+    let expr_doc = maybe_block_expr(record, env);
 
     args.iter().fold(expr_doc, |tuple_doc, arg| {
         // Increment the index by 2, because the first element
@@ -1828,7 +1844,7 @@ fn expr<'a>(expression: &'a TypedExpr, env: &mut Env<'a>) -> Document<'a> {
 
         TypedExpr::RecordAccess { record, index, .. } => tuple_index(record, index + 1, env),
 
-        TypedExpr::RecordUpdate { spread, args, .. } => record_update(spread, args, env),
+        TypedExpr::RecordUpdate { record, args, .. } => record_update(record, args, env),
 
         TypedExpr::Case {
             subjects, clauses, ..

@@ -4,13 +4,14 @@ use vec1::Vec1;
 use crate::{
     analyse::Inferred,
     ast::{
-        AssignName, Assignment, BinOp, CallArg, Constant, Definition, Pattern, RecordUpdateSpread,
-        SrcSpan, Statement, TargetedDefinition, TodoKind, TypeAst, TypeAstConstructor, TypeAstFn,
-        TypeAstHole, TypeAstTuple, TypeAstVar, UntypedArg, UntypedAssignment, UntypedClause,
-        UntypedConstant, UntypedConstantBitArraySegment, UntypedCustomType, UntypedDefinition,
-        UntypedExpr, UntypedExprBitArraySegment, UntypedFunction, UntypedImport, UntypedModule,
-        UntypedModuleConstant, UntypedPattern, UntypedPatternBitArraySegment,
-        UntypedRecordUpdateArg, UntypedStatement, UntypedTypeAlias, Use, UseAssignment,
+        AssignName, Assignment, BinOp, CallArg, Constant, Definition, FunctionLiteralKind, Pattern,
+        RecordBeingUpdated, SrcSpan, Statement, TargetedDefinition, TodoKind, TypeAst,
+        TypeAstConstructor, TypeAstFn, TypeAstHole, TypeAstTuple, TypeAstVar, UntypedArg,
+        UntypedAssignment, UntypedClause, UntypedConstant, UntypedConstantBitArraySegment,
+        UntypedCustomType, UntypedDefinition, UntypedExpr, UntypedExprBitArraySegment,
+        UntypedFunction, UntypedImport, UntypedModule, UntypedModuleConstant, UntypedPattern,
+        UntypedPatternBitArraySegment, UntypedRecordUpdateArg, UntypedStatement, UntypedTypeAlias,
+        Use, UseAssignment,
     },
     build::Target,
 };
@@ -251,14 +252,14 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
             UntypedExpr::Fn {
                 location,
                 end_of_head_byte_index,
-                is_capture,
+                kind,
                 arguments,
                 body,
                 return_annotation,
             } => self.fold_fn(
                 location,
                 end_of_head_byte_index,
-                is_capture,
+                kind,
                 arguments,
                 body,
                 return_annotation,
@@ -319,9 +320,9 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
             UntypedExpr::RecordUpdate {
                 location,
                 constructor,
-                spread,
+                record,
                 arguments,
-            } => self.fold_record_update(location, constructor, spread, arguments),
+            } => self.fold_record_update(location, constructor, record, arguments),
 
             UntypedExpr::NegateBool { location, value } => self.fold_negate_bool(location, value),
 
@@ -370,8 +371,8 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
 
             UntypedExpr::Fn {
                 location,
+                kind,
                 end_of_head_byte_index,
-                is_capture,
                 arguments,
                 body,
                 return_annotation,
@@ -382,7 +383,7 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
                 UntypedExpr::Fn {
                     location,
                     end_of_head_byte_index,
-                    is_capture,
+                    kind,
                     arguments,
                     body,
                     return_annotation,
@@ -521,7 +522,7 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
             UntypedExpr::RecordUpdate {
                 location,
                 constructor,
-                spread,
+                record,
                 arguments,
             } => {
                 let constructor = Box::new(self.fold_expr(*constructor));
@@ -535,7 +536,7 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
                 UntypedExpr::RecordUpdate {
                     location,
                     constructor,
-                    spread,
+                    record,
                     arguments,
                 }
             }
@@ -665,7 +666,7 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
         &mut self,
         location: SrcSpan,
         end_of_head_byte_index: u32,
-        is_capture: bool,
+        kind: FunctionLiteralKind,
         arguments: Vec<UntypedArg>,
         body: Vec1<UntypedStatement>,
         return_annotation: Option<TypeAst>,
@@ -673,7 +674,7 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
         UntypedExpr::Fn {
             location,
             end_of_head_byte_index,
-            is_capture,
+            kind,
             arguments,
             body,
             return_annotation,
@@ -799,13 +800,13 @@ pub trait UntypedExprFolder: TypeAstFolder + UntypedConstantFolder + PatternFold
         &mut self,
         location: SrcSpan,
         constructor: Box<UntypedExpr>,
-        spread: RecordUpdateSpread,
+        record: RecordBeingUpdated,
         arguments: Vec<UntypedRecordUpdateArg>,
     ) -> UntypedExpr {
         UntypedExpr::RecordUpdate {
             location,
             constructor,
-            spread,
+            record,
             arguments,
         }
     }

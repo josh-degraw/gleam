@@ -66,10 +66,36 @@ pub struct UnknownType {
     pub name: EcoString,
 }
 
+/// This is used by the unknown record field error to tell if an unknown field
+/// is a field appearing in another variant of the same type to provide a better
+/// error message explaining why it can't be accessed:
+///
+/// ```gleam
+/// pub type Wibble {
+///   Wibble(field: Int)
+///   Wobble(thing: String)
+/// }
+///
+/// Wobble("hello").field
+/// //             ^^^^^^
+/// ```
+///
+/// Here the error can be extra useful and explain that to access `field` all
+/// variants should have that field at the same position and with the same type.
+///
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub enum RecordVariants {
-    HasVariants,
-    NoVariants,
+pub enum UnknownField {
+    /// The field we're trying to access appears in at least a variant, so it
+    /// can be useulf to explain why it cannot be accessed and how to fix it
+    /// (adding it to all variants/making sure it has the same type/making sure
+    /// it's in the same position).
+    ///
+    AppearsInAVariant,
+
+    /// The field is not in any of the variants, this might truly be a typo and
+    /// there's no need to add further explanations.
+    ///
+    TrulyUnknown,
 }
 
 /// A suggestion for an unknown module
@@ -183,7 +209,7 @@ pub enum Error {
         label: EcoString,
         fields: Vec<EcoString>,
         usage: FieldAccessUsage,
-        variants: RecordVariants,
+        unknown_field: UnknownField,
     },
 
     IncorrectArity {
@@ -1300,12 +1326,6 @@ pub enum UnifyErrorSituation {
     /// The operands of a binary operator were incorrect.
     Operator(BinOp),
 
-    /// A try expression returned a different error type to the previous try.
-    TryErrorMismatch,
-
-    /// The final value of a try expression was not a Result.
-    TryReturnResult,
-
     /// One of the elements of a list was not the same type as the others.
     ListElementMismatch,
 
@@ -1350,17 +1370,6 @@ annotation of this function.",
                 Some("This function cannot handle the argument sent through the (|>) pipe:")
             }
             Self::Operator(_op) => None,
-
-            Self::TryErrorMismatch => Some(
-                "This returned value has a type incompatible with the previous try expression.
-All the try expressions in a block and the final result value must have
-the same error type.",
-            ),
-
-            Self::TryReturnResult => Some(
-                "This returned value has a type incompatible with the previous try expression.
-The returned value after a try must be of type Result.",
-            ),
 
             Self::ListElementMismatch => Some(
                 "All elements of a list must be the same type, but this one doesn't
@@ -1432,14 +1441,6 @@ impl UnifyError {
 
     pub fn operator_situation(self, binop: BinOp) -> Self {
         self.with_unify_error_situation(UnifyErrorSituation::Operator(binop))
-    }
-
-    pub fn inconsistent_try(self, return_value_is_result: bool) -> Self {
-        self.with_unify_error_situation(if return_value_is_result {
-            UnifyErrorSituation::TryErrorMismatch
-        } else {
-            UnifyErrorSituation::TryReturnResult
-        })
     }
 
     pub fn into_error(self, location: SrcSpan) -> Error {

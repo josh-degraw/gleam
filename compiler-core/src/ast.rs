@@ -7,7 +7,7 @@ mod tests;
 pub mod visit;
 
 pub use self::typed::TypedExpr;
-pub use self::untyped::{UntypedExpr, Use};
+pub use self::untyped::{FunctionLiteralKind, UntypedExpr, Use};
 
 pub use self::constant::{Constant, TypedConstant, UntypedConstant};
 
@@ -695,6 +695,7 @@ impl<T> Import<T> {
 }
 
 pub type UntypedModuleConstant = ModuleConstant<(), ()>;
+pub type TypedModuleConstant = ModuleConstant<Arc<Type>, EcoString>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// A certain fixed value that can be used in multiple places
@@ -1286,7 +1287,7 @@ impl<T> HasLocation for CallArg<T> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecordUpdateSpread {
+pub struct RecordBeingUpdated {
     pub base: Box<UntypedExpr>,
     pub location: SrcSpan,
 }

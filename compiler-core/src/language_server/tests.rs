@@ -7,7 +7,7 @@ mod hover;
 mod signature_help;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     time::SystemTime,
 };
@@ -22,8 +22,8 @@ use lsp_types::{Position, TextDocumentIdentifier, TextDocumentPositionParams, Ur
 use crate::{
     config::PackageConfig,
     io::{
-        memory::InMemoryFileSystem, CommandExecutor, FileSystemReader, FileSystemWriter, ReadDir,
-        WrappedReader,
+        memory::InMemoryFileSystem, BeamCompiler, CommandExecutor, FileSystemReader,
+        FileSystemWriter, ReadDir, WrappedReader,
     },
     language_server::{
         engine::LanguageServerEngine, files::FileSystemProxy, progress::ProgressReporter,
@@ -224,6 +224,21 @@ impl CommandExecutor for LanguageServerTestIO {
         stdio: crate::io::Stdio,
     ) -> Result<i32> {
         panic!("exec({program:?}, {args:?}, {env:?}, {cwd:?}, {stdio:?}) is not implemented")
+    }
+}
+
+impl BeamCompiler for LanguageServerTestIO {
+    fn compile_beam(
+        &self,
+        out: &Utf8Path,
+        lib: &Utf8Path,
+        modules: &HashSet<Utf8PathBuf>,
+        stdio: crate::io::Stdio,
+    ) -> Result<()> {
+        panic!(
+            "compile_beam({:?}, {:?}, {:?}, {:?}) is not implemented",
+            out, lib, modules, stdio
+        )
     }
 }
 
