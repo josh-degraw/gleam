@@ -563,8 +563,10 @@ impl<'a> ModuleEncoder<'a> {
         builder.set_gleam(implementations.gleam);
         builder.set_uses_erlang_externals(implementations.uses_erlang_externals);
         builder.set_uses_javascript_externals(implementations.uses_javascript_externals);
+        builder.set_uses_fsharp_externals(implementations.uses_fsharp_externals);
         builder.set_can_run_on_erlang(implementations.can_run_on_erlang);
         builder.set_can_run_on_javascript(implementations.can_run_on_javascript);
+        builder.set_can_run_on_fsharp(implementations.can_run_on_fsharp);
     }
 
     fn build_external(
