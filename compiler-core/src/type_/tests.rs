@@ -2363,6 +2363,36 @@ fn assert_suitable_main_function_ok() {
 }
 
 #[test]
+fn assert_suitable_main_function_ok_fsharp() {
+    let value = ValueConstructor {
+        publicity: Publicity::Public,
+        deprecation: Deprecation::NotDeprecated,
+        type_: fn_(vec![], int()),
+        variant: ValueConstructorVariant::ModuleFn {
+            name: "name".into(),
+            field_map: None,
+            arity: 0,
+            documentation: None,
+            location: Default::default(),
+            module: "module".into(),
+            external_erlang: None,
+            external_javascript: None,
+            external_fsharp: None,
+            implementations: Implementations {
+                gleam: true,
+                uses_erlang_externals: false,
+                uses_javascript_externals: false,
+                uses_fsharp_externals: false,
+                can_run_on_erlang: true,
+                can_run_on_javascript: true,
+                can_run_on_fsharp: true,
+            },
+        },
+    };
+    assert!(assert_suitable_main_function(&value, &"module".into(), Target::FSharp).is_ok(),);
+}
+
+#[test]
 fn assert_suitable_main_function_erlang_not_supported() {
     let value = ValueConstructor {
         publicity: Publicity::Public,

@@ -327,6 +327,59 @@ pub fn all_externals() -> Int { erlang_external_and_javascript_body() }
 }
 
 #[test]
+pub fn fsharp_external_with_javascript_body() {
+    assert_targets_fsharp!(
+        r#"
+@external(javascript, "wibble", "wobble")
+fn javascript_only() -> Int
+
+@external(fsharp, "wibble", "wobble")
+pub fn fsharp_external_and_javascript_body() -> Int { javascript_only() }
+
+pub fn all_externals() -> Int { fsharp_external_and_javascript_body() }
+"#,
+        [
+            (
+                "all_externals",
+                Implementations {
+                    gleam: false,
+                    uses_erlang_externals: false,
+                    uses_javascript_externals: true,
+                    uses_fsharp_externals: true,
+                    can_run_on_erlang: false,
+                    can_run_on_javascript: true,
+                    can_run_on_fsharp: true,
+                }
+            ),
+            (
+                "fsharp_external_and_javascript_body",
+                Implementations {
+                    gleam: false,
+                    uses_erlang_externals: false,
+                    uses_javascript_externals: true,
+                    uses_fsharp_externals: true,
+                    can_run_on_erlang: false,
+                    can_run_on_javascript: true,
+                    can_run_on_fsharp: true,
+                }
+            ),
+            (
+                "javascript_only",
+                Implementations {
+                    gleam: false,
+                    uses_erlang_externals: false,
+                    uses_javascript_externals: true,
+                    uses_fsharp_externals: false,
+                    can_run_on_erlang: false,
+                    can_run_on_javascript: true,
+                    can_run_on_fsharp: false,
+                }
+            )
+        ],
+    );
+}
+
+#[test]
 pub fn javascript_external_with_erlang_body() {
     assert_targets!(
         r#"
