@@ -1264,12 +1264,12 @@ impl<'a> Generator<'a> {
             TypedExpr::Todo { message, .. } => self.todo(message),
             TypedExpr::Panic { message, .. } => self.panic_(message),
             TypedExpr::RecordAccess { label, record, .. } => self.record_access(record, label),
-            TypedExpr::RecordUpdate { args, spread, .. } => {
+            TypedExpr::RecordUpdate { args, record, .. } => {
                 // If the target of the update is the result of a pipeline, it needs to be
                 // surrounded in parentheses
-                let old_var_name = match spread.deref() {
-                    TypedExpr::Pipeline { .. } => Ok(self.expression(spread)?.surround("(", ")")),
-                    _ => self.expression(spread),
+                let old_var_name = match record.deref() {
+                    TypedExpr::Pipeline { .. } => Ok(self.expression(record)?.surround("(", ")")),
+                    _ => self.expression(record),
                 };
 
                 let new_values = args
