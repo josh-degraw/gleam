@@ -685,12 +685,12 @@ impl Default for FSharpTestFramework {
     fn default() -> Self {
         Self::XUnit {
             version: "2.5.2".into(),
-            runner_version: "2.5.2".into(),
+            runner_version: "2.5.3".into(),
         }
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq, Clone)]
+#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum FSharpOutputType {
     Library,
     Exe,

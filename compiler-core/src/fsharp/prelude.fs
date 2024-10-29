@@ -492,7 +492,7 @@ and [<Struct>] BitArraySegment = {
         | Utf16Codepoint _ -> 16
         | Utf32Codepoint _ -> 32
         | Byte _ -> sizeof<byte>
-        //| Int i when i <= int64 Byte.MaxValue -> sizeof<byte>
+        | Int i when i <= int64 Byte.MaxValue -> sizeof<byte>
         | Int _ when this.signed = Some true -> sizeof<int64>
         | Int _ -> sizeof<uint64>
         | Float _ -> sizeof<double>
@@ -506,7 +506,7 @@ and [<Struct>] BitArraySegment = {
         | Bytes bytes -> bytes
         | Float f -> System.BitConverter.GetBytes(f)
         | Byte i -> [| byte i |]
-        //| Int i when i <= int64 Byte.MaxValue -> [| byte i |]
+        | Int i when i <= int64 Byte.MaxValue -> [| byte i |]
         | Int i when this.signed = Some true -> System.BitConverter.GetBytes(uint64 i)
         | Int i -> System.BitConverter.GetBytes(i)
         | Utf8Codepoint(UtfCodepoint(cp: Text.Rune)) -> System.Text.Encoding.UTF8.GetBytes(string cp)
