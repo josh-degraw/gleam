@@ -414,13 +414,6 @@ where
             &self.config.fsharp,
         );
         let fsharp_app = crate::codegen::FSharpApp::new(&self.config, &input_dir, &output_dir);
-        for module in modules {
-            let module_name: EcoString = module.name.replace("/", ".");
-            let path = output_dir.join(format!("{}.fs", module.name));
-
-            let output = generator.render_module(&module, &module.input_path)?;
-            self.io.write(&path, &output)?;
-        }
 
         fsharp_app.render(io, modules, &mut generator)?;
         // Copy external files

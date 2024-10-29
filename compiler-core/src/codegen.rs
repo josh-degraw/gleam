@@ -189,11 +189,7 @@ impl<'a> FSharpApp<'a> {
 
         // Write individual module files
         for module in modules {
-            let module_file_path = if module.is_test() {
-                self.output_directory.join(format!("{}.fs", module.name))
-            } else {
-                self.output_directory.join(format!("{}.fs", module.name))
-            };
+            let module_file_path: Utf8PathBuf = self.module_output_path(module);
             let module_content = generator.render_module(module, &module.input_path)?;
             writer.write(&module_file_path, &module_content)?;
         }
@@ -210,6 +206,31 @@ impl<'a> FSharpApp<'a> {
         self.write_project_file(&writer, modules.iter(), generator, true)?;
 
         Ok(())
+    }
+
+    fn module_output_path(&self, module: &Module) -> Utf8PathBuf {
+        let parent_dir = module.input_path.parent().expect("must have a parent");
+
+        let name = &module.name;
+
+        let input_dir = self
+            .input_dir
+            .parent()
+            .expect("must have a parent")
+            .as_str();
+
+        let relative_module_path: Utf8PathBuf = parent_dir
+            .to_string()
+            .replace(input_dir, self.output_directory.as_str())
+            .into();
+
+        let file_name = if name.contains("/") {
+            name.split("/").last().expect("must have a file name")
+        } else {
+            name
+        };
+
+        relative_module_path.join(format!("{}.fs", file_name))
     }
 
     fn write_project_file<Writer: FileSystemWriter>(
@@ -254,10 +275,8 @@ impl<'a> FSharpApp<'a> {
         let source_files = modules
             .iter()
             .map(|m| {
-                format!(
-                    "<Compile Include=\"{}.fs\" />",
-                    self.output_directory.join(m.name.to_string())
-                )
+                let module_file_path = self.module_output_path(m);
+                format!("<Compile Include=\"{module_file_path}\" />")
             })
             .collect::<Vec<_>>()
             .join("\n    ");
