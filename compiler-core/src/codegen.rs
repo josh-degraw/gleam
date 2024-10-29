@@ -224,15 +224,6 @@ impl<'a> FSharpApp<'a> {
             return Ok(());
         }
 
-        println!("test_project: {}", test_project);
-        println!(
-            "self.modules: {:?}",
-            modules
-                .iter()
-                .map(|m| m.name.to_string())
-                .collect::<Vec<_>>()
-        );
-
         let project_file_path = if test_project {
             self.output_directory
                 .join(format!("{}_test.fsproj", &self.config.name))
@@ -246,9 +237,7 @@ impl<'a> FSharpApp<'a> {
             .iter()
             .filter(|file| {
                 if !test_project {
-                    let file_name = file.to_string();
-                    // .file_name().expect("Missing file name");
-                    !file_name.contains("test")
+                    !file.to_string().contains("test")
                 } else {
                     true
                 }
@@ -264,10 +253,7 @@ impl<'a> FSharpApp<'a> {
 
         let source_files = modules
             .iter()
-            //.filter(|m| m.dependencies.is_empty())
             .map(|m| {
-                println!("m.name: {}", m.name);
-                println!("dependencies: {:?}", m.dependencies);
                 format!(
                     "<Compile Include=\"{}.fs\" />",
                     self.output_directory.join(m.name.to_string())
