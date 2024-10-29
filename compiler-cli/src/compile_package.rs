@@ -26,6 +26,8 @@ pub fn command(options: CompilePackage) -> Result<()> {
     let paths = ProjectPaths::new(options.package_directory.clone());
     let config = config::read(paths.root_config())?;
 
+    println!("{:?}", config.fsharp);
+
     let target = match options.target {
         Target::Erlang => TargetCodegenConfiguration::Erlang { app_file: None },
         Target::JavaScript => TargetCodegenConfiguration::JavaScript {

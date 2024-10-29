@@ -134,7 +134,7 @@ pub fn command(
                 target: Target::FSharp,
                 invalid_runtime: r,
             }),
-            _ => run_fsharp(&paths, &main_function.package, &module, arguments),
+            _ => run_fsharp(&paths, &main_function.package, &module, arguments, which),
         },
     }?;
 
@@ -180,20 +180,29 @@ fn run_fsharp(
     package: &str,
     module: &str,
     arguments: Vec<String>,
+    which: Which,
 ) -> Result<i32, Error> {
-    // Run the generated F# project via dotnet run
-    let mut args = vec!["run".to_string()];
-
     let build_dir = paths
         .build_directory_for_package(Mode::Dev, Target::FSharp, package)
         .join(ARTEFACT_DIRECTORY_NAME);
-    let entry = build_dir.join(format!("{package}.fsproj"));
-    args.push("--project".to_string());
-    args.push(entry.to_string());
+    // Run the generated F# project via dotnet run
+    let mut args = match which {
+        Which::Src => vec![
+            "run".to_string(),
+            "--project".to_string(),
+            build_dir.join(format!("{package}.fsproj")).to_string(),
+        ],
+        Which::Test => vec![
+            "test".to_string(),
+            build_dir.join(format!("{package}_test.fsproj")).to_string(),
+        ],
+    };
 
     for arg in arguments.into_iter() {
         args.push(arg);
     }
+
+    println!("args: {:?}", args);
 
     ProjectIO::new().exec("dotnet", &args, &[], None, Stdio::Inherit)
 }

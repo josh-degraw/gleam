@@ -7,3 +7,8 @@
 erl_crash.dump
 *.lock
 node_modules/
+.DS_Store
+**/_gleam_artifacts/
+**/build/**
+**/**/*.cache
+**/**/*.cache_meta

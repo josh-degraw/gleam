@@ -406,24 +406,23 @@ where
 
         // Use the F# generator to render the modules
 
-        let fsharp_app = crate::codegen::FSharpApp::new(&input_dir, &output_dir);
-
         let first_module = modules.first().expect("Must be at least one module");
         let mut generator = crate::fsharp::Generator::new(
             &self.config.name,
-            &first_module.ast,
+            &first_module,
             &first_module.input_path,
-            &self.config.fsharp.type_mappings,
+            &self.config.fsharp,
         );
+        let fsharp_app = crate::codegen::FSharpApp::new(&self.config, &input_dir, &output_dir);
         for module in modules {
             let module_name: EcoString = module.name.replace("/", ".");
             let path = output_dir.join(format!("{}.fs", module.name));
 
-            let output = generator.render_module(&module.ast, &module.input_path)?;
+            let output = generator.render_module(&module, &module.input_path)?;
             self.io.write(&path, &output)?;
         }
 
-        fsharp_app.render(io, &self.config, modules, &mut generator)?;
+        fsharp_app.render(io, modules, &mut generator)?;
         // Copy external files
         for file in generator.external_files {
             let file_name = file.file_name().expect("File name missing");
@@ -440,12 +439,14 @@ where
 
         let status = self.io.exec(
             "dotnet",
-            &[String::from("build")],
+            &[
+                String::from("build"),
+                format!("{}.fsproj", &self.config.name),
+            ],
             &[],
             Some(&output_dir),
             self.subprocess_stdio,
         )?;
-
         if status != 0 {
             return Err(Error::ShellCommand {
                 program: "dotnet".into(),

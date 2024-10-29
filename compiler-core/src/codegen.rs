@@ -1,11 +1,12 @@
 use crate::{
     analyse::TargetSupport,
     build::{ErlangAppCodegenConfiguration, Module},
-    config::PackageConfig,
+    config::{FSharpOutputType, FSharpTestFramework, PackageConfig},
     erlang, fsharp,
     io::FileSystemWriter,
     javascript,
     line_numbers::LineNumbers,
+    requirement::Requirement,
     Result,
 };
 use itertools::Itertools;
@@ -153,11 +154,17 @@ impl<'a> ErlangApp<'a> {
 pub struct FSharpApp<'a> {
     input_dir: &'a Utf8Path,
     output_directory: &'a Utf8PathBuf,
+    config: &'a PackageConfig,
 }
 
 impl<'a> FSharpApp<'a> {
-    pub fn new(input_dir: &'a Utf8Path, output_directory: &'a Utf8PathBuf) -> Self {
+    pub fn new(
+        config: &'a PackageConfig,
+        input_dir: &'a Utf8Path,
+        output_directory: &'a Utf8PathBuf,
+    ) -> Self {
         Self {
+            config,
             input_dir,
             output_directory,
         }
@@ -166,14 +173,9 @@ impl<'a> FSharpApp<'a> {
     pub fn render<Writer: FileSystemWriter>(
         &self,
         writer: Writer,
-        config: &PackageConfig,
         modules: &'a [Module],
         generator: &mut fsharp::Generator<'a>,
     ) -> Result<()> {
-        let project_file_path = self
-            .output_directory
-            .join(format!("{}.fsproj", &config.name));
-
         // Write prelude file
         let prelude_file_path = self.output_directory.join("gleam_prelude.fs");
         writer.write(&prelude_file_path, fsharp::FSHARP_PRELUDE)?;
@@ -182,89 +184,200 @@ impl<'a> FSharpApp<'a> {
         let gleam_toml_path = self.input_dir.join("../gleam.toml");
         let existing_gleam_toml = std::fs::read_to_string(&gleam_toml_path)
             .expect(&format!("Failed to read {gleam_toml_path}"));
-        let gleam_toml_path = self.output_directory.join("gleam.toml");
-        writer.write(&gleam_toml_path, &existing_gleam_toml)?;
+        let output_gleam_toml_path = self.output_directory.join("gleam.toml");
+        writer.write(&output_gleam_toml_path, &existing_gleam_toml)?;
 
         // Write individual module files
         for module in modules {
-            let module_file_path = self.output_directory.join(format!("{}.fs", module.name));
-            let module_content = generator.render_module(&module.ast, &module.input_path)?;
+            let module_file_path = if module.is_test() {
+                self.output_directory.join(format!("{}.fs", module.name))
+            } else {
+                self.output_directory.join(format!("{}.fs", module.name))
+            };
+            let module_content = generator.render_module(module, &module.input_path)?;
             writer.write(&module_file_path, &module_content)?;
         }
 
-        let target_framework = config.fsharp.target_framework.as_str();
-
         // TODO: Support conditionally outputting an exe or library
         // Create project file content
+        self.write_project_file(
+            &writer,
+            modules.iter().filter(|m| !m.is_test()),
+            generator,
+            false,
+        )?;
+
+        self.write_project_file(&writer, modules.iter(), generator, true)?;
+
+        Ok(())
+    }
+
+    fn write_project_file<Writer: FileSystemWriter>(
+        &self,
+        writer: &Writer,
+        modules: impl Iterator<Item = &'a Module>,
+        generator: &mut fsharp::Generator<'a>,
+        test_project: bool,
+    ) -> Result<()> {
+        let modules = modules.collect::<Vec<_>>();
+        if modules.is_empty() {
+            return Ok(());
+        }
+
+        println!("test_project: {}", test_project);
+        println!(
+            "self.modules: {:?}",
+            modules
+                .iter()
+                .map(|m| m.name.to_string())
+                .collect::<Vec<_>>()
+        );
+
+        let project_file_path = if test_project {
+            self.output_directory
+                .join(format!("{}_test.fsproj", &self.config.name))
+        } else {
+            self.output_directory
+                .join(format!("{}.fsproj", &self.config.name))
+        };
+
+        let external_files = generator
+            .external_files
+            .iter()
+            .filter(|file| {
+                if !test_project {
+                    let file_name = file.to_string();
+                    // .file_name().expect("Missing file name");
+                    !file_name.contains("test")
+                } else {
+                    true
+                }
+            })
+            .map(|file| {
+                format!(
+                    "<Compile Include=\"./external/{}\" />",
+                    file.file_name().expect("Missing file name")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n    ");
+
+        let source_files = modules
+            .iter()
+            //.filter(|m| m.dependencies.is_empty())
+            .map(|m| {
+                println!("m.name: {}", m.name);
+                println!("dependencies: {:?}", m.dependencies);
+                format!(
+                    "<Compile Include=\"{}.fs\" />",
+                    self.output_directory.join(m.name.to_string())
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n    ");
+
+        let project_references = self
+            .config
+            .dependencies
+            .iter()
+            .map(|(name, requirement)| match requirement {
+                Requirement::Path { path } => {
+                    let project_name = path
+                        .as_str()
+                        .split("/")
+                        .last()
+                        .expect("Missing dependency project name");
+
+                    format!(
+                        "<ProjectReference Include=\"../{}/_gleam_artefacts/{}.fsproj\" />",
+                        path.as_str(),
+                        project_name
+                    )
+                }
+                _ => format!("<ProjectReference Include=\"{}\" />", name),
+            })
+            .collect::<Vec<_>>()
+            .join("\n    ");
+
+        let package_references = self
+            .config
+            .fsharp
+            .package_references
+            .iter()
+            .map(|(name, version)| {
+                format!(
+                    "<PackageReference Include=\"{}\" Version=\"{}\" />",
+                    name, version
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n    ");
+
+        let root_namespace = &self.config.name;
+
+        let target_framework = self.config.fsharp.target_framework.as_str();
+
+        let sdk = "Microsoft.NET.Sdk";
+
+        let package_references = if test_project {
+            match &self.config.fsharp.test_framework {
+                FSharpTestFramework::XUnit {
+                    version,
+                    runner_version,
+                } => {
+                    format!(
+                        "{package_references}
+    <PackageReference Include=\"Microsoft.NET.Test.Sdk\" Version=\"17.11.0\" />
+    <PackageReference Include=\"xunit\" Version=\"{version}\" />
+    <PackageReference Include=\"xunit.runner.visualstudio\" Version=\"{runner_version}\">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+    </PackageReference>"
+                    )
+                }
+            }
+        } else {
+            package_references
+        };
+
+        let additional_properties = if test_project {
+            "<IsPackable>false</IsPackable>"
+        } else if self.config.fsharp.output_type == FSharpOutputType::Exe {
+            "<OutputType>Exe</OutputType>"
+        } else {
+            "<OutputType>Library</OutputType>"
+        };
+
+        let prelude_file_path = self.output_directory.join("gleam_prelude.fs");
+
         let project_file_content = format!(
-            r#"<Project Sdk="Microsoft.NET.Sdk">
+            r#"<Project Sdk="{sdk}">
   <PropertyGroup>
-    <TargetFramework>{}</TargetFramework>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>{}</RootNamespace>
+    <TargetFramework>{target_framework}</TargetFramework>
+    <RootNamespace>{root_namespace}</RootNamespace>
     <IncludeDocumentation>true</IncludeDocumentation>
     <NoWarn>$(NoWarn);FS0020;</NoWarn>
+    {additional_properties}
   </PropertyGroup>
-
   <ItemGroup>
     <None Include="gleam.toml" />
   </ItemGroup>
-
   <ItemGroup Label="Modules">
-    <Compile Include="gleam_prelude.fs" />
-    {}
-    {}
+    <Compile Include="{prelude_file_path}" />
+    {external_files}
+    {source_files}
   </ItemGroup>
-
   <ItemGroup Label="ProjectReferences">
-    <!-- TODO: Add support for local project references -->
+    {project_references}
   </ItemGroup>
-
   <ItemGroup Label="PackageReferences">
-    {}
+    {package_references}
   </ItemGroup>
 </Project>
-"#,
-            target_framework,
-            config.name,
-            generator
-                .external_files
-                .iter()
-                .map(|file| format!(
-                    "<Compile Include=\"./external/{}\" />",
-                    file.file_name().expect("Missing file name")
-                ))
-                .collect::<Vec<_>>()
-                .join("\n    "),
-            modules
-                .iter()
-                .map(|m| format!("<Compile Include=\"{}.fs\" />", m.name))
-                .collect::<Vec<_>>()
-                .join("\n    "),
-            config
-                .fsharp
-                .package_references
-                .iter()
-                .map(|(name, version)| format!(
-                    "<PackageReference Include=\"{}\" Version=\"{}\" />",
-                    name, version
-                ))
-                .collect::<Vec<_>>()
-                .join("\n    ")
+"#
         );
-        // Write project file
-        writer.write(&project_file_path, &project_file_content)?;
 
-        let directory_build_props =
-            std::fs::read_to_string(self.input_dir.join("Directory.Build.props"));
-        if let Ok(props_file) = directory_build_props {
-            _ = writer.write(
-                &self.output_directory.join("Directory.Build.props"),
-                &props_file,
-            );
-        }
-
-        Ok(())
+        writer.write(&project_file_path, &project_file_content)
     }
 }
 

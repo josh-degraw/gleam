@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests;
 
+use super::build::Module;
 use super::Result;
 use crate::{
     analyse::Inferred,
     ast::*,
+    config::{FSharpConfig, FSharpOutputType, FSharpTestFramework},
     docvec,
     pretty::*,
     type_::{
@@ -21,6 +23,7 @@ use std::{
     ops::Deref,
     sync::{Arc, OnceLock},
 };
+
 use vec1::Vec1;
 
 const INDENT: isize = 4;
@@ -51,8 +54,8 @@ enum Context {
 pub struct Generator<'a> {
     package_name: &'a EcoString,
     pub external_files: HashSet<Utf8PathBuf>,
-    type_mappings: &'a HashMap<String, String>,
-    module: &'a TypedModule,
+    config: &'a FSharpConfig,
+    module: &'a Module,
     input_file_path: &'a Utf8PathBuf,
     printer: Printer<'a>,
     pub suppressed_warnings: HashSet<&'static str>,
@@ -62,17 +65,17 @@ pub struct Generator<'a> {
 impl<'a> Generator<'a> {
     pub fn new(
         package_name: &'a EcoString,
-        module: &'a TypedModule,
+        module: &'a Module,
         input_file_path: &'a Utf8PathBuf,
-        type_mappings: &'a HashMap<String, String>,
+        config: &'a FSharpConfig,
     ) -> Self {
         Self {
             package_name,
             external_files: HashSet::new(),
-            type_mappings,
+            config,
             module,
             input_file_path,
-            printer: Printer::new(&module.names),
+            printer: Printer::new(&module.ast.names),
             suppressed_warnings: HashSet::new(),
             context: Vec::new(),
         }
@@ -110,11 +113,11 @@ impl<'a> Generator<'a> {
     /// Update the currently referenced module and render it
     pub fn render_module(
         &mut self,
-        new_module: &'a TypedModule,
+        new_module: &'a Module,
         input_file_path: &'a Utf8PathBuf,
     ) -> Result<String> {
         self.module = new_module;
-        self.printer = Printer::new(&new_module.names);
+        self.printer = Printer::new(&new_module.ast.names);
         self.input_file_path = input_file_path;
         self.render()
     }
@@ -129,6 +132,7 @@ impl<'a> Generator<'a> {
     fn render_imports(&mut self) -> Result<Document<'a>> {
         let all_imports = self
             .module
+            .ast
             .definitions
             .iter()
             .filter_map(|def| match def {
@@ -155,7 +159,7 @@ impl<'a> Generator<'a> {
         self.context.push(Context::Module);
         let mut results = vec![];
 
-        for def in self.module.definitions.iter() {
+        for def in self.module.ast.definitions.iter() {
             match def {
                 Definition::CustomType(t) => results.push(self.custom_type(t)),
                 Definition::TypeAlias(t) => results.push(self.type_alias(t)),
@@ -346,7 +350,7 @@ impl<'a> Generator<'a> {
 
         let type_name = _type_.name.to_string();
 
-        let mapped_type = self.type_mappings.get(&type_name);
+        let mapped_type = self.config.type_mappings.get(&type_name);
         if let Some(mapped_type_name) = mapped_type {
             if params.is_empty() {
                 return docvec!["type ", &_type_.name, " = ", mapped_type_name.to_doc()];
@@ -706,7 +710,7 @@ impl<'a> Generator<'a> {
 
         let sanitized_name = self.sanitize_str(name_str);
 
-        let body: Result<Document<'a>> = match external_fsharp {
+        let body: Document<'a> = match external_fsharp {
             Some((ref module_name, ref fn_name, _)) => {
                 // TODO: look into tracking references to the external function in Call expressions
                 // and call them directly instead? Or maybe add an inline specifier for this [instead]?
@@ -734,77 +738,42 @@ impl<'a> Generator<'a> {
                     docvec![module_name, "."]
                 };
 
-                Ok(docvec![qualifier, fn_name, " ", calling_args])
+                docvec![qualifier, fn_name, " ", calling_args]
             }
 
             None => {
                 let statements = self.statements(body, Some(return_type))?;
 
-                Ok(self.wrap_in_begin_end(statements))
-                //     line()
-                //         .append()
-                //         .nest(INDENT)
-                //         .group(),
-                //     line(),
-                //     "end"
-                // ]
+                self.wrap_in_begin_end(statements)
             }
         };
-        let body = body?;
 
-        let args = self.fun_args(arguments);
         let docs = self.documentation(documentation);
 
         let deprecation_doc = self.deprecation(deprecation);
 
-        // TODO: Make this less magic
-        let (entry_point_annotation, args) = if name_str == "main" {
+        let args = self.fun_args(arguments);
+        let args = if self.is_entry_point_function(f) {
             match &arguments[..] {
                 [TypedArg {
                     names: ArgNames::Named { name, .. },
                     ..
-                }] => (
-                    "[<EntryPoint>]".to_doc().append(line()),
-                    EcoString::from(format!("({}: string[])", name)).to_doc(),
-                ),
+                }] => EcoString::from(format!("({}: string[])", name)).to_doc(),
                 []
                 | [TypedArg {
                     names: ArgNames::Discard { .. },
                     ..
-                }] => (
-                    "[<EntryPoint>]".to_doc().append(line()),
-                    "(_: string[])".to_doc(),
-                ),
-                _ => (nil(), args),
+                }] => "(_: string[])".to_doc(),
+                _ => args,
             }
         } else {
-            (nil(), args)
+            args
         };
-
-        // let return_type = return_annotation.as_ref().map_or_else(
-        //     || self.type_to_fsharp(return_type),
-        //     |t| self.type_ast_to_fsharp(t),
-        // );
+        let attributes = self.function_attributes(f);
 
         let mut all_type_params = arguments
             .iter()
-            .flat_map(|arg| {
-                // if let Type::Var { .. } = arg.type_.deref() {
-                //     return Some(self.type_to_fsharp(arg.type_.clone()));
-                // }
-                self.get_all_type_variables(arg.type_.clone())
-
-                // if let Some(annotation) = &arg.annotation {
-                //     if let TypeAst::Var(TypeAstVar { .. }) = &annotation {
-                //         return Some(vec![self.type_ast_to_fsharp(annotation)]);
-                //     }
-                //     None
-                // } else {
-                //     let all_return_type_vars = self.get_all_type_variables(arg.type_.clone());
-
-                //     Some(all_return_type_vars)
-                // }
-            })
+            .flat_map(|arg| self.get_all_type_variables(arg.type_.clone()))
             .collect::<HashSet<_>>();
 
         let return_type = match return_annotation {
@@ -820,8 +789,7 @@ impl<'a> Generator<'a> {
         // But some funcitons need to be marked as explicitly generic to avoid getting prematurely narrowed
         let always_include_type_params = self.is_building_stdlib() && name_str == "map_errors";
 
-        let _all_type_params = if always_include_type_params {
-            //|| !all_type_params.is_empty()  {
+        let all_type_params = if always_include_type_params {
             join(
                 all_type_params.iter().map(Documentable::to_doc),
                 ", ".to_doc(),
@@ -831,7 +799,7 @@ impl<'a> Generator<'a> {
             nil()
         };
 
-        let return_type = if name_str == "main" {
+        let return_type = if self.is_entry_point_function(f) {
             ": int".to_doc()
         } else if return_annotation.is_some() {
             docvec![": ", return_type]
@@ -844,11 +812,11 @@ impl<'a> Generator<'a> {
         let result = docvec![
             docs,
             deprecation_doc,
-            entry_point_annotation,
+            attributes,
             "let ",
             self.map_publicity(&f.publicity),
             sanitized_name,
-            _all_type_params,
+            all_type_params,
             " ",
             args,
             return_type,
@@ -857,6 +825,51 @@ impl<'a> Generator<'a> {
         ];
         _ = self.context.pop();
         Ok(result)
+    }
+
+    fn is_entry_point_function(&self, f: &'a TypedFunction) -> bool {
+        !self.module.is_test()
+            && self.config.output_type == FSharpOutputType::Exe
+            && f.name.as_ref().map(|n| n.1.as_str()).unwrap_or("_") == "main"
+    }
+
+    fn function_attributes(&self, f: &'a TypedFunction) -> Document<'a> {
+        let Function {
+            arguments,
+            return_type,
+            ..
+        } = f;
+        let mut attrs = vec![];
+        if self.module.is_test() && f.publicity == Publicity::Public {
+            match self.config.test_framework {
+                FSharpTestFramework::XUnit { .. } => {
+                    if return_type.is_nil()
+                        && arguments.is_empty()
+                        && f.publicity == Publicity::Public
+                        && f.name
+                            .as_ref()
+                            .map(|n| n.1.as_str())
+                            .unwrap_or("_")
+                            .ends_with("_test")
+                    {
+                        attrs.push("[<Xunit.Fact>]".to_doc().append(line()))
+                    }
+                }
+            }
+        }
+
+        if self.is_entry_point_function(f) {
+            match &arguments[..] {
+                []
+                | [TypedArg {
+                    names: ArgNames::Discard { .. } | ArgNames::Named { .. },
+                    ..
+                }] => attrs.push("[<EntryPoint>]".to_doc().append(line())),
+                _ => {}
+            }
+        }
+
+        attrs.to_doc()
     }
 
     fn arg_name(&self, arg: &'a TypedArg) -> Document<'a> {
@@ -2156,6 +2169,7 @@ impl<'a> Generator<'a> {
                 let (_, type_name) = type_.named_type_name().expect("Expected a named type");
                 let value_constructor = self
                     .module
+                    .ast
                     .type_info
                     .types_value_constructors
                     .get(&type_name);
@@ -2826,7 +2840,7 @@ impl<'a> Generator<'a> {
         module: &'a Option<(EcoString, SrcSpan)>,
         field_map: &'a Option<FieldMap>,
     ) -> Result<Document<'a>> {
-        if let Some(constructor) = self.module.type_info.values.get(record_name) {
+        if let Some(constructor) = self.module.ast.type_info.values.get(record_name) {
             if let ValueConstructorVariant::Record {
                 name,
                 constructors_count,

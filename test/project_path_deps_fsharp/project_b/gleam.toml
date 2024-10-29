@@ -1,0 +1,10 @@
+name = "project_b"
+version = "0.1.0"
+description = "A Gleam project"
+target = "fsharp"
+
+[fsharp]
+target_framework = "net8.0"
+
+[dependencies]
+project_d = { path = "../project_d" }

@@ -671,10 +671,36 @@ pub struct JavaScriptConfig {
     pub deno: DenoConfig,
 }
 
-#[derive(Deserialize, Debug, PartialEq, Default, Clone)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub enum FSharpTestFramework {
+    XUnit {
+        version: String,
+        runner_version: String,
+    },
+    // NUnit,
+    // MsTest,
+}
+
+impl Default for FSharpTestFramework {
+    fn default() -> Self {
+        Self::XUnit {
+            version: "2.5.2".into(),
+            runner_version: "2.5.2".into(),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub enum FSharpOutputType {
+    Library,
+    Exe,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 pub struct FSharpConfig {
     #[serde(default = "default_fsharp_target_framework")]
     pub target_framework: String,
+
     /// Nuget Package References
     /// TODO: Maybe add support for Update variant of package?
     #[serde(default, rename = "package_references")]
@@ -685,10 +711,39 @@ pub struct FSharpConfig {
     /// If the type is generic, make sure to include them in both the key and value.
     #[serde(default, rename = "type_mappings")]
     pub type_mappings: HashMap<String, String>,
+
+    #[serde(default)]
+    pub test_framework: FSharpTestFramework,
+
+    #[serde(default = "default_fsharp_output_type")]
+    pub output_type: FSharpOutputType,
+}
+
+// TODO: I don't think this should be necessary, but the default values are not being applied sometimes for some reason
+impl Default for FSharpConfig {
+    fn default() -> Self {
+        Self {
+            target_framework: default_fsharp_target_framework(),
+            package_references: Default::default(),
+            type_mappings: Default::default(),
+            test_framework: Default::default(),
+            output_type: default_fsharp_output_type(),
+        }
+    }
 }
 
 fn default_fsharp_target_framework() -> String {
     String::from("net8.0")
+}
+
+fn default_fsharp_output_type() -> FSharpOutputType {
+    FSharpOutputType::Library
+}
+
+#[test]
+fn fsharp_config_default_target_framework() {
+    let config: FSharpConfig = toml::from_str("").unwrap();
+    assert_eq!(config.target_framework, "net8.0");
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq, Clone)]

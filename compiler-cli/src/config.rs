@@ -62,6 +62,7 @@ fn package_root(package: &ManifestPackage, project_paths: &ProjectPaths) -> Utf8
 
 pub fn read(config_path: Utf8PathBuf) -> Result<PackageConfig, Error> {
     let toml = crate::fs::read(&config_path)?;
+
     let config: PackageConfig = toml::from_str(&toml).map_err(|e| Error::FileIo {
         action: FileIoAction::Parse,
         kind: FileKind::File,

@@ -452,7 +452,7 @@ and [<Struct>] BitArraySegmentValue =
 
     static member inline SizeOf(float: float) = sizeof<double>
 
-    static member inline SizeOf(bits: BitArray) = bits.Buffer.Length
+    static member SizeOf(bits: BitArray) = bits.Buffer.Length
 
     static member inline SizeOf(byte: byte) = sizeof<byte>
 
@@ -707,10 +707,10 @@ module BitArray =
         printfn "%A" f
         ()
 
-    let tester2 () =
-        let bitArray =
-            BitArray.Create(BitArraySegment.FromInt64(1L), BitArraySegment.FromFloat(1.0))
+// let tester2 () =
+//     let bitArray =
+//         BitArray.Create(BitArraySegment.FromInt64(1L), BitArraySegment.FromFloat(1.0))
 
-        match bitArray with
-        | Sections [ 8; 8 ] (head, tail) -> printfn "%A" bitArray
-        | _ -> printfn "No match"
+//     match bitArray with
+//     | Sections [ 8; 8 ] (head, tail) -> printfn "%A" bitArray
+//     | _ -> printfn "No match"

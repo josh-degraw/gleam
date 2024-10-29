@@ -8,9 +8,9 @@ fi
 PROJECT_PATH="$1"
 ROOT_PATH=$(pwd)
 
-cargo build
-cd "$PROJECT_PATH"
-pwd
-rm -rf ./build/dev/fsharp
-"$ROOT_PATH"/target/debug/gleam build --target fsharp
+cargo build && \
+cd "$PROJECT_PATH" && \
+pwd && \
+# rm -rf ./build/dev/fsharp && \
+"$ROOT_PATH"/target/debug/gleam build --target fsharp && \
 cd -
