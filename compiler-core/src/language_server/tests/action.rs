@@ -1,4 +1,3 @@
-use crate::line_numbers::LineNumbers;
 use itertools::Itertools;
 use lsp_types::{
     CodeActionContext, CodeActionParams, PartialResultParams, Position, Range, Url,
@@ -50,27 +49,12 @@ fn apply_code_action(title: &str, tester: TestProject<'_>, range: Range) -> Stri
     apply_code_edit(src, changes)
 }
 
-/// This function replicates how the text editor applies TextEdit.
-///
 fn apply_code_edit(src: &str, changes: HashMap<Url, Vec<lsp_types::TextEdit>>) -> String {
     let mut result = src.to_string();
-    let line_numbers = LineNumbers::new(src);
-    let mut offset = 0;
-    for (_, mut change) in changes {
-        change.sort_by_key(|edit| (edit.range.start.line, edit.range.start.character));
-        for edit in change {
-            let start = line_numbers.byte_index(edit.range.start.line, edit.range.start.character)
-                as i32
-                - offset;
-            let end = line_numbers.byte_index(edit.range.end.line, edit.range.end.character) as i32
-                - offset;
-            let range = (start as usize)..(end as usize);
-            offset += end - start;
-            offset -= edit.new_text.len() as i32;
-            result.replace_range(range, &edit.new_text);
-        }
+    for (_, change) in changes {
+        result = super::apply_code_edit(result.as_str(), change);
     }
-    result
+    result.to_string()
 }
 
 const REMOVE_UNUSED_IMPORTS: &str = "Remove unused imports";
@@ -1449,8 +1433,7 @@ type Wibble {
   Wubble
 }
 
-pub fn main() {
-  let wibble = Wobble
+pub fn main(wibble: Wibble) {
   case wibble {
     Wobble -> Nil
   }
@@ -1971,6 +1954,41 @@ pub fn main() {
         ADD_ANNOTATION,
         TestProject::for_source(src).add_hex_module("wibble", "pub type Wibble { Wibble }"),
         find_position_of("let").select_until(find_position_of("="))
+    );
+}
+
+#[test]
+// https://github.com/gleam-lang/gleam/issues/3789
+fn no_code_actions_to_add_annotations_for_pipe() {
+    assert_no_code_actions!(
+        ADD_ANNOTATION | ADD_ANNOTATIONS,
+        r#"
+fn do_something(a: Int) { a }
+
+pub fn main() {
+  10 |> do_something
+}
+"#,
+        find_position_of("10").select_until(find_position_of("|>"))
+    );
+}
+
+#[test]
+// https://github.com/gleam-lang/gleam/issues/3789#issuecomment-2455805734
+fn add_correct_type_annotation_for_non_variable_use() {
+    assert_code_action!(
+        ADD_ANNOTATION,
+        r#"
+fn usable(f) {
+  f(#(1, 2))
+}
+
+pub fn main() {
+  use #(a, b) <- usable
+  a + b
+}
+"#,
+        find_position_of("use").select_until(find_position_of("b)"))
     );
 }
 

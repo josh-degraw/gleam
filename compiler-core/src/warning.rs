@@ -1,10 +1,14 @@
 use crate::{
     ast::{SrcSpan, TodoKind},
+    build::Target,
     diagnostic::{self, Diagnostic, Location},
     error::wrap,
     type_::{
         self,
-        error::{FeatureKind, LiteralCollectionKind, PanicPosition, TodoOrPanic},
+        error::{
+            FeatureKind, LiteralCollectionKind, PanicPosition, TodoOrPanic,
+            UnreachableCaseClauseReason,
+        },
         pretty::Printer,
     },
 };
@@ -164,7 +168,9 @@ pub enum Warning {
 pub enum DeprecatedSyntaxWarning {
     /// If someone uses the deprecated syntax to append to a list:
     /// `["a"..rest]`, notice how there's no comma!
-    DeprecatedListPrepend { location: SrcSpan },
+    DeprecatedListPrepend {
+        location: SrcSpan,
+    },
 
     /// If someone uses the deprecated syntax to pattern match on a list:
     /// ```gleam
@@ -175,7 +181,9 @@ pub enum DeprecatedSyntaxWarning {
     /// }
     /// ```
     ///
-    DeprecatedListPattern { location: SrcSpan },
+    DeprecatedListPattern {
+        location: SrcSpan,
+    },
 
     /// If someone uses the deprecated syntax to match on all lists instead of
     /// a common `_`:
@@ -187,7 +195,9 @@ pub enum DeprecatedSyntaxWarning {
     /// }
     /// ```
     ///
-    DeprecatedListCatchAllPattern { location: SrcSpan },
+    DeprecatedListCatchAllPattern {
+        location: SrcSpan,
+    },
 
     /// If a record pattern has a spread that is not preceded by a comma:
     /// ```gleam
@@ -197,7 +207,14 @@ pub enum DeprecatedSyntaxWarning {
     /// }
     /// ```
     ///
-    DeprecatedRecordSpreadPattern { location: SrcSpan },
+    DeprecatedRecordSpreadPattern {
+        location: SrcSpan,
+    },
+
+    DeprecatedTargetShorthand {
+        target: Target,
+        location: SrcSpan,
+    },
 }
 
 impl Warning {
@@ -308,6 +325,35 @@ To match on all possible lists, use the `_` catch-all pattern instead.",
                 }),
             },
 
+            Warning::DeprecatedSyntax {
+                path,
+                src,
+                warning: DeprecatedSyntaxWarning::DeprecatedTargetShorthand { location, target },
+            } => {
+                let full_name = match target {
+                    Target::Erlang => "erlang",
+                    Target::JavaScript => "javascript",
+                };
+
+                Diagnostic {
+                    title: "Deprecated target shorthand syntax".into(),
+                    text: wrap(&format!(
+                        "This shorthand target name is deprecated. Use the full name: `{full_name}` instead."
+                    )),
+                    hint: None,
+                    level: diagnostic::Level::Warning,
+                    location: Some(Location {
+                        label: diagnostic::Label {
+                            text: Some(format!("This should be replaced with `{full_name}`")),
+                            span: *location,
+                        },
+                        path: path.clone(),
+                        src: src.clone(),
+                        extra_labels: vec![],
+                    }),
+                }
+            }
+
             Self::Type { path, warning, src } => match warning {
                 type_::Warning::Todo {
                     kind,
@@ -322,12 +368,18 @@ running your program.",
                     );
                     let title = match kind {
                         TodoKind::Keyword => "Todo found",
+                        TodoKind::EmptyBlock => {
+                            text.push_str(
+                                "
+A block must always contain at least one expression.",
+                            );
+                            "Incomplete block"
+                        }
                         TodoKind::EmptyFunction => "Unimplemented function",
                         TodoKind::IncompleteUse => {
                             text.push_str(
                                 "
-A use expression must always be followed by at least one more
-expression.",
+A use expression must always be followed by at least one expression.",
                             );
                             "Incomplete use expression"
                         }
@@ -727,11 +779,17 @@ Run this command to add it to your dependencies:
                     }
                 }
 
-                type_::Warning::UnreachableCaseClause { location } => {
-                    let text: String =
-                        "This case clause cannot be reached as a previous clause matches
-the same values.\n"
-                            .into();
+                type_::Warning::UnreachableCaseClause { location, reason } => {
+                    let text: String = match reason {
+                        UnreachableCaseClauseReason::DuplicatePattern => wrap(
+                            "This case clause cannot be reached as a previous clause matches \
+the same values.\n",
+                        ),
+                        UnreachableCaseClauseReason::ImpossibleVariant => wrap(
+                            "This case clause cannot be reached as it matches \
+on a variant of a type which is never present.\n",
+                        ),
+                    };
                     Diagnostic {
                         title: "Unreachable case clause".into(),
                         text,
@@ -1018,6 +1076,12 @@ See: https://tour.gleam.run/functions/pipelines/",
                         FeatureKind::AtInJavascriptModules => {
                             "The ability to have `@` in a Javascript module's name was"
                         }
+                        FeatureKind::RecordUpdateVariantInference => {
+                            "Record updates for custom types when the variant is known was"
+                        }
+                        FeatureKind::RecordAccessVariantInference => {
+                            "Field access on custom types when the variant is known was"
+                        }
                     };
 
                     Diagnostic {
@@ -1046,6 +1110,29 @@ See: https://tour.gleam.run/functions/pipelines/",
                         }),
                     }
                 }
+
+                type_::Warning::JavaScriptIntUnsafe { location } => Diagnostic {
+                    title: "Int is outside JavaScript's safe integer range".into(),
+                    text: wrap(
+                        "This integer value is too large to be represented accurately by \
+JavaScript's number type. To avoid this warning integer values must be in the range \
+-(2^53 - 1) - (2^53 - 1).
+
+See JavaScript's Number.MAX_SAFE_INTEGER and Number.MIN_SAFE_INTEGER properties for more \
+information.",
+                    ),
+                    hint: None,
+                    level: diagnostic::Level::Warning,
+                    location: Some(Location {
+                        path: path.to_path_buf(),
+                        src: src.clone(),
+                        label: diagnostic::Label {
+                            text: Some("This is not a safe integer value on JavaScript".into()),
+                            span: *location,
+                        },
+                        extra_labels: Vec::new(),
+                    }),
+                },
             },
         }
     }

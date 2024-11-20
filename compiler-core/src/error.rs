@@ -3,8 +3,9 @@ use crate::build::{Outcome, Runtime, Target};
 use crate::diagnostic::{Diagnostic, ExtraLabel, Label, Location};
 use crate::fsharp;
 use crate::type_::collapse_links;
-use crate::type_::error::{MissingAnnotation, UnknownTypeHint};
-use crate::type_::error::{Named, UnknownField};
+use crate::type_::error::{
+    MissingAnnotation, Named, UnknownField, UnknownTypeHint, UnsafeRecordUpdateReason,
+};
 use crate::type_::printer::{Names, Printer};
 use crate::type_::{error::PatternMatchKind, FieldAccessUsage};
 use crate::{ast::BinOp, parse::error::ParseErrorType, type_::Type};
@@ -1608,15 +1609,18 @@ Hint: Add some type annotations and try again.")
 
                     // Give a hint about what record fields this value has, if any.
                     if fields.is_empty() {
-                        text.push_str("\nIt does not have any fields.");
+                        if variants == &UnknownField::NoFields {
+                            text.push_str("\nIt does not have any fields.");
+                        } else {
+                            text.push_str("\nIt does not have any fields shared by all variants.");
+                        }
                     } else {
-                        text.push_str("\nIt has these fields:\n");
+                        text.push_str("\nIt has these accessible fields:\n");
                     }
                     for field in fields.iter().sorted() {
                         text.push_str("\n    .");
                         text.push_str(field);
                     }
-
 
                     match variants {
                         UnknownField::AppearsInAVariant => {
@@ -1624,12 +1628,24 @@ Hint: Add some type annotations and try again.")
                                 "Note: The field you are trying to \
 access might not be consistently present or positioned across the custom \
 type's variants, preventing reliable access. Ensure the field exists in the \
-same position and has the same type in all variants to enable direct accessor syntax.",
+same position and has the same type in all variants, or pattern matching on it \
+to enable direct accessor syntax.",
+                            );
+                            text.push_str("\n\n");
+                            text.push_str(&msg);
+                        }
+                        UnknownField::AppearsInAnImpossibleVariant => {
+                            let msg = wrap(
+                                "Note: The field you are trying to \
+access exists, but not on the variant which this value always is. \
+A field that is not present in all variants can only be accessed when \
+the value is inferred to be one variant.",
                             );
                             text.push_str("\n\n");
                             text.push_str(&msg);
                         }
                         UnknownField::TrulyUnknown => (),
+                        UnknownField::NoFields => (),
                     }
 
                     // Give a hint about Gleam not having OOP methods if it
@@ -1646,7 +1662,7 @@ to call a method on this value you may want to use the function syntax instead."
                             text.push_str(label);
                             text.push_str("(value)");
                         }
-                        FieldAccessUsage::Other => (),
+                        FieldAccessUsage::Other | FieldAccessUsage::RecordUpdate => (),
                     }
 
                     let label = did_you_mean(label, fields)
@@ -1889,31 +1905,82 @@ assigned variables to all of them."
                     }
                 }
 
-                TypeError::UpdateMultiConstructorType { location } => {
-                    let text = wrap("This type has multiple constructors \
-so it cannot be safely updated. If this value was one of the other variants \
-then the update would be produce incorrect results.
+                TypeError::UnsafeRecordUpdate { location, reason } =>
+                    match reason {
+                        UnsafeRecordUpdateReason::UnknownVariant {constructed_variant} => {
+                            let text = wrap_format!("
+This value cannot be used to build an updated `{constructed_variant}` \
+as it could be some other variant.
 
 Consider pattern matching on it with a case expression and then \
-constructing a new record with its values."
-                );
+constructing a new record with its values.");
 
-                    Diagnostic {
-                        title: "Unsafe record update".into(),
-                        text,
-                        hint: None,
-                        level: Level::Error,
-                        location: Some(Location {
-                            label: Label {
-                                text: Some("I can't tell this is always the right constructor".into()),
-                                span: *location,
-                            },
-                            path: path.clone(),
-                            src: src.clone(),
-                            extra_labels: vec![],
-                        }),
+                            Diagnostic {
+                                title: "Unsafe record update".into(),
+                                text,
+                                hint: None,
+                                level: Level::Error,
+                                location: Some(Location {
+                                    label: Label {
+                                        text: Some(format!("I'm not sure this is always a `{constructed_variant}`")),
+                                        span: *location,
+                                    },
+                                    path: path.clone(),
+                                    src: src.clone(),
+                                    extra_labels: vec![],
+                                }),
+                            }
+                        },
+                        UnsafeRecordUpdateReason::WrongVariant {constructed_variant, spread_variant} => {
+                            let text = wrap_format!("This value is a `{spread_variant}` so \
+it cannot be used to build a `{constructed_variant}`, even if they share some fields.
+
+Note: If you want to change one variant of a type into another, you should \
+specify all fields explicitly instead of using the record update syntax.");
+
+                            Diagnostic {
+                                title: "Incorrect record update".into(),
+                                text,
+                                hint: None,
+                                level: Level::Error,
+                                location: Some(Location {
+                                    label: Label {
+                                        text: Some(format!("This is a `{spread_variant}`")),
+                                        span: *location,
+                                    },
+                                    path: path.clone(),
+                                    src: src.clone(),
+                                    extra_labels: vec![],
+                                }),
+                            }
+                        },
+                        UnsafeRecordUpdateReason::IncompatibleFieldTypes {expected_field_type, record_field_type, record_variant, field_name, ..} => {
+                            let mut printer = Printer::new(names);
+                            let expected_field_type = printer.print_type(expected_field_type);
+                            let record_field_type = printer.print_type(record_field_type);
+                            let record_variant = printer.print_type(record_variant);
+                            let text = wrap_format!("The `{field_name}` field of this value is a `{record_field_type}`, but the arguments given to the record update indicate that it should be a `{expected_field_type}`.
+
+Note: If the same type variable is used for multiple fields, all those fields need to be updated at the same time if their type changes.");
+
+                            Diagnostic {
+                                title: "Incomplete record update".into(),
+                                text,
+                                hint: None,
+                                level: Level::Error,
+                                location: Some(Location {
+                                    label: Label {
+                                        text: Some(format!("This is a `{record_variant}`")),
+                                        span: *location,
+                                    },
+                                    path: path.clone(),
+                                    src: src.clone(),
+                                    extra_labels: vec![],
+                                }),
+                            }
+                        }
                     }
-                }
+
 
                 TypeError::UnknownType {
                     location,

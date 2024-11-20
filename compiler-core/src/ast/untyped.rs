@@ -7,6 +7,7 @@ pub enum UntypedExpr {
     Int {
         location: SrcSpan,
         value: EcoString,
+        int_value: BigInt,
     },
 
     Float {
@@ -259,7 +260,7 @@ pub struct Use {
     /// `<-`.
     ///
     /// ```gleam
-    /// use a <- reult.try(result)
+    /// use a <- result.try(result)
     /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
     /// ```
     ///

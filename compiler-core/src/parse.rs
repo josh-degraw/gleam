@@ -76,6 +76,7 @@ use camino::Utf8PathBuf;
 use ecow::EcoString;
 use error::{LexicalError, ParseError, ParseErrorType};
 use lexer::{LexResult, Spanned};
+use num_bigint::BigInt;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::str::FromStr;
@@ -494,11 +495,12 @@ where
                     value,
                 }
             }
-            Some((start, Token::Int { value }, end)) => {
+            Some((start, Token::Int { value, int_value }, end)) => {
                 self.advance();
                 UntypedExpr::Int {
                     location: SrcSpan { start, end },
                     value,
+                    int_value,
                 }
             }
 
@@ -783,7 +785,14 @@ where
                 // field access
                 match self.tok0.take() {
                     // tuple access
-                    Some((_, Token::Int { value }, end)) => {
+                    Some((
+                        _,
+                        Token::Int {
+                            value,
+                            int_value: _,
+                        },
+                        end,
+                    )) => {
                         self.advance();
                         let v = value.replace("_", "");
                         if let Ok(index) = u64::from_str(&v) {
@@ -1052,13 +1061,19 @@ where
         let body = self.parse_statement_seq()?;
         let (_, end) = self.expect_one(&Token::RightBrace)?;
         let location = SrcSpan { start, end };
-        match body {
-            None => parse_error(ParseErrorType::NoExpression, SrcSpan { start, end }),
-            Some((statements, _)) => Ok(UntypedExpr::Block {
-                statements,
+        let statements = match body {
+            Some((statements, _)) => statements,
+            None => vec1![Statement::Expression(UntypedExpr::Todo {
+                kind: TodoKind::EmptyBlock,
                 location,
-            }),
-        }
+                message: None
+            })],
+        };
+
+        Ok(UntypedExpr::Block {
+            location,
+            statements,
+        })
     }
 
     // The left side of an "=" or a "->"
@@ -1202,11 +1217,12 @@ where
                     },
                 }
             }
-            Some((start, Token::Int { value }, end)) => {
+            Some((start, Token::Int { value, int_value }, end)) => {
                 self.advance();
                 Pattern::Int {
                     location: SrcSpan { start, end },
                     value,
+                    int_value,
                 }
             }
             Some((start, Token::Float { value }, end)) => {
@@ -1557,7 +1573,14 @@ where
                     };
 
                     match self.next_tok() {
-                        Some((_, Token::Int { value }, int_e)) => {
+                        Some((
+                            _,
+                            Token::Int {
+                                value,
+                                int_value: _,
+                            },
+                            int_e,
+                        )) => {
                             let v = value.replace("_", "");
                             if let Ok(index) = u64::from_str(&v) {
                                 unit = ClauseGuard::TupleIndex {
@@ -2204,10 +2227,16 @@ where
         &mut self,
     ) -> Result<(u32, EcoString, Vec<SpannedString>, u32, u32), ParseError> {
         let (start, upname, end) = self.expect_upname()?;
-        if self.maybe_one(&Token::LeftParen).is_some() {
+        if let Some((par_s, _)) = self.maybe_one(&Token::LeftParen) {
             let args =
                 Parser::series_of(self, &|p| Ok(Parser::maybe_name(p)), Some(&Token::Comma))?;
             let (_, par_e) = self.expect_one_following_series(&Token::RightParen, "a name")?;
+            if args.is_empty() {
+                return parse_error(
+                    ParseErrorType::TypeDefinitionNoArguments,
+                    SrcSpan::new(par_s, par_e),
+                );
+            }
             let args2 = args
                 .into_iter()
                 .map(|(start, name, end)| (SrcSpan { start, end }, name))
@@ -2397,9 +2426,15 @@ where
         name: EcoString,
         end: u32,
     ) -> Result<Option<TypeAst>, ParseError> {
-        if self.maybe_one(&Token::LeftParen).is_some() {
+        if let Some((par_s, _)) = self.maybe_one(&Token::LeftParen) {
             let args = self.parse_types()?;
             let (_, par_e) = self.expect_one(&Token::RightParen)?;
+            if args.is_empty() {
+                return parse_error(
+                    ParseErrorType::TypeConstructorNoArguments,
+                    SrcSpan::new(par_s, par_e),
+                );
+            }
             Ok(Some(TypeAst::Constructor(TypeAstConstructor {
                 location: SrcSpan { start, end: par_e },
                 module,
@@ -2672,10 +2707,11 @@ where
                 }))
             }
 
-            Some((start, Token::Int { value }, end)) => {
+            Some((start, Token::Int { value, int_value }, end)) => {
                 self.advance();
                 Ok(Some(Constant::Int {
                     value,
+                    int_value,
                     location: SrcSpan { start, end },
                 }))
             }
@@ -2962,7 +2998,7 @@ where
         &mut self,
         value_parser: &impl Fn(&mut Self) -> Result<Option<A>, ParseError>,
         arg_parser: &impl Fn(&mut Self) -> Result<A, ParseError>,
-        to_int_segment: &impl Fn(EcoString, u32, u32) -> A,
+        to_int_segment: &impl Fn(EcoString, BigInt, u32, u32) -> A,
     ) -> Result<Option<BitArraySegment<A, ()>>, ParseError>
     where
         A: HasLocation + std::fmt::Debug,
@@ -3003,7 +3039,7 @@ where
     fn parse_bit_array_option<A: std::fmt::Debug>(
         &mut self,
         arg_parser: &impl Fn(&mut Self) -> Result<A, ParseError>,
-        to_int_segment: &impl Fn(EcoString, u32, u32) -> A,
+        to_int_segment: &impl Fn(EcoString, BigInt, u32, u32) -> A,
     ) -> Result<Option<BitArrayOption<A>>, ParseError> {
         match self.next_tok() {
             // named segment
@@ -3059,9 +3095,9 @@ where
                 }
             }
             // int segment
-            Some((start, Token::Int { value }, end)) => Ok(Some(BitArrayOption::Size {
+            Some((start, Token::Int { value, int_value }, end)) => Ok(Some(BitArrayOption::Size {
                 location: SrcSpan { start, end },
-                value: Box::new(to_int_segment(value, start, end)),
+                value: Box::new(to_int_segment(value, int_value, start, end)),
                 short_form: true,
             })),
             // invalid
@@ -3080,9 +3116,10 @@ where
                 constructor: None,
                 type_: (),
             }),
-            Some((start, Token::Int { value }, end)) => Ok(Pattern::Int {
+            Some((start, Token::Int { value, int_value }, end)) => Ok(Pattern::Int {
                 location: SrcSpan { start, end },
                 value,
+                int_value,
             }),
             _ => self.next_tok_unexpected(vec!["A variable name or an integer".into()]),
         }
@@ -3090,9 +3127,10 @@ where
 
     fn expect_const_int(&mut self) -> Result<UntypedConstant, ParseError> {
         match self.next_tok() {
-            Some((start, Token::Int { value }, end)) => Ok(Constant::Int {
+            Some((start, Token::Int { value, int_value }, end)) => Ok(Constant::Int {
                 location: SrcSpan { start, end },
                 value,
+                int_value,
             }),
             _ => self.next_tok_unexpected(vec!["A variable name or an integer".into()]),
         }
@@ -3254,16 +3292,33 @@ functions are declared separately from types.";
 
     // Expect a target name. e.g. `javascript` or `erlang`
     fn expect_target(&mut self) -> Result<Target, ParseError> {
-        let (_, t, _) = match self.next_tok() {
+        let (start, t, end) = match self.next_tok() {
             Some(t) => t,
             None => {
                 return parse_error(ParseErrorType::UnexpectedEof, SrcSpan { start: 0, end: 0 })
             }
         };
         match t {
-            Token::Name { name } => match Target::from_str(&name) {
-                Ok(target) => Ok(target),
-                Err(_) => self.next_tok_unexpected(Target::variant_strings()),
+            Token::Name { name } => match name.as_str() {
+                "javascript" => Ok(Target::JavaScript),
+                "erlang" => Ok(Target::Erlang),
+                "js" => {
+                    self.warnings
+                        .push(DeprecatedSyntaxWarning::DeprecatedTargetShorthand {
+                            location: SrcSpan { start, end },
+                            target: Target::JavaScript,
+                        });
+                    Ok(Target::JavaScript)
+                }
+                "erl" => {
+                    self.warnings
+                        .push(DeprecatedSyntaxWarning::DeprecatedTargetShorthand {
+                            location: SrcSpan { start, end },
+                            target: Target::Erlang,
+                        });
+                    Ok(Target::Erlang)
+                }
+                _ => self.next_tok_unexpected(Target::variant_strings()),
             },
             _ => self.next_tok_unexpected(Target::variant_strings()),
         }
@@ -3903,24 +3958,37 @@ fn clause_guard_reduction(
 // BitArrays in patterns, guards, and expressions have a very similar structure
 // but need specific types. These are helpers for that. There is probably a
 // rustier way to do this :)
-fn bit_array_pattern_int(value: EcoString, start: u32, end: u32) -> UntypedPattern {
+fn bit_array_pattern_int(
+    value: EcoString,
+    int_value: BigInt,
+    start: u32,
+    end: u32,
+) -> UntypedPattern {
     Pattern::Int {
         location: SrcSpan { start, end },
         value,
+        int_value,
     }
 }
 
-fn bit_array_expr_int(value: EcoString, start: u32, end: u32) -> UntypedExpr {
+fn bit_array_expr_int(value: EcoString, int_value: BigInt, start: u32, end: u32) -> UntypedExpr {
     UntypedExpr::Int {
         location: SrcSpan { start, end },
         value,
+        int_value,
     }
 }
 
-fn bit_array_const_int(value: EcoString, start: u32, end: u32) -> UntypedConstant {
+fn bit_array_const_int(
+    value: EcoString,
+    int_value: BigInt,
+    start: u32,
+    end: u32,
+) -> UntypedConstant {
     Constant::Int {
         location: SrcSpan { start, end },
         value,
+        int_value,
     }
 }
 
@@ -4050,4 +4118,22 @@ pub fn make_call(
 struct ParsedUnqualifiedImports {
     types: Vec<UnqualifiedImport>,
     values: Vec<UnqualifiedImport>,
+}
+
+/// Parses an Int value to a bigint.
+///
+pub fn parse_int_value(value: &str) -> Option<BigInt> {
+    let (radix, value) = if let Some(value) = value.strip_prefix("0x") {
+        (16, value)
+    } else if let Some(value) = value.strip_prefix("0o") {
+        (8, value)
+    } else if let Some(value) = value.strip_prefix("0b") {
+        (2, value)
+    } else {
+        (10, value)
+    };
+
+    let value = value.trim_start_matches('_');
+
+    BigInt::parse_bytes(value.as_bytes(), radix)
 }

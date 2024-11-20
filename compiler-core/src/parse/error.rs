@@ -24,7 +24,8 @@ pub enum LexicalErrorType {
     DigitOutOfRadix,                                 // 0x012 , 2 is out of radix
     NumTrailingUnderscore,                           // 1_000_ is not allowed
     RadixIntNoValue,                                 // 0x, 0b, 0o without a value
-    UnexpectedStringEnd,                             // Unterminated string literal
+    MissingExponent,     // 1.0e, for example, where there is no exponent
+    UnexpectedStringEnd, // Unterminated string literal
     UnrecognizedToken { tok: char },
     InvalidTripleEqual,
 }
@@ -65,7 +66,9 @@ impl ParseError {
             ),
             ParseErrorType::ExprLparStart => (
                 "This parenthesis cannot be understood here",
-                vec!["Hint: To group expressions in gleam use \"{\" and \"}\".".into()],
+                vec![
+                    "Hint: To group expressions in Gleam, use \"{\" and \"}\"; tuples are created with `#(` and `)`.".into(),
+                ]
             ),
             ParseErrorType::IncorrectName => (
                 "I'm expecting a lowercase name here",
@@ -316,6 +319,17 @@ utf16_codepoint, utf32_codepoint, signed, unsigned, big, little, native, size, u
                 "I was expecting arguments here",
                 vec!["A record must be passed arguments when constructed.".into()],
             ),
+            ParseErrorType::TypeConstructorNoArguments => (
+                "I was expecting arguments here",
+                vec!["A type constructor must be passed arguments.".into()],
+            ),
+            ParseErrorType::TypeDefinitionNoArguments => (
+                "I was expecting generic parameters here",
+                vec![
+                    "A generic type must have at least a generic parameter.".into(),
+                    "Hint: If a type is not generic you should omit the `()`.".into(),
+                ],
+            ),
         }
     }
 }
@@ -385,6 +399,8 @@ pub enum ParseErrorType {
     CallInClauseGuard, // case x { _ if f() -> 1 }
     IfExpression,
     ConstantRecordConstructorNoArguments, // const x = Record()
+    TypeConstructorNoArguments,           // let a : Int()
+    TypeDefinitionNoArguments,            // pub type Wibble() { ... }
 }
 
 impl LexicalError {
@@ -405,6 +421,10 @@ impl LexicalError {
                 vec!["Hint: remove it.".into()],
             ),
             LexicalErrorType::RadixIntNoValue => ("This integer has no value", vec![]),
+            LexicalErrorType::MissingExponent => (
+                "This float is missing an exponent",
+                vec!["Hint: Add an exponent or remove the trailing `e`".into()],
+            ),
             LexicalErrorType::UnexpectedStringEnd => {
                 ("The string starting here was left open", vec![])
             }

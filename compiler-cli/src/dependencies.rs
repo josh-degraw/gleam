@@ -116,9 +116,9 @@ pub enum UseManifest {
 pub fn update(packages: Vec<String>) -> Result<()> {
     let paths = crate::find_project_paths()?;
     let use_manifest = if packages.is_empty() {
-        UseManifest::Yes
-    } else {
         UseManifest::No
+    } else {
+        UseManifest::Yes
     };
 
     // Update specific packages
@@ -1271,7 +1271,16 @@ impl dependency::PackageFetcher for PackageFetcher {
             .runtime
             .block_on(self.http.send(request))
             .map_err(Box::new)?;
-        hexpm::get_package_response(response, HEXPM_PUBLIC_KEY).map_err(|e| e.into())
+
+        match hexpm::get_package_response(response, HEXPM_PUBLIC_KEY) {
+            Ok(a) => Ok(a),
+            Err(e) => match e {
+                hexpm::ApiError::NotFound => {
+                    Err(format!("I couldn't find a package called `{}`", package).into())
+                }
+                _ => Err(e.into()),
+            },
+        }
     }
 }
 

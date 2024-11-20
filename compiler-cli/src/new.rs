@@ -17,7 +17,7 @@ use crate::{fs::get_current_directory, NewOptions};
 
 const GLEAM_STDLIB_REQUIREMENT: &str = ">= 0.34.0 and < 2.0.0";
 const GLEEUNIT_REQUIREMENT: &str = ">= 1.0.0 and < 2.0.0";
-const ERLANG_OTP_VERSION: &str = "26.0.2";
+const ERLANG_OTP_VERSION: &str = "27.1.2";
 const REBAR3_VERSION: &str = "3";
 const ELIXIR_VERSION: &str = "1.15.4";
 
@@ -308,7 +308,8 @@ fn validate_root_folder(creator: &Creator) -> Result<(), Error> {
 
     for t in FileToCreate::iter() {
         let full_path = t.location(creator);
-        if full_path.exists() {
+        let content = t.contents(creator);
+        if full_path.exists() && content.is_some() {
             duplicate_files.push(full_path);
         }
     }

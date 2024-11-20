@@ -11,6 +11,7 @@ use crate::{
 use camino::Utf8PathBuf;
 use ecow::EcoString;
 use hexpm::version::Version;
+use num_bigint::BigInt;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
@@ -86,16 +87,25 @@ pub struct UnknownType {
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum UnknownField {
     /// The field we're trying to access appears in at least a variant, so it
-    /// can be useulf to explain why it cannot be accessed and how to fix it
+    /// can be useful to explain why it cannot be accessed and how to fix it
     /// (adding it to all variants/making sure it has the same type/making sure
     /// it's in the same position).
     ///
     AppearsInAVariant,
 
+    /// The field we are trying to access appears in a variant, but we can
+    /// infer that the value we are accessing on is never the one that this
+    /// value is, so we can give information accordingly.
+    AppearsInAnImpossibleVariant,
+
     /// The field is not in any of the variants, this might truly be a typo and
     /// there's no need to add further explanations.
     ///
     TrulyUnknown,
+
+    /// The type that the user is trying to access has no fields whatsoever,
+    /// such as Int or fn(..) -> _
+    NoFields,
 }
 
 /// A suggestion for an unknown module
@@ -219,8 +229,9 @@ pub enum Error {
         labels: Vec<EcoString>,
     },
 
-    UpdateMultiConstructorType {
+    UnsafeRecordUpdate {
         location: SrcSpan,
+        reason: UnsafeRecordUpdateReason,
     },
 
     UnnecessarySpreadOperator {
@@ -707,6 +718,7 @@ pub enum Warning {
 
     UnreachableCaseClause {
         location: SrcSpan,
+        reason: UnreachableCaseClauseReason,
     },
 
     /// This happens when someone tries to write a case expression where one of
@@ -828,6 +840,13 @@ pub enum Warning {
         wrongfully_allowed_version: Version,
         feature_kind: FeatureKind,
     },
+
+    /// When targeting JavaScript and an `Int` value is specified that lies
+    /// outside the range `Number.MIN_SAFE_INTEGER` - `Number.MAX_SAFE_INTEGER`.
+    ///
+    JavaScriptIntUnsafe {
+        location: SrcSpan,
+    },
 }
 
 #[derive(Debug, Eq, Copy, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
@@ -839,6 +858,8 @@ pub enum FeatureKind {
     NestedTupleAccess,
     InternalAnnotation,
     AtInJavascriptModules,
+    RecordUpdateVariantInference,
+    RecordAccessVariantInference,
 }
 
 impl FeatureKind {
@@ -851,6 +872,8 @@ impl FeatureKind {
             FeatureKind::LabelShorthandSyntax => Version::new(1, 4, 0),
             FeatureKind::ConstantStringConcatenation => Version::new(1, 4, 0),
             FeatureKind::UnannotatedUtf8StringSegment => Version::new(1, 5, 0),
+            FeatureKind::RecordUpdateVariantInference
+            | FeatureKind::RecordAccessVariantInference => Version::new(1, 6, 0),
         }
     }
 }
@@ -875,6 +898,17 @@ pub enum TodoOrPanic {
     Panic,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum UnreachableCaseClauseReason {
+    /// The clause is unreachable because a previous pattern
+    /// matches the same case.
+    DuplicatePattern,
+    /// The clause is unreachable because we have inferred the variant
+    /// of the custom type that we are matching on, and this matches
+    /// against one of the variants we know it isn't.
+    ImpossibleVariant,
+}
+
 impl Error {
     // Location where the error started
     pub fn start_location(&self) -> u32 {
@@ -890,7 +924,7 @@ impl Error {
             | Error::NotFn { location, .. }
             | Error::UnknownRecordField { location, .. }
             | Error::IncorrectArity { location, .. }
-            | Error::UpdateMultiConstructorType { location, .. }
+            | Error::UnsafeRecordUpdate { location, .. }
             | Error::UnnecessarySpreadOperator { location, .. }
             | Error::IncorrectTypeArity { location, .. }
             | Error::CouldNotUnify { location, .. }
@@ -999,7 +1033,8 @@ impl Warning {
             | Warning::TodoOrPanicUsedAsFunction { location, .. }
             | Warning::UnreachableCodeAfterPanic { location, .. }
             | Warning::RedundantPipeFunctionCapture { location, .. }
-            | Warning::FeatureRequiresHigherGleamVersion { location, .. } => *location,
+            | Warning::FeatureRequiresHigherGleamVersion { location, .. }
+            | Warning::JavaScriptIntUnsafe { location, .. } => *location,
         }
     }
 
@@ -1068,6 +1103,24 @@ pub fn convert_get_value_constructor_error(
             type_with_same_name: imported_value_as_type,
         },
     }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum UnsafeRecordUpdateReason {
+    UnknownVariant {
+        constructed_variant: EcoString,
+    },
+    WrongVariant {
+        constructed_variant: EcoString,
+        spread_variant: EcoString,
+    },
+    IncompatibleFieldTypes {
+        constructed_variant: Arc<Type>,
+        record_variant: Arc<Type>,
+        expected_field_type: Arc<Type>,
+        record_field_type: Arc<Type>,
+        field_name: EcoString,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1545,5 +1598,17 @@ pub fn convert_unify_call_error(e: UnifyError, location: SrcSpan, kind: Argument
             location,
         ),
         ArgumentKind::Regular => convert_unify_error(e, location),
+    }
+}
+
+/// When targeting JavaScript, adds a warning if the given Int value is outside the range of
+/// safe integers as defined by Number.MIN_SAFE_INTEGER and Number.MAX_SAFE_INTEGER.
+///
+pub fn check_javascript_int_safety(int_value: &BigInt, location: SrcSpan, problems: &mut Problems) {
+    let js_min_safe_integer = -9007199254740991i64;
+    let js_max_safe_integer = 9007199254740991i64;
+
+    if *int_value < js_min_safe_integer.into() || *int_value > js_max_safe_integer.into() {
+        problems.warning(Warning::JavaScriptIntUnsafe { location });
     }
 }

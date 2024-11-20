@@ -9,6 +9,7 @@ pub enum TypedExpr {
         location: SrcSpan,
         type_: Arc<Type>,
         value: EcoString,
+        int_value: BigInt,
     },
 
     Float {
@@ -132,11 +133,21 @@ pub enum TypedExpr {
         segments: Vec<TypedExprBitArraySegment>,
     },
 
+    /// A record update gets desugared to a block expression of the form
+    ///
+    /// {
+    ///   let _record = record
+    ///   Constructor(explicit_arg: explicit_value(), implicit_arg: _record.implicit_arg)
+    /// }
+    ///
+    /// We still keep a separate `RecordUpdate` AST node for the same reasons as
+    /// we do for pipelines.
     RecordUpdate {
         location: SrcSpan,
         type_: Arc<Type>,
-        record: Box<Self>,
-        args: Vec<TypedRecordUpdateArg>,
+        record: TypedAssignment,
+        constructor: Box<Self>,
+        args: Vec<CallArg<Self>>,
     },
 
     NegateBool {
@@ -187,8 +198,7 @@ impl TypedExpr {
                 // We don't want to match on todos that were implicitly inserted
                 // by the compiler as it would result in confusing suggestions
                 // from the LSP.
-                TodoKind::EmptyFunction => None,
-                TodoKind::IncompleteUse => None,
+                TodoKind::EmptyFunction | TodoKind::EmptyBlock | TodoKind::IncompleteUse => None,
             },
 
             Self::Pipeline {
@@ -302,6 +312,7 @@ impl TypedExpr {
 
             Self::RecordUpdate { record, args, .. } => args
                 .iter()
+                .filter(|arg| arg.implicit.is_none())
                 .find_map(|arg| arg.find_node(byte_index))
                 .or_else(|| record.find_node(byte_index))
                 .or_else(|| self.self_if_contains_location(byte_index)),
@@ -543,16 +554,10 @@ impl TypedExpr {
                 value.is_pure_value_constructor()
             }
 
-            // A module select is a pure value constructor only if it is a
-            // record, in all other cases it could be a side-effecting function.
-            // For example `option.Some(1)` is pure but `io.println("a")` is
-            // not.
-            TypedExpr::ModuleSelect { constructor, .. } => match constructor {
-                ModuleValueConstructor::Record { .. } => true,
-                ModuleValueConstructor::Fn { .. } | ModuleValueConstructor::Constant { .. } => {
-                    false
-                }
-            },
+            // Just selecting a value from a module never has any effects. The
+            // selected thing might be a function but it has no side effects as
+            // long as it's not called!
+            TypedExpr::ModuleSelect { .. } => true,
 
             // A pipeline is a pure value constructor if its last step is a record builder.
             // For example `wibble() |> wobble() |> Ok`

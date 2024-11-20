@@ -1179,10 +1179,24 @@ fn newline_tokens() {
     assert_eq!(
         make_tokenizer("1\n\n2\n").collect_vec(),
         [
-            Ok((0, Token::Int { value: "1".into() }, 1)),
+            Ok((
+                0,
+                Token::Int {
+                    value: "1".into(),
+                    int_value: 1.into()
+                },
+                1
+            )),
             Ok((1, Token::NewLine, 2)),
             Ok((2, Token::NewLine, 3)),
-            Ok((3, Token::Int { value: "2".into() }, 4)),
+            Ok((
+                3,
+                Token::Int {
+                    value: "2".into(),
+                    int_value: 2.into()
+                },
+                4
+            )),
             Ok((4, Token::NewLine, 5))
         ]
     );
@@ -1533,4 +1547,50 @@ pub type A {
 const a = A()
 "
     );
+}
+
+// https://github.com/gleam-lang/gleam/issues/3796
+#[test]
+fn missing_type_constructor_arguments_in_type_definition() {
+    assert_module_error!(
+        "
+pub type A() {
+  A(Int)
+}
+"
+    );
+}
+
+#[test]
+fn missing_type_constructor_arguments_in_type_annotation_1() {
+    assert_module_error!("pub fn main() -> Int() {}");
+}
+
+#[test]
+fn missing_type_constructor_arguments_in_type_annotation_2() {
+    assert_module_error!(
+        "pub fn main() {
+  let a: Int() = todo
+}"
+    );
+}
+
+#[test]
+fn tuple_without_hash() {
+    assert_module_error!(
+        r#"
+pub fn main() {
+    let triple = (1, 2.2, "three")
+    io.debug(triple)
+    let (a, *, *) = triple
+    io.debug(a)
+    io.debug(triple.1)
+}
+"#
+    );
+}
+
+#[test]
+fn float_empty_exponent() {
+    assert_error!("1.32e");
 }

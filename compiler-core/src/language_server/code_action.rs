@@ -4,11 +4,10 @@ use crate::{
     ast::{
         self,
         visit::{
-            visit_typed_call_arg, visit_typed_expr_call, visit_typed_pattern_call_arg,
-            visit_typed_record_update_arg, Visit as _,
+            visit_typed_call_arg, visit_typed_expr_call, visit_typed_pattern_call_arg, Visit as _,
         },
         AssignName, AssignmentKind, CallArg, FunctionLiteralKind, ImplicitCallArgOrigin, Pattern,
-        SrcSpan, TypedExpr, TypedModuleConstant, TypedPattern, TypedRecordUpdateArg,
+        SrcSpan, TypedExpr, TypedModuleConstant, TypedPattern,
     },
     build::{Located, Module},
     line_numbers::LineNumbers,
@@ -510,24 +509,6 @@ impl<'ast> ast::visit::Visit<'ast> for LabelShorthandSyntax<'_> {
 
         visit_typed_pattern_call_arg(self, arg)
     }
-
-    fn visit_typed_record_update_arg(&mut self, arg: &'ast TypedRecordUpdateArg) {
-        let arg_range = src_span_to_lsp_range(arg.location, &self.line_numbers);
-        let is_selected = overlaps(arg_range, self.params.range);
-
-        match arg {
-            TypedRecordUpdateArg {
-                label,
-                value: TypedExpr::Var { name, location, .. },
-                ..
-            } if is_selected && !arg.uses_label_shorthand() && label == name => {
-                self.push_delete_edit(location)
-            }
-            _ => (),
-        }
-
-        visit_typed_record_update_arg(self, arg)
-    }
 }
 
 /// Builder for code action to apply the fill in the missing labelled arguments
@@ -569,7 +550,11 @@ impl<'a> FillInMissingLabelledArgs<'a> {
                     Some(ImplicitCallArgOrigin::Pipe) => _ = missing_labels.remove(&0),
                     // We do not support this action for functions that have
                     // already been explicitly supplied an argument!
-                    Some(ImplicitCallArgOrigin::PatternFieldSpread) | None => return vec![],
+                    Some(
+                        ImplicitCallArgOrigin::PatternFieldSpread
+                        | ImplicitCallArgOrigin::RecordUpdate,
+                    )
+                    | None => return vec![],
                 }
             }
 
@@ -941,6 +926,12 @@ impl<'ast> ast::visit::Visit<'ast> for AddAnnotations<'_> {
 
         // We don't need to add an annotation if there already is one
         if assignment.annotation.is_some() {
+            return;
+        }
+
+        // Various expressions such as pipelines and `use` expressions generate assignments
+        // internally. However, these cannot be annotated and so we don't offer a code action here.
+        if assignment.kind.is_generated() {
             return;
         }
 
